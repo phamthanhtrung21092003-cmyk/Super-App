@@ -40,16 +40,16 @@ const PROMOS = [
 ];
 
 const ALL_BANKS = [
-  { id: '1', name: 'Vietcombank', fullName: 'Ngân hàng TMCP Ngoại thương VN', color: '#10B981', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/02/Icon-Vietcombank.png' },
-  { id: '2', name: 'MB Bank', fullName: 'Ngân hàng TMCP Quân đội', color: '#3B82F6', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/02/Icon-MB-Bank-MBB.png' },
-  { id: '3', name: 'Techcombank', fullName: 'Ngân hàng TMCP Kỹ thương VN', color: '#EF4444', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/01/Icon-Techcombank.png' },
-  { id: '4', name: 'BIDV', fullName: 'Ngân hàng TMCP Đầu tư và Phát triển VN', color: '#1D4ED8', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/01/Icon-BIDV.png' },
-  { id: '5', name: 'Agribank', fullName: 'Ngân hàng NN&PTNT VN', color: '#B91C1C', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/01/Icon-Agribank.png' },
-  { id: '6', name: 'VietinBank', fullName: 'Ngân hàng TMCP Công thương VN', color: '#2563EB', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/01/Icon-VietinBank-CTG.png' },
-  { id: '7', name: 'VPBank', fullName: 'Ngân hàng TMCP Việt Nam Thịnh Vượng', color: '#059669', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/01/Icon-VPBank.png' },
-  { id: '8', name: 'Sacombank', fullName: 'Ngân hàng TMCP Sài Gòn Thương Tín', color: '#2563EB', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/02/Icon-Sacombank.png' },
-  { id: '9', name: 'TPBank', fullName: 'Ngân hàng TMCP Tiên Phong', color: '#8B5CF6', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/02/Icon-TPBank.png' },
-  { id: '10', name: 'ACB', fullName: 'Ngân hàng TMCP Á Châu', color: '#1E3A8A', logo: 'https://cdn.haitrieu.com/wp-content/uploads/2022/02/Icon-ACB.png' },
+  { id: '1', name: 'Vietcombank', fullName: 'Ngân hàng TMCP Ngoại thương VN', color: '#10B981', logo: require('../../assets/banks/vcb.png') },
+  { id: '2', name: 'MB Bank', fullName: 'Ngân hàng TMCP Quân đội', color: '#3B82F6', logo: require('../../assets/banks/mb.png') },
+  { id: '3', name: 'Techcombank', fullName: 'Ngân hàng TMCP Kỹ thương VN', color: '#EF4444', logo: require('../../assets/banks/tcb.png') },
+  { id: '4', name: 'BIDV', fullName: 'Ngân hàng TMCP Đầu tư và Phát triển VN', color: '#1D4ED8', logo: require('../../assets/banks/bidv.png') },
+  { id: '5', name: 'Agribank', fullName: 'Ngân hàng NN&PTNT VN', color: '#B91C1C', logo: require('../../assets/banks/vba.png') },
+  { id: '6', name: 'VietinBank', fullName: 'Ngân hàng TMCP Công thương VN', color: '#2563EB', logo: require('../../assets/banks/ctg.png') },
+  { id: '7', name: 'VPBank', fullName: 'Ngân hàng TMCP Việt Nam Thịnh Vượng', color: '#059669', logo: require('../../assets/banks/vpb.png') },
+  { id: '8', name: 'Sacombank', fullName: 'Ngân hàng TMCP Sài Gòn Thương Tín', color: '#2563EB', logo: require('../../assets/banks/stb.png') },
+  { id: '9', name: 'TPBank', fullName: 'Ngân hàng TMCP Tiên Phong', color: '#8B5CF6', logo: require('../../assets/banks/tpb.png') },
+  { id: '10', name: 'ACB', fullName: 'Ngân hàng TMCP Á Châu', color: '#1E3A8A', logo: require('../../assets/banks/acb.png') },
 ];
 
 export default function WalletScreen() {
@@ -150,7 +150,13 @@ export default function WalletScreen() {
             style={styles.headerBackground}
           >
             <View style={styles.headerTop}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <TouchableOpacity onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/');
+                }
+              }} style={styles.backButton}>
                 <Text style={styles.backButtonText}>← Quay lại</Text>
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Ví VN Pay</Text>
@@ -304,7 +310,7 @@ export default function WalletScreen() {
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <View style={[styles.bankIconBox, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F3F4F6' }]}>
                           {bank.logo ? (
-                            <Image source={{ uri: bank.logo }} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
+                            <Image source={bank.logo} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
                           ) : (
                             <Ionicons name={bank.icon as any} size={20} color={bank.color} />
                           )}
@@ -334,7 +340,7 @@ export default function WalletScreen() {
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <View style={[styles.bankIconBoxSmall, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F3F4F6' }]}>
                           {selectedBank.logo ? (
-                            <Image source={{ uri: selectedBank.logo }} style={{ width: 20, height: 20, resizeMode: 'contain' }} />
+                            <Image source={selectedBank.logo} style={{ width: 20, height: 20, resizeMode: 'contain' }} />
                           ) : (
                             <Ionicons name={selectedBank.icon as any} size={16} color={selectedBank.color} />
                           )}
@@ -412,7 +418,7 @@ export default function WalletScreen() {
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <View style={[styles.bankIconBox, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F3F4F6' }]}>
                             {bank.logo ? (
-                              <Image source={{ uri: bank.logo }} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
+                              <Image source={bank.logo} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
                             ) : (
                               <Ionicons name={bank.icon as any} size={24} color={bank.color} />
                             )}
@@ -446,7 +452,7 @@ export default function WalletScreen() {
                   <View style={{ alignItems: 'center', marginVertical: 30 }}>
                     <View style={[styles.bankIconBoxLarge, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F3F4F6' }]}>
                       {selectedBankToLink.logo ? (
-                        <Image source={{ uri: selectedBankToLink.logo }} style={{ width: 48, height: 48, resizeMode: 'contain' }} />
+                        <Image source={selectedBankToLink.logo} style={{ width: 48, height: 48, resizeMode: 'contain' }} />
                       ) : (
                         <Ionicons name={selectedBankToLink.icon as any} size={48} color={selectedBankToLink.color} />
                       )}

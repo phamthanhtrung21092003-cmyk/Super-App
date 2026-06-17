@@ -6,6 +6,7 @@ export default function RootLayout() {
     <UserProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="social" />
       </Stack>
     </UserProvider>
   );

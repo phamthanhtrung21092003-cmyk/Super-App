@@ -147,7 +147,7 @@ export default function HomeScreen() {
               <Text style={styles.tabIconActive}>🏠</Text>
               <Text style={[styles.tabTextActive, { color: accentHex }]}>Trang chủ</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem}>
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/social')}>
               <Text style={styles.tabIcon}>🌐</Text>
               <Text style={styles.tabText}>Mạng xã hội</Text>
             </TouchableOpacity>
