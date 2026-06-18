@@ -47,7 +47,7 @@ export default function AppearanceScreen() {
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => router.replace('/home')} style={styles.backBtn}>
               <Text style={styles.backIcon}>←</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Giao diện hệ thống</Text>

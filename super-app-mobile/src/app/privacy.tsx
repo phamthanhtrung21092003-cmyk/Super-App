@@ -32,7 +32,7 @@ export default function PrivacyScreen() {
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
           
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.replace('/home')} style={styles.backButton}>
               <Text style={styles.backButtonText}>← Quay lại</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Chính sách bảo mật</Text>

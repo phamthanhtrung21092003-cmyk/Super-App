@@ -127,7 +127,7 @@ export default function OTPScreen() {
           
           {/* Nút Quay Lại */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.replace('/')} style={styles.backButton}>
               <Text style={styles.backButtonText}>← Quay lại</Text>
             </TouchableOpacity>
           </View>

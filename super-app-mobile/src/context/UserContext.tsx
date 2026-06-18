@@ -1,6 +1,16 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type SavingsBook = {
+  id: string;
+  type: 'standard' | 'annuity';
+  amount: number;
+  rate: number;
+  months: number;
+  startDate: string;
+  endDate: string;
+};
+
 type UserContextType = {
   userName: string;
   setUserName: (name: string) => void;
@@ -21,14 +31,18 @@ type UserContextType = {
   // Bank Properties
   linkedBanks: any[];
   addLinkedBank: (name: string, account: string, color?: string, icon?: string) => void;
+  // Savings Properties
+  savingsBooks: SavingsBook[];
+  openSavingsBook: (book: SavingsBook) => void;
+  topUpSavingsBook: (id: string, amount: number) => void;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userName, setUserNameState] = useState('Phạm Thành Trung ✨');
-  // Ảnh mặc định sẽ là chữ cái đầu của tên (PT) với màu nền ngẫu nhiên
-  const [avatarUrl, setAvatarUrlState] = useState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=random&color=fff&size=512');
+  // Ảnh mặc định sẽ là chữ cái đầu của tên (PT) với màu nền cố định để không bị đổi màu liên tục
+  const [avatarUrl, setAvatarUrlState] = useState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512');
   const [bio, setBioState] = useState('Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨');
   
   // Theme State
@@ -37,7 +51,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [bgUrl, setBgUrlState] = useState('https://images.unsplash.com/photo-1518655048521-f130df041f66?auto=format&fit=crop&w=1000&q=80');
 
   // Wallet State
-  const [walletBalance, setWalletBalance] = useState(2450000);
+  const [walletBalance, setWalletBalance] = useState(1000000000); // 1 tỷ VND để test
   const [transactions, setTransactions] = useState<any[]>([
     { id: '1', title: 'Highlands Coffee', amount: '-45.000đ', type: 'out', date: 'Hôm nay, 08:30', icon: 'cafe-outline', bg: '#FEE2E2', color: '#EF4444' },
     { id: '2', title: 'Nguyễn Văn A', desc: 'Chuyển tiền ăn trưa', amount: '+250.000đ', type: 'in', date: 'Hôm qua, 15:45', icon: 'person-outline', bg: '#D1FAE5', color: '#10B981' },
@@ -45,6 +59,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [linkedBanks, setLinkedBanks] = useState<any[]>([
     { id: 'vcb', name: 'Vietcombank', account: '**** 1234', color: '#10B981', icon: 'leaf' }
   ]);
+  const [savingsBooks, setSavingsBooks] = useState<SavingsBook[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -57,15 +72,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const storedBalance = await AsyncStorage.getItem('walletBalance');
         const storedTx = await AsyncStorage.getItem('transactions');
         const storedBanks = await AsyncStorage.getItem('linkedBanks');
+        const storedSavings = await AsyncStorage.getItem('savingsBooks');
 
         if (storedAvatar) setAvatarUrlState(storedAvatar);
         if (storedBio) setBioState(storedBio);
         if (storedAccentHex) setAccentHexState(storedAccentHex);
         if (storedAccentRgb) setAccentRgbState(storedAccentRgb);
         if (storedBgUrl) setBgUrlState(storedBgUrl);
-        if (storedBalance) setWalletBalance(parseInt(storedBalance, 10));
+        // FORCE 1 BILLION FOR TESTING: Bỏ qua storedBalance
+        setWalletBalance(1000000000);
+        await AsyncStorage.setItem('walletBalance', '1000000000');
+        
         if (storedTx) setTransactions(JSON.parse(storedTx));
         if (storedBanks) setLinkedBanks(JSON.parse(storedBanks));
+        if (storedSavings) setSavingsBooks(JSON.parse(storedSavings));
       } catch (e) {
         console.log('Failed to load user data');
       }
@@ -140,6 +160,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUserNameState(name);
   };
 
+  const openSavingsBook = async (book: SavingsBook) => {
+    const newBooks = [book, ...savingsBooks];
+    setSavingsBooks(newBooks);
+    await AsyncStorage.setItem('savingsBooks', JSON.stringify(newBooks));
+  };
+
+  const topUpSavingsBook = async (id: string, amount: number) => {
+    const newBooks = savingsBooks.map(b => {
+      if (b.id === id) {
+        return { ...b, amount: b.amount + amount };
+      }
+      return b;
+    });
+    setSavingsBooks(newBooks);
+    await AsyncStorage.setItem('savingsBooks', JSON.stringify(newBooks));
+  };
+
   return (
     <UserContext.Provider value={{ 
       userName, setUserName, 
@@ -148,7 +185,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       accentHex, accentRgb, setThemeColor,
       bgUrl, setBgUrl,
       walletBalance, transactions, addTransaction,
-      linkedBanks, addLinkedBank
+      linkedBanks, addLinkedBank,
+      savingsBooks, openSavingsBook, topUpSavingsBook
     }}>
       {children}
     </UserContext.Provider>

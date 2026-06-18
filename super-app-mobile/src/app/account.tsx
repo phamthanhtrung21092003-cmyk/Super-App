@@ -231,7 +231,7 @@ export default function AccountScreen() {
               <Text style={styles.tabIcon}>🏠</Text>
               <Text style={styles.tabText}>Trang chủ</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem}>
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/social')}>
               <Text style={styles.tabIcon}>🌐</Text>
               <Text style={styles.tabText}>Mạng xã hội</Text>
             </TouchableOpacity>

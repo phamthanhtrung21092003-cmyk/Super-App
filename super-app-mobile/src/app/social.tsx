@@ -293,7 +293,7 @@ export default function SocialScreen() {
             <TouchableOpacity style={[g.navBtn,{padding:0,overflow:'hidden'}]} onPress={()=>setScreen('menu')}>
               <Image source={{uri:avatarUrl}} style={{width:36,height:36,borderRadius:18}}/>
             </TouchableOpacity>
-            <TouchableOpacity style={g.navClose} onPress={()=>router.canGoBack()?router.back():router.replace('/')}>
+            <TouchableOpacity style={g.navClose} onPress={()=>router.canGoBack()?router.replace('/home'):router.replace('/home')}>
               <Text style={g.navCloseTxt}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -1112,7 +1112,7 @@ export default function SocialScreen() {
           {icon:'🚪',label:'Đăng xuất', action:()=>{
             Alert.alert('Đăng xuất','Bạn có chắc chắn muốn thoát khỏi mạng xã hội?',[
               {text:'Hủy',style:'cancel'},
-              {text:'Đăng xuất',style:'destructive',onPress:()=>{ router.canGoBack()?router.back():router.replace('/'); }}
+              {text:'Đăng xuất',style:'destructive',onPress:()=>{ router.canGoBack()?router.replace('/home'):router.replace('/home'); }}
             ]);
           }}
         ].map(item=>(
