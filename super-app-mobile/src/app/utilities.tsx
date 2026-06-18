@@ -98,7 +98,13 @@ export default function UtilitiesScreen() {
                       key={item.id} 
                       style={[styles.gridItem, { borderColor: `rgba(${accentRgb}, 0.2)` }]}
                       activeOpacity={0.7}
-                      onPress={() => window.alert(`Đang mở dịch vụ: ${item.title}`)}
+                      onPress={() => {
+                        if (item.id === 'ride') {
+                          router.push('/ride');
+                        } else {
+                          window.alert(`Đang mở dịch vụ: ${item.title}`);
+                        }
+                      }}
                     >
                       <View style={[styles.iconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.15)` }]}>
                         <Text style={styles.itemIcon}>{item.icon}</Text>
