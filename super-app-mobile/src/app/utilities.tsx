@@ -18,21 +18,11 @@ import { useUser } from '../context/UserContext';
 const UTILITY_GROUPS = [
   {
     id: 'transport',
-    title: 'Di chuyển & Giao nhận',
+    title: 'Dịch vụ Đa dụng (Siêu App)',
     items: [
-      { id: 'ride', title: 'Đặt xe', icon: '🚕' },
-      { id: 'delivery', title: 'Giao hàng', icon: '📦' },
-      { id: 'maps', title: 'Bản đồ', icon: '🗺️' },
-      { id: 'rental', title: 'Thuê xe', icon: '🛵' },
-    ]
-  },
-  {
-    id: 'food',
-    title: 'Đời sống & Ẩm thực',
-    items: [
-      { id: 'food', title: 'Đặt đồ ăn', icon: '🍔' },
-      { id: 'mart', title: 'Đi chợ', icon: '🛒' },
+      { id: 'transport', title: 'Vận chuyển', icon: '🛵' },
       { id: 'health', title: 'Sức khỏe', icon: '⚕️' },
+      { id: 'mart', title: 'Mua sắm', icon: '🛒' },
       { id: 'cleaning', title: 'Dọn dẹp', icon: '🧹' },
     ]
   },
@@ -62,7 +52,7 @@ export default function UtilitiesScreen() {
           style={styles.backgroundImage}
           resizeMode="cover"
         >
-          <View style={styles.overlay} />
+          <View style={styles.overlay} pointerEvents="none" />
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
           
           <View style={styles.header}>
@@ -99,8 +89,12 @@ export default function UtilitiesScreen() {
                       style={[styles.gridItem, { borderColor: `rgba(${accentRgb}, 0.2)` }]}
                       activeOpacity={0.7}
                       onPress={() => {
-                        if (item.id === 'ride') {
-                          router.push('/ride');
+                        if (item.id === 'transport') {
+                          router.push('/transport');
+                        } else if (item.id === 'health') {
+                          router.push('/health');
+                        } else if (item.id === 'mart') {
+                          router.push('/shopping');
                         } else {
                           window.alert(`Đang mở dịch vụ: ${item.title}`);
                         }
