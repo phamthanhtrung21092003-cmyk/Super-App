@@ -35,6 +35,13 @@ const UTILITY_GROUPS = [
       { id: 'hotels', title: 'Khách sạn', icon: '🏨' },
       { id: 'events', title: 'Sự kiện', icon: '🎟️' },
     ]
+  },
+  {
+    id: 'education',
+    title: 'Học tập & Giáo dục',
+    items: [
+      { id: 'edu_dashboard', title: 'Giáo dục', icon: '🎓' },
+    ]
   }
 ];
 
@@ -95,6 +102,11 @@ export default function UtilitiesScreen() {
                           router.push('/health');
                         } else if (item.id === 'mart') {
                           router.push('/shopping');
+                        } else if (item.id.startsWith('edu_')) {
+                          if (item.id === 'edu_dashboard') router.push('/education');
+                          if (item.id === 'edu_gradebook') router.push('/education/student/gradebook');
+                          if (item.id === 'edu_analytics') router.push('/education/student/analytics');
+                          if (item.id === 'edu_schedule') router.push('/education/student/schedule');
                         } else {
                           window.alert(`Đang mở dịch vụ: ${item.title}`);
                         }
