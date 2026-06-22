@@ -27,6 +27,7 @@ export default function OTPScreen() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [bgIndex, setBgIndex] = useState(0);
   const [timer, setTimer] = useState(60);
+  const [generatedOtp, setGeneratedOtp] = useState('');
   
   // Refs for auto-focusing next input
   const inputRefs = useRef<Array<TextInput | null>>([]);
@@ -37,7 +38,9 @@ export default function OTPScreen() {
   // Giả lập gửi SMS khi vừa vào trang
   useEffect(() => {
     const mockSMS = () => {
-      const msg = "HÀNH TRÌNH: Mã OTP xác thực của bạn là 839210. Tuyệt đối không chia sẻ mã này cho bất kỳ ai!";
+      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(randomCode);
+      const msg = `HÀNH TRÌNH: Mã OTP xác thực của bạn là ${randomCode}. Mã này chỉ có hiệu lực trong 60 giây!`;
       if (Platform.OS === 'web') {
         setTimeout(() => window.alert('Tin nhắn SMS mới 💬\n\n' + msg), 500);
       } else {
@@ -85,7 +88,25 @@ export default function OTPScreen() {
 
   const handleVerify = () => {
     const code = otp.join('');
-    if (code.length === 6) {
+    if (code.length !== 6) {
+      if (Platform.OS === 'web') {
+        window.alert('Vui lòng nhập đủ 6 số OTP');
+      } else {
+        Alert.alert('Lỗi', 'Vui lòng nhập đủ 6 số OTP');
+      }
+      return;
+    }
+
+    if (timer === 0) {
+      if (Platform.OS === 'web') {
+        window.alert('Mã OTP đã hết hạn sau 60s. Vui lòng gửi lại mã mới!');
+      } else {
+        Alert.alert('Hết hạn', 'Mã OTP đã hết hạn sau 60s. Vui lòng gửi lại mã mới!');
+      }
+      return;
+    }
+
+    if (code === generatedOtp) {
       if (Platform.OS === 'web') {
         window.alert('Xác thực thành công! Đang đăng nhập...');
       } else {
@@ -96,20 +117,23 @@ export default function OTPScreen() {
       }, 800);
     } else {
       if (Platform.OS === 'web') {
-        window.alert('Vui lòng nhập đủ 6 số OTP');
+        window.alert('Mã OTP không chính xác. Vui lòng thử lại!');
       } else {
-        Alert.alert('Lỗi', 'Vui lòng nhập đủ 6 số OTP');
+        Alert.alert('Lỗi', 'Mã OTP không chính xác. Vui lòng thử lại!');
       }
     }
   };
 
   const handleResend = () => {
     if (timer === 0) {
+      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(randomCode);
       setTimer(60);
+      const msg = `HÀNH TRÌNH: Mã OTP MỚI của bạn là ${randomCode}. Mã này có hiệu lực trong 60 giây!`;
       if (Platform.OS === 'web') {
-        window.alert('Đã gửi lại mã xác thực mới vào số điện thoại của bạn!');
+        setTimeout(() => window.alert('Tin nhắn SMS mới 💬\n\n' + msg), 500);
       } else {
-        Alert.alert('Đã gửi', 'Đã gửi lại mã xác thực mới vào số điện thoại của bạn!');
+        setTimeout(() => Alert.alert('Tin nhắn SMS mới 💬', msg), 500);
       }
     }
   };

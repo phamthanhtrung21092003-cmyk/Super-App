@@ -10,7 +10,8 @@ import {
   SafeAreaView,
   StatusBar,
   ImageBackground,
-  useWindowDimensions
+  useWindowDimensions,
+  ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -120,7 +121,11 @@ export default function LoginScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
           >
-            <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.logoContainer}>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.logoContainer}>
               <View style={styles.logoIconWrapper}>
                 <Ionicons name="infinite" size={48} color="#00D8FF" />
               </View>
@@ -227,6 +232,7 @@ export default function LoginScreen() {
                 <Text style={styles.signUpText}>Đăng ký ngay</Text>
               </TouchableOpacity>
             </Animated.View>
+            </ScrollView>
           </KeyboardAvoidingView>
         </ImageBackground>
       </SafeAreaView>
@@ -282,8 +288,12 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 40,
   },
   logoContainer: {
     alignItems: 'center',

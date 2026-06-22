@@ -86,12 +86,15 @@ export default function RegisterScreen() {
     }
 
     // Validate Password
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,15}$/; 
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/; 
     if (!password) {
       setPasswordError('Vui lòng nhập mật khẩu');
       isValid = false;
     } else if (password.length < 6) {
       setPasswordError('Mật khẩu phải có ít nhất 6 ký tự');
+      isValid = false;
+    } else if (password.length > 25) {
+      setPasswordError('Mật khẩu không được vượt quá 25 ký tự');
       isValid = false;
     } else if (!passwordRegex.test(password)) {
       setPasswordError('Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số');
@@ -121,7 +124,7 @@ export default function RegisterScreen() {
 
     if (isValid) {
       setUserName(fullName);
-      router.push({ pathname: '/otp', params: { name: fullName } });
+      router.push('/');
     }
   };
 
