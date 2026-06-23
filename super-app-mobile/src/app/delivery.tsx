@@ -65,7 +65,7 @@ export default function DeliveryScreen() {
         else if (state === 'finding') setState('form');
         else router.replace('/transport');
       }}>
-        <Ionicons name="arrow-back" size={24} color={T.text} />
+        <Ionicons name="chevron-back" size={28} color={T.text} />
       </TouchableOpacity>
       <Text style={S.topTitle}>{state === 'tracking' ? 'Theo Dõi Đơn Hàng' : 'Giao Hàng Hỏa Tốc'}</Text>
       <View style={{ width: 40 }} />

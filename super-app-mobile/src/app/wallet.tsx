@@ -913,7 +913,7 @@ export default function WalletScreen() {
                 <>
                   <View style={styles.actionModalHeader}>
                     <TouchableOpacity onPress={() => setSelectedBankToLink(null)}>
-                      <Ionicons name="arrow-back" size={26} color="#111827" />
+                      <Ionicons name="chevron-back" size={28} color="#111827" />
                     </TouchableOpacity>
                     <Text style={styles.actionModalTitle}>Liên kết thẻ</Text>
                     <TouchableOpacity onPress={() => { setIsAddBankModalVisible(false); setSelectedBankToLink(null); }}>

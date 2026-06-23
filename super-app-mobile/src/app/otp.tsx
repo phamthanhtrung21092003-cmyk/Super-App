@@ -14,18 +14,16 @@ import {
   Alert
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-const BACKGROUNDS = [
-  'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1000&q=80',
-  'https://images.unsplash.com/photo-1518655048521-f130df041f66?auto=format&fit=crop&w=1000&q=80',
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
-];
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 export default function OTPScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [bgIndex, setBgIndex] = useState(0);
   const [timer, setTimer] = useState(60);
   const [generatedOtp, setGeneratedOtp] = useState('');
   
@@ -40,7 +38,7 @@ export default function OTPScreen() {
     const mockSMS = () => {
       const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(randomCode);
-      const msg = `HÀNH TRÌNH: Mã OTP xác thực của bạn là ${randomCode}. Mã này chỉ có hiệu lực trong 60 giây!`;
+      const msg = `SUPER APP: Mã OTP xác thực của bạn là ${randomCode}. Mã này chỉ có hiệu lực trong 60 giây!`;
       if (Platform.OS === 'web') {
         setTimeout(() => window.alert('Tin nhắn SMS mới 💬\n\n' + msg), 500);
       } else {
@@ -60,10 +58,6 @@ export default function OTPScreen() {
     }
     return () => clearInterval(interval);
   }, [timer]);
-
-  const changeBackground = () => {
-    setBgIndex((prev) => (prev + 1) % BACKGROUNDS.length);
-  };
 
   const handleChange = (text: string, index: number) => {
     // Lọc chỉ lấy số
@@ -129,7 +123,7 @@ export default function OTPScreen() {
       const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(randomCode);
       setTimer(60);
-      const msg = `HÀNH TRÌNH: Mã OTP MỚI của bạn là ${randomCode}. Mã này có hiệu lực trong 60 giây!`;
+      const msg = `SUPER APP: Mã OTP MỚI của bạn là ${randomCode}. Mã này có hiệu lực trong 60 giây!`;
       if (Platform.OS === 'web') {
         setTimeout(() => window.alert('Tin nhắn SMS mới 💬\n\n' + msg), 500);
       } else {
@@ -142,85 +136,104 @@ export default function OTPScreen() {
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <ImageBackground 
-          source={{ uri: BACKGROUNDS[bgIndex] }} 
+          source={require('../../assets/images/premium_auth_bg.png')} 
           style={styles.backgroundImage}
           resizeMode="cover"
         >
-          <View style={styles.overlay} />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.85)']}
+            style={styles.darkOverlay}
+          />
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
           
           {/* Nút Quay Lại */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.replace('/')} style={styles.backButton}>
-              <Text style={styles.backButtonText}>← Quay lại</Text>
+            <TouchableOpacity onPress={() => router.replace('/')} style={styles.backButton} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={28} color="#00c6ff" style={{marginRight: 4}} />
+              <Text style={[styles.backButtonText, { color: '#00c6ff', fontFamily: 'Outfit' }]}>Quay lại</Text>
             </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity style={styles.changeBgButton} onPress={changeBackground}>
-            <Text style={styles.changeBgText}>Đổi nền 🖼️</Text>
-          </TouchableOpacity>
 
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
           >
             {/* Top Logo */}
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoIconText}>🛡️</Text>
-              <Text style={styles.logoTitle}>Xác thực OTP</Text>
-            </View>
+            <Animated.View entering={FadeInDown.duration(1000).springify()} style={styles.logoContainer}>
+              <View style={styles.logoIconWrapper}>
+                <LinearGradient
+                  colors={['rgba(0, 198, 255, 0.2)', 'rgba(0, 114, 255, 0.2)']}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <Ionicons name="shield-checkmark-outline" size={42} color="#00c6ff" />
+              </View>
+              <Text style={[styles.logoTitle, { fontFamily: 'Outfit', color: '#00c6ff', fontSize: 32 }]}>XÁC THỰC OTP</Text>
+              <Text style={[styles.logoSubtitle, { fontFamily: 'Outfit' }]}>Bảo mật đa lớp an toàn</Text>
+            </Animated.View>
 
             {/* Main Glassmorphism Card */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.title}>Nhập mã xác thực</Text>
-                <Text style={styles.subtitle}>
-                  Chúng tôi vừa gửi mã gồm 6 chữ số đến số điện thoại của bạn.
-                </Text>
-              </View>
-
-              <View style={styles.form}>
-                
-                {/* OTP Inputs */}
-                <View style={styles.otpContainer}>
-                  {otp.map((digit, index) => (
-                    <TextInput
-                      key={index}
-                      ref={(ref) => (inputRefs.current[index] = ref)}
-                      style={[
-                        styles.otpInput,
-                        digit ? styles.otpInputFilled : null
-                      ]}
-                      keyboardType="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChangeText={(text) => handleChange(text, index)}
-                      onKeyPress={(e) => handleKeyPress(e, index)}
-                      selectionColor="#00D8FF"
-                    />
-                  ))}
+            <Animated.View entering={FadeInUp.duration(1200).springify()} style={styles.cardContainer}>
+              <BlurView intensity={70} tint="dark" style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.title, { fontFamily: 'Outfit', color: '#FFF', fontSize: 24 }]}>Nhập mã xác thực</Text>
+                  <Text style={[styles.subtitle, { fontFamily: 'Outfit' }]}>
+                    Chúng tôi vừa gửi mã gồm 6 chữ số đến số điện thoại của bạn.
+                  </Text>
                 </View>
 
-                {/* Resend Timer */}
-                <TouchableOpacity 
-                  style={styles.resendContainer} 
-                  onPress={handleResend}
-                  disabled={timer > 0}
-                >
-                  <Text style={[styles.resendText, timer === 0 && styles.resendTextActive]}>
-                    {timer > 0 ? `Gửi lại mã sau ${timer}s` : 'Gửi lại mã mới'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.form}>
+                  
+                  {/* OTP Inputs */}
+                  <View style={styles.otpContainer}>
+                    {otp.map((digit, index) => (
+                      <View key={index} style={[
+                        styles.otpInputWrapper,
+                        digit ? styles.otpInputFilledWrapper : null
+                      ]}>
+                        <TextInput
+                          ref={(ref) => (inputRefs.current[index] = ref)}
+                          style={[
+                            styles.otpInput,
+                            digit ? styles.otpInputFilled : null
+                          ]}
+                          keyboardType="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChangeText={(text) => handleChange(text, index)}
+                          onKeyPress={(e) => handleKeyPress(e, index)}
+                          selectionColor="#00c6ff"
+                        />
+                      </View>
+                    ))}
+                  </View>
 
-                {/* Verify Button */}
-                <TouchableOpacity 
-                  style={styles.loginButton}
-                  onPress={handleVerify}
-                >
-                  <Text style={styles.loginButtonText}>XÁC NHẬN</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                  {/* Resend Timer */}
+                  <TouchableOpacity 
+                    style={styles.resendContainer} 
+                    onPress={handleResend}
+                    disabled={timer > 0}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.resendText, timer === 0 && styles.resendTextActive]}>
+                      {timer > 0 ? `Gửi lại mã sau ${timer}s` : 'Gửi lại mã mới'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Verify Button */}
+                  <TouchableOpacity activeOpacity={0.8} onPress={handleVerify} style={styles.loginButtonWrapper}>
+                    <LinearGradient
+                      colors={['#00c6ff', '#0072ff']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.loginButton}
+                    >
+                      <Text style={styles.loginButtonText}>XÁC NHẬN</Text>
+                      <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" style={styles.loginButtonIcon} />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
+            </Animated.View>
 
           </KeyboardAvoidingView>
         </ImageBackground>
@@ -232,10 +245,10 @@ export default function OTPScreen() {
 const styles = StyleSheet.create({
   webWrapper: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#050505',
     alignItems: 'center',
     justifyContent: 'center',
-    ...(Platform.OS === 'web' && { paddingVertical: 20 }),
+    ...(Platform.OS === 'web' && { paddingVertical: 40 }),
   },
   safeArea: {
     flex: 1,
@@ -243,55 +256,51 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   desktopFrame: {
-    maxWidth: 390,       
-    maxHeight: 844,
-    aspectRatio: 390 / 844, 
-    borderWidth: 12,     
-    borderColor: '#000000',
-    borderRadius: 44,    
+    maxWidth: 414,       
+    maxHeight: 896,
+    aspectRatio: 414 / 896, 
+    borderWidth: 10,     
+    borderColor: '#111',
+    borderRadius: 55,    
     overflow: 'hidden',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+    boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255,255,255,0.1)',
   },
   backgroundImage: {
     flex: 1,
     width: '100%',
     height: '100%',
   },
-  overlay: {
+  darkOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 30,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 20 : 40,
     paddingBottom: 10,
     zIndex: 20,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 8,
     marginLeft: -8,
-    width: 100,
+    width: 120,
   },
   backButtonText: {
-    color: '#00D8FF',
-    fontSize: 15,
+    color: '#00c6ff',
+    fontSize: 16,
     fontWeight: '600',
   },
-  changeBgButton: {
+  settingsButton: {
     position: 'absolute',
-    top: 50,
-    right: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 24,
     zIndex: 10,
-    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  changeBgText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
+  settingsBlur: {
+    padding: 12,
   },
   container: {
     flex: 1,
@@ -302,28 +311,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoIconText: {
-    fontSize: 48,
-    marginBottom: 8,
+  logoIconWrapper: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 198, 255, 0.3)',
+    overflow: 'hidden',
+    shadowColor: '#00c6ff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 10,
   },
   logoTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
-  card: {
-    backgroundColor: 'rgba(20, 25, 35, 0.15)', 
-    borderRadius: 24,
-    padding: 24,
+  logoSubtitle: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    marginTop: 6,
+    letterSpacing: 1.5,
+    fontWeight: '400',
+    textTransform: 'uppercase',
+  },
+  cardContainer: {
+    borderRadius: 36,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(0, 255, 255, 0.3)', 
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 15,
+  },
+  card: {
+    padding: 32,
     ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      boxShadow: '0 15px 35px rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(10, 10, 15, 0.5)',
+      backdropFilter: 'blur(25px)',
+      WebkitBackdropFilter: 'blur(25px)',
     }),
   },
   cardHeader: {
@@ -331,7 +371,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 8,
@@ -339,9 +379,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#CBD5E1',
+    color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
     paddingHorizontal: 10,
   },
   form: {
@@ -351,27 +391,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 30,
+    gap: 8,
+    ...(Platform.OS === 'web' && { gap: 12 }),
+  },
+  otpInputWrapper: {
+    flex: 1,
+    aspectRatio: 0.8,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  otpInputFilledWrapper: {
+    borderColor: '#00c6ff',
+    backgroundColor: 'rgba(0, 198, 255, 0.05)',
+    shadowColor: '#00c6ff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   otpInput: {
-    width: 45,
-    height: 55,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 216, 255, 0.3)',
-    borderRadius: 12,
-    fontSize: 24,
+    flex: 1,
+    fontSize: 26,
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     ...(Platform.OS === 'web' && { outlineStyle: 'none' }),
   },
   otpInputFilled: {
-    borderColor: '#00D8FF',
-    backgroundColor: 'rgba(0, 216, 255, 0.1)',
+    color: '#00c6ff',
   },
   resendContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
   },
   resendText: {
     color: '#94A3B8',
@@ -379,25 +432,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   resendTextActive: {
-    color: '#00D8FF',
+    color: '#00c6ff',
     fontWeight: '700',
     textDecorationLine: 'underline',
   },
+  loginButtonWrapper: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#0072ff',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 12,
+  },
   loginButton: {
-    height: 52,
-    borderRadius: 26,
+    height: 60,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0072FF',
-    ...(Platform.OS === 'web' && {
-      backgroundImage: 'linear-gradient(to right, #00D8FF, #8A2BE2)',
-      boxShadow: '0 8px 20px rgba(0, 216, 255, 0.4)',
-    }),
   },
   loginButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  loginButtonIcon: {
+    marginLeft: 10,
   },
 });

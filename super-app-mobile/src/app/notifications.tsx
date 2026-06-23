@@ -209,7 +209,7 @@ export default function NotificationsScreen() {
         <View style={styles.header}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <TouchableOpacity onPress={() => router.replace('/home')} style={{marginRight: 12}} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={26} color="#050505" />
+              <Ionicons name="chevron-back" size={28} color="#050505" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Thông báo</Text>
           </View>

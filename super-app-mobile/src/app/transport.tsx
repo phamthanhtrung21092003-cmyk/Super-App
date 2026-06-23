@@ -75,7 +75,7 @@ export default function TransportScreen() {
           else if (currentState === 'choosing_vehicle') setCurrentState('search_location');
           else if (currentState === 'hub_home') router.replace('/utilities');
         }} activeOpacity={0.8}>
-          <Ionicons name={currentState === 'hub_home' ? "close" : "arrow-back"} size={24} color={T.text} />
+          <Ionicons name={currentState === 'hub_home' ? "close" : "chevron-back"} size={24} color={T.text} />
         </TouchableOpacity>
       </Animated.View>
     );
@@ -131,7 +131,7 @@ export default function TransportScreen() {
         <SafeAreaView style={{ flex: 1 }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 10 : 30, paddingBottom: 15 }}>
-            <TouchableOpacity onPress={() => setCurrentState('hub_home')}><Ionicons name="arrow-back" size={24} color={T.text} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setCurrentState('hub_home')}><Ionicons name="chevron-back" size={28} color={T.text} /></TouchableOpacity>
             <Text style={{ flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', marginRight: 24 }}>Chọn tuyến đường</Text>
           </View>
 

@@ -195,7 +195,7 @@ export default function HealthScreen() {
           if (state !== 'idle') setState('idle');
           else router.replace('/utilities');
         }}>
-          <Ionicons name="arrow-back" size={24} color={T.text} />
+          <Ionicons name="chevron-back" size={28} color={T.text} />
         </TouchableOpacity>
         <Text style={S.topTitle}>{state === 'idle' ? 'Y Tế & Sức Khỏe' : 
                                   state === 'pharma_home' ? 'Nhà Thuốc 24/7' : 
@@ -386,7 +386,7 @@ export default function HealthScreen() {
       <Animated.View entering={SlideInUp} exiting={SlideOutDown} style={S.medDetailScreen}>
         <View style={S.topBar}>
           <TouchableOpacity onPress={() => setState('idle')} style={S.backBtn}>
-            <Ionicons name="arrow-back" size={28} color={T.text} />
+            <Ionicons name="chevron-back" size={28} color={T.text} />
           </TouchableOpacity>
           <Text style={S.topTitle}>Chi tiết đơn thuốc</Text>
           <View style={{ width: 36 }} />

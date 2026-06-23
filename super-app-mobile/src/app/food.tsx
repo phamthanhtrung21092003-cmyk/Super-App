@@ -114,7 +114,7 @@ export default function FoodScreen() {
         else if (state === 'restaurant') setState('home');
         else router.replace('/transport');
       }}>
-        <Ionicons name={state === 'home' ? "close" : "arrow-back"} size={24} color={T.text} />
+        <Ionicons name={state === 'home' ? "close" : "chevron-back"} size={24} color={T.text} />
       </TouchableOpacity>
       <Text style={S.topTitle}>{state === 'home' ? 'Giao Đồ Ăn' : state === 'cart' ? 'Giỏ Hàng' : state === 'tracking' ? 'Theo Dõi' : ''}</Text>
       <View style={{ width: 40 }} />

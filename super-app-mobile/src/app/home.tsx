@@ -15,17 +15,13 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useUser } from '../context/UserContext';
-
-// Lấy bộ background dùng chung
-const BACKGROUNDS = [
-  'https://images.unsplash.com/photo-1518655048521-f130df041f66?auto=format&fit=crop&w=1000&q=80',
-  'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1000&q=80',
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
-];
+import { useTheme } from '../context/ThemeContext';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { userName, avatarUrl, accentHex, accentRgb, bgUrl } = useUser();
+  const { theme } = useTheme();
+  
   const [showBalance, setShowBalance] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const { width } = useWindowDimensions();
@@ -50,14 +46,16 @@ export default function HomeScreen() {
     { id: 'shop', title: 'Mua sắm', icon: '🛒', route: '/shop' },
     { id: 'utils', title: 'Tiện ích', icon: '🛠️', route: '/utilities' },
     { id: 'business', title: 'Doanh nghiệp', icon: '🏢', route: '/business' },
-    { id: 'appearance', title: 'Giao diện', icon: '🎨', route: '/appearance' },
+    { id: 'appearance', title: 'Giao diện', icon: '🎨', route: '/settings' },
   ];
+
+  const currentBg = theme.backgroundImage || bgUrl;
 
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <ImageBackground 
-          source={{ uri: bgUrl }} 
+          source={{ uri: currentBg }} 
           style={styles.backgroundImage}
           resizeMode="cover"
         >
@@ -73,8 +71,8 @@ export default function HomeScreen() {
                 resizeMode="cover"
               />
               <View>
-                <Text style={styles.greeting}>Chào buổi sáng,</Text>
-                <Text style={styles.userName}>{userName}</Text>
+                <Text style={[styles.greeting, { fontFamily: theme.fontFamily, fontSize: 13 * theme.fontSizeScale }]}>Chào buổi sáng,</Text>
+                <Text style={[styles.userName, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 18 * theme.fontSizeScale }]}>{userName}</Text>
               </View>
             </TouchableOpacity>
 
@@ -96,14 +94,14 @@ export default function HomeScreen() {
 
             {/* ===== PROMO CAROUSEL ===== */}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Chương trình nổi bật</Text>
+              <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 18 * theme.fontSizeScale }]}>Chương trình nổi bật</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
               {BANNERS.map((banner) => (
                 <TouchableOpacity key={banner.id} style={styles.bannerCard} activeOpacity={0.9}>
                   <Image source={{ uri: banner.image }} style={styles.bannerImage} />
                   <View style={styles.bannerOverlay}>
-                    <Text style={styles.bannerTitle}>{banner.title}</Text>
+                    <Text style={[styles.bannerTitle, { fontFamily: theme.fontFamily, fontSize: 16 * theme.fontSizeScale }]}>{banner.title}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -111,7 +109,7 @@ export default function HomeScreen() {
 
             {/* ===== GRID MENU ===== */}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Khám phá</Text>
+              <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 18 * theme.fontSizeScale }]}>Khám phá</Text>
             </View>
             <View style={styles.gridContainer}>
               {menuItems.map((item) => (
@@ -119,8 +117,8 @@ export default function HomeScreen() {
                   key={item.id} 
                   style={styles.gridItemContainer}
                   onPress={() => {
-                    if (item.route === '/wallet' || item.route === '/appearance' || item.route === '/utilities') {
-                      router.push(item.route);
+                    if (item.route === '/wallet' || item.route === '/settings' || item.route === '/utilities' || item.route === '/video') {
+                      router.push(item.route as any);
                     } else {
                       window.alert(`Đang phát triển tính năng: ${item.title}`);
                     }
@@ -132,7 +130,7 @@ export default function HomeScreen() {
                     <View style={[styles.gridIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.1)`, borderColor: `rgba(${accentRgb}, 0.3)` }]}>
                       <Text style={styles.gridIcon}>{item.icon}</Text>
                     </View>
-                    <Text style={styles.gridTitle}>{item.title}</Text>
+                    <Text style={[styles.gridTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 13 * theme.fontSizeScale }]}>{item.title}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -145,15 +143,15 @@ export default function HomeScreen() {
           <View style={[styles.bottomTabBar, { borderColor: `rgba(${accentRgb}, 0.3)` }]}>
             <TouchableOpacity style={styles.tabItem}>
               <Text style={styles.tabIconActive}>🏠</Text>
-              <Text style={[styles.tabTextActive, { color: accentHex }]}>Trang chủ</Text>
+              <Text style={[styles.tabTextActive, { color: accentHex, fontFamily: theme.fontFamily, fontSize: 12 * theme.fontSizeScale }]}>Trang chủ</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/social')}>
               <Text style={styles.tabIcon}>🌐</Text>
-              <Text style={styles.tabText}>Mạng xã hội</Text>
+              <Text style={[styles.tabText, { fontFamily: theme.fontFamily, fontSize: 12 * theme.fontSizeScale }]}>Mạng xã hội</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/account')}>
               <Text style={styles.tabIcon}>👤</Text>
-              <Text style={styles.tabText}>Tài khoản</Text>
+              <Text style={[styles.tabText, { fontFamily: theme.fontFamily, fontSize: 12 * theme.fontSizeScale }]}>Tài khoản</Text>
             </TouchableOpacity>
           </View>
 
@@ -171,8 +169,8 @@ export default function HomeScreen() {
                 onPress={() => setIsNotifOpen(false)} 
               />
               <View style={[styles.sidebar, { borderColor: `rgba(${accentRgb}, 0.3)` }]}>
-                <Text style={styles.sidebarTitle}>Thông báo</Text>
-                <Text style={styles.sidebarSubtitle}>Theo ứng dụng</Text>
+                <Text style={[styles.sidebarTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 22 * theme.fontSizeScale }]}>Thông báo</Text>
+                <Text style={[styles.sidebarSubtitle, { fontFamily: theme.fontFamily }]}>Theo ứng dụng</Text>
 
                 <ScrollView style={styles.sidebarContent}>
                   {MOCK_NOTIFS.map((notif) => (
@@ -185,7 +183,7 @@ export default function HomeScreen() {
                           <View style={[styles.notifIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.15)` }]}>
                             <Text style={styles.notifIcon}>{notif.icon}</Text>
                           </View>
-                          <Text style={styles.notifAppTitle}>{notif.title}</Text>
+                          <Text style={[styles.notifAppTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 16 * theme.fontSizeScale }]}>{notif.title}</Text>
                         </View>
                         
                         {/* Badge Số lượng */}
