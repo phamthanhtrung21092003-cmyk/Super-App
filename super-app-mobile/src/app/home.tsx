@@ -11,7 +11,8 @@ import {
   ScrollView,
   useWindowDimensions,
   Image,
-  Modal
+  Modal,
+  TextInput
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useUser } from '../context/UserContext';
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   
   const [showBalance, setShowBalance] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
 
@@ -44,9 +46,38 @@ export default function HomeScreen() {
     { id: 'video', title: 'Video', icon: '🎬', route: '/video' },
     { id: 'jobs', title: 'Việc làm', icon: '💼', route: '/jobs' },
     { id: 'shop', title: 'Mua sắm', icon: '🛒', route: '/shop' },
-    { id: 'utils', title: 'Tiện ích', icon: '🛠️', route: '/utilities' },
     { id: 'business', title: 'Doanh nghiệp', icon: '🏢', route: '/business' },
     { id: 'appearance', title: 'Giao diện', icon: '🎨', route: '/settings' },
+  ];
+
+  const UTILITY_GROUPS = [
+    {
+      id: 'transport',
+      title: 'Dịch vụ Đa dụng (Siêu App)',
+      items: [
+        { id: 'transport', title: 'Vận chuyển', icon: '🛵', route: '/transport' },
+        { id: 'health', title: 'Sức khỏe', icon: '⚕️', route: '/health' },
+        { id: 'mart', title: 'Mua sắm', icon: '🛒', route: '/shopping' },
+        { id: 'cleaning', title: 'Dọn dẹp', icon: '🧹', route: '/cleaning' },
+      ]
+    },
+    {
+      id: 'entertainment',
+      title: 'Giải trí & Du lịch',
+      items: [
+        { id: 'cinema', title: 'Xem phim', icon: '🎬', route: '/cinema' },
+        { id: 'flights', title: 'Vé máy bay', icon: '✈️', route: '/flights' },
+        { id: 'hotels', title: 'Khách sạn', icon: '🏨', route: '/hotels' },
+        { id: 'events', title: 'Sự kiện', icon: '🎟️', route: '/events' },
+      ]
+    },
+    {
+      id: 'education',
+      title: 'Học tập & Giáo dục',
+      items: [
+        { id: 'edu_dashboard', title: 'Giáo dục', icon: '🎓', route: '/education' },
+      ]
+    }
   ];
 
   const currentBg = theme.backgroundImage || bgUrl;
@@ -91,6 +122,19 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
+            {/* Thanh tìm kiếm */}
+            <View style={styles.searchContainer}>
+              <View style={[styles.searchBox, { borderColor: `rgba(${accentRgb}, 0.3)` }]}>
+                <Text style={styles.searchIcon}>🔍</Text>
+                <TextInput 
+                  placeholder="Bạn đang tìm dịch vụ gì?" 
+                  placeholderTextColor="#94A3B8"
+                  style={styles.searchInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+            </View>
 
             {/* ===== PROMO CAROUSEL ===== */}
             <View style={styles.sectionHeader}>
@@ -117,7 +161,7 @@ export default function HomeScreen() {
                   key={item.id} 
                   style={styles.gridItemContainer}
                   onPress={() => {
-                    if (item.route === '/wallet' || item.route === '/settings' || item.route === '/utilities' || item.route === '/video') {
+                    if (item.route) {
                       router.push(item.route as any);
                     } else {
                       window.alert(`Đang phát triển tính năng: ${item.title}`);
@@ -125,7 +169,7 @@ export default function HomeScreen() {
                   }}
                 >
                   <View 
-                    style={[styles.gridItem, { borderColor: `rgba(${accentRgb}, 0.3)` }]}
+                    style={[styles.gridItem, { borderColor: `rgba(${accentRgb}, 0.2)` }]}
                   >
                     <View style={[styles.gridIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.1)`, borderColor: `rgba(${accentRgb}, 0.3)` }]}>
                       <Text style={styles.gridIcon}>{item.icon}</Text>
@@ -135,6 +179,39 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+            
+            {/* ===== UTILITY GROUPS ===== */}
+            {UTILITY_GROUPS.map((group) => {
+              const filteredItems = group.items.filter(item => 
+                item.title.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+              
+              if (filteredItems.length === 0) return null;
+
+              return (
+                <View key={group.id} style={styles.groupContainer}>
+                  <Text style={[styles.groupTitle, { fontFamily: theme.fontFamily }]}>{group.title}</Text>
+                  <View style={styles.utilityGridContainer}>
+                    {filteredItems.map((item) => (
+                      <TouchableOpacity 
+                        key={item.id} 
+                        style={[styles.utilityGridItem, { borderColor: `rgba(${accentRgb}, 0.2)` }]}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          if (item.route) router.push(item.route as any);
+                          else window.alert(`Đang mở dịch vụ: ${item.title}`);
+                        }}
+                      >
+                        <View style={[styles.utilityIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.15)` }]}>
+                          <Text style={styles.utilityItemIcon}>{item.icon}</Text>
+                        </View>
+                        <Text style={[styles.utilityItemTitle, { fontFamily: theme.fontFamily }]}>{item.title}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              );
+            })}
             
             <View style={{height: 100}} />
           </ScrollView>
@@ -493,8 +570,8 @@ const styles = StyleSheet.create({
   gridItem: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -610,4 +687,70 @@ const styles = StyleSheet.create({
     color: '#00D8FF',
     fontWeight: '700',
   },
+  searchContainer: {
+    paddingBottom: 20,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    height: 50,
+    borderWidth: 1,
+    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 15,
+    height: '100%',
+    ...(Platform.OS === 'web' && { outlineStyle: 'none' }),
+  },
+  groupContainer: {
+    marginBottom: 25,
+  },
+  groupTitle: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 15,
+    letterSpacing: 0.5,
+  },
+  utilityGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  utilityGridItem: {
+    width: '48%',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    ...(Platform.OS === 'web' && { backdropFilter: 'blur(5px)' }),
+  },
+  utilityIconWrapper: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  utilityItemIcon: {
+    fontSize: 24,
+  },
+  utilityItemTitle: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  }
 });

@@ -64,6 +64,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadData = async () => {
       try {
+        const storedUserName = await AsyncStorage.getItem('userName');
         const storedAvatar = await AsyncStorage.getItem('avatarUrl');
         const storedBio = await AsyncStorage.getItem('bio');
         const storedAccentHex = await AsyncStorage.getItem('accentHex');
@@ -74,6 +75,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const storedBanks = await AsyncStorage.getItem('linkedBanks');
         const storedSavings = await AsyncStorage.getItem('savingsBooks');
 
+        if (storedUserName) setUserNameState(storedUserName);
         if (storedAvatar) setAvatarUrlState(storedAvatar);
         if (storedBio) setBioState(storedBio);
         if (storedAccentHex) setAccentHexState(storedAccentHex);
@@ -158,6 +160,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const setUserName = async (name: string) => {
     setUserNameState(name);
+    await AsyncStorage.setItem('userName', name);
   };
 
   const openSavingsBook = async (book: SavingsBook) => {

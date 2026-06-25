@@ -34,13 +34,15 @@ import { useTheme } from '../context/ThemeContext';
 const MOCK_VIDEOS = [
   {
     id: '1',
-    uri: 'https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-1173-large.mp4',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     user: { username: '@nature_vibes', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' },
     caption: 'Vẻ đẹp thiên nhiên rực rỡ! Một buổi chiều thật chill bên những bông hoa vàng. 🌼✨ #nature #chill #flowers',
     music: 'Original Sound - Nature Vibes',
     likes: '124K',
     comments: '4.2K',
     shares: '12K',
+    location: 'Đà Lạt, Lâm Đồng',
+    linkedService: { type: 'tour', title: 'Tour Săn Mây Đà Lạt', price: '450.000đ', icon: '⛺' },
     commentsList: [
       { id: 'c1', user: 'Linh Nga', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100', text: 'Cảnh đẹp quá! Ở đâu vậy bạn?' },
       { id: 'c2', user: 'Minh Quân', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', text: 'Thật yên bình ❤️' }
@@ -48,26 +50,30 @@ const MOCK_VIDEOS = [
   },
   {
     id: '2',
-    uri: 'https://assets.mixkit.co/videos/preview/mixkit-mother-with-her-little-daughter-eating-a-marshmallow-in-nature-39764-large.mp4',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
     user: { username: '@family_moments', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100' },
     caption: 'Khoảnh khắc đáng yêu của hai mẹ con cuối tuần. Marshmallow ngon tuyệt! 🥰🍡 #family #cute #weekend',
     music: 'Happy Kids - Background Music',
     likes: '89K',
     comments: '1.5K',
     shares: '5K',
+    location: 'Quận 1, TP.HCM',
+    linkedService: { type: 'food', title: 'Kẹo dẻo Marshmallow', price: '55.000đ', icon: '🍬' },
     commentsList: [
       { id: 'c3', user: 'Mẹ Bỉm Sữa', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', text: 'Bé cưng quá đi mất thôi 🥰' }
     ]
   },
   {
     id: '3',
-    uri: 'https://assets.mixkit.co/videos/preview/mixkit-taking-photos-from-different-angles-of-a-model-34421-large.mp4',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     user: { username: '@photo_graphy', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100' },
     caption: 'Hậu trường chụp ảnh lookbook siêu ngầu. Góc chụp quyết định tất cả! 📸🔥 #photography #behindthescenes',
     music: 'Trending Song - Beat Drop',
     likes: '250K',
     comments: '10K',
     shares: '45K',
+    location: 'Hoàn Kiếm, Hà Nội',
+    linkedService: { type: 'shopping', title: 'Máy ảnh Film Vintage', price: '1.200.000đ', icon: '📸' },
     commentsList: [
       { id: 'c4', user: 'Nhiếp Ảnh Gia', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', text: 'Góc máy ảo diệu thật sự!' },
       { id: 'c5', user: 'Mẫu Ảnh HN', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100', text: 'Tuyệt vờiiii 🔥' }
@@ -76,7 +82,7 @@ const MOCK_VIDEOS = [
 ];
 
 // Single Video Item Component
-const VideoItem = ({ item, isActive, windowHeight, windowWidth, theme, onCommentPress, onSharePress }) => {
+const VideoItem = ({ item, isActive, windowHeight, windowWidth, theme, onCommentPress, onSharePress, onGiftPress, onProfilePress, onAudioPress, onProductPress }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -93,6 +99,7 @@ const VideoItem = ({ item, isActive, windowHeight, windowWidth, theme, onComment
   // Video Player Setup
   const player = useVideoPlayer(item.uri, player => {
     player.loop = true;
+    player.muted = true; // Bắt buộc mute trên web để autoplay hoạt động
     player.volume = 1;
   });
 
@@ -217,19 +224,21 @@ const VideoItem = ({ item, isActive, windowHeight, windowWidth, theme, onComment
   };
 
   return (
-    <View style={{ height: windowHeight, width: windowWidth, backgroundColor: '#000' }}>
+    <View style={{ height: Platform.OS === 'web' ? '100vh' : windowHeight, width: windowWidth, backgroundColor: '#000' }}>
+      <VideoView 
+        style={StyleSheet.absoluteFill} 
+        player={player} 
+        allowsFullscreen={false} 
+        allowsPictureInPicture={false}
+        nativeControls={false}
+        contentFit="cover"
+      />
+
       <TouchableOpacity 
         activeOpacity={1} 
-        style={StyleSheet.absoluteFill} 
+        style={[StyleSheet.absoluteFill, { zIndex: 1 }]} 
         onPress={handlePress}
       >
-        <VideoView 
-          style={StyleSheet.absoluteFill} 
-          player={player} 
-          allowsFullscreen={false} 
-          allowsPictureInPicture={false}
-          contentFit="cover"
-        />
 
         {/* Play/Pause Center Indicator */}
         <Animated.View style={[styles.centerPlayIcon, animatedPlayIconStyle]}>
@@ -246,82 +255,105 @@ const VideoItem = ({ item, isActive, windowHeight, windowWidth, theme, onComment
           </Animated.View>
         )}
 
-        {/* Dark Gradient Overlay for text readability */}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          colors={['transparent', 'rgba(0,0,0,0.9)']}
           style={styles.bottomGradient}
         />
 
-        {/* Right Side Actions */}
-        <View style={styles.rightOverlay}>
-          <TouchableOpacity style={styles.actionItem} onPress={() => setIsFollowing(true)}>
-            <View style={styles.avatarContainer}>
-              <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
-              {!isFollowing && (
-                <View style={styles.followButton}>
-                  <Ionicons name="add" size={12} color="#FFF" />
+        {/* --- SUPER APP CUSTOM BOTTOM LAYOUT --- */}
+        <SafeAreaView style={styles.superAppLayout} pointerEvents="box-none">
+          <View style={styles.contentWrapper}>
+            
+            {/* Linked Service / Product Card */}
+            {item.linkedService && (
+              <TouchableOpacity style={styles.linkedServiceCard} onPress={() => onProductPress(item.linkedService)}>
+                <Text style={styles.linkedServiceIcon}>{item.linkedService.icon}</Text>
+                <View style={styles.linkedServiceInfo}>
+                  <Text style={[styles.linkedServiceTitle, { fontFamily: theme.fontFamily }]} numberOfLines={1}>
+                    {item.linkedService.title}
+                  </Text>
+                  <Text style={[styles.linkedServicePrice, { fontFamily: theme.fontFamily }]}>
+                    {item.linkedService.price}
+                  </Text>
                 </View>
-              )}
+                <View style={[styles.buyButton, { backgroundColor: theme.accentHex }]}>
+                  <Text style={[styles.buyButtonText, { fontFamily: theme.fontFamily }]}>Mua</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* User Info Card */}
+            <View style={styles.userInfoCard}>
+              <TouchableOpacity onPress={() => onProfilePress(item.user)}>
+                <Image source={{ uri: item.user.avatar }} style={styles.userAvatar} />
+              </TouchableOpacity>
+              <View style={styles.userDetails}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.usernameText, { fontFamily: theme.fontFamily }]}>{item.user.username}</Text>
+                  {!isFollowing && (
+                    <TouchableOpacity style={[styles.followPill, { backgroundColor: theme.accentHex }]} onPress={() => setIsFollowing(true)}>
+                      <Text style={[styles.followPillText, { fontFamily: theme.fontFamily }]}>Theo dõi</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {item.location && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <Ionicons name="location" size={12} color="rgba(255,255,255,0.7)" />
+                    <Text style={[styles.locationText, { fontFamily: theme.fontFamily }]}>{item.location}</Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => setIsLiked(!isLiked)}>
-            <Ionicons name={isLiked ? "heart" : "heart-outline"} size={36} color={isLiked ? "#FF4D4F" : "#FFF"} />
-            <Text style={[styles.actionText, { fontFamily: theme.fontFamily }]}>{item.likes}</Text>
-          </TouchableOpacity>
+            {/* Caption */}
+            <TouchableOpacity onPress={() => setExpandedCaption(!expandedCaption)} style={styles.captionBlock}>
+              <Text style={[styles.captionText, { fontFamily: theme.fontFamily }]} numberOfLines={expandedCaption ? 0 : 2}>
+                {item.caption}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={onCommentPress}>
-            <Ionicons name="chatbubble-ellipses-outline" size={36} color="#FFF" />
-            <Text style={[styles.actionText, { fontFamily: theme.fontFamily }]}>{item.comments}</Text>
-          </TouchableOpacity>
+            {/* Music */}
+            <TouchableOpacity style={styles.musicRow} onPress={onAudioPress}>
+              <Ionicons name="musical-notes" size={14} color="rgba(255,255,255,0.7)" style={{ marginRight: 6 }} />
+              <View style={{ width: 200, overflow: 'hidden' }}>
+                <Animated.Text style={[styles.musicText, { fontFamily: theme.fontFamily }, animatedMusicStyle]} numberOfLines={1}>
+                  {item.music}    •    {item.music}
+                </Animated.Text>
+              </View>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.actionItem} onPress={() => setIsSaved(!isSaved)}>
-            <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={32} color={isSaved ? "#FADB14" : "#FFF"} />
-            <Text style={[styles.actionText, { fontFamily: theme.fontFamily }]}>{isSaved ? 'Đã lưu' : 'Lưu'}</Text>
-          </TouchableOpacity>
+          {/* Horizontal Action Bar */}
+          <View style={styles.horizontalActionBar}>
+            <TouchableOpacity style={styles.actionPill} onPress={() => setIsLiked(!isLiked)}>
+              <Ionicons name={isLiked ? "heart" : "heart-outline"} size={20} color={isLiked ? "#FF4D4F" : "#FFF"} />
+              <Text style={[styles.actionPillText, { fontFamily: theme.fontFamily }]}>{item.likes}</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={onSharePress}>
-            <Ionicons name="arrow-redo-outline" size={36} color="#FFF" />
-            <Text style={[styles.actionText, { fontFamily: theme.fontFamily }]}>{item.shares}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.actionPill} onPress={onCommentPress}>
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FFF" />
+              <Text style={[styles.actionPillText, { fontFamily: theme.fontFamily }]}>{item.comments}</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => window.alert('Đang mở Âm thanh nguyên gốc...')}>
-            <Animated.View style={[styles.discContainer, animatedDiscStyle]}>
-              <Image 
-                source={{ uri: item.user.avatar }}
-                style={styles.discImage} 
-              />
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={styles.actionPill} onPress={onSharePress}>
+              <Ionicons name="arrow-redo-outline" size={20} color="#FFF" />
+              <Text style={[styles.actionPillText, { fontFamily: theme.fontFamily }]}>{item.shares}</Text>
+            </TouchableOpacity>
 
-        {/* Bottom Info Overlay */}
-        <View style={styles.bottomOverlay}>
-          <TouchableOpacity onPress={() => window.alert(`Đang xem hồ sơ: ${item.user.username}`)}>
-            <Text style={[styles.username, { fontFamily: theme.fontFamily }]}>{item.user.username}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setExpandedCaption(!expandedCaption)}>
-            <Text 
-              style={[styles.caption, { fontFamily: theme.fontFamily }]} 
-              numberOfLines={expandedCaption ? 0 : 2}
-            >
-              {item.caption}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.musicRow} onPress={() => window.alert('Đang mở bài hát gốc...')}>
-            <Ionicons name="musical-notes" size={16} color="#FFF" style={{ marginRight: 8, ...styles.shadowIcon }} />
-            <View style={{ width: 150, overflow: 'hidden' }}>
-              <Animated.Text style={[styles.musicText, { fontFamily: theme.fontFamily }, animatedMusicStyle]} numberOfLines={1}>
-                {item.music}    •    {item.music}
-              </Animated.Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={styles.actionPill} onPress={() => setIsSaved(!isSaved)}>
+              <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={20} color={isSaved ? "#FADB14" : "#FFF"} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.actionPill, { backgroundColor: 'rgba(255,215,0,0.15)', borderWidth: 1, borderColor: 'rgba(255,215,0,0.3)' }]} onPress={onGiftPress}>
+              <Ionicons name="gift-outline" size={20} color="#FFD700" />
+            </TouchableOpacity>
+          </View>
+
+        </SafeAreaView>
 
         {/* Animated Scrubber / Progress Bar */}
         <View style={styles.scrubberContainer}>
-          <View style={[styles.scrubberTrack, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+          <View style={[styles.scrubberTrack, { backgroundColor: 'rgba(255,255,255,0.2)' }]} />
           <Animated.View style={[styles.scrubberFill, { backgroundColor: '#FFF' }, animatedScrubberStyle]} />
         </View>
 
@@ -345,6 +377,9 @@ export default function VideoScreen() {
   const [showShare, setShowShare] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showAudio, setShowAudio] = useState(false);
+  const [showGift, setShowGift] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   
   // Real Comments State
   const [commentsData, setCommentsData] = useState({});
@@ -400,7 +435,8 @@ export default function VideoScreen() {
       
       {/* Feed */}
       <FlatList
-        data={MOCK_VIDEOS}
+        style={{ flex: 1 }}
+        data={activeTab === 'following' ? [MOCK_VIDEOS[0]] : MOCK_VIDEOS}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
           <VideoItem 
@@ -411,6 +447,10 @@ export default function VideoScreen() {
             theme={theme}
             onCommentPress={() => setShowComments(true)}
             onSharePress={() => setShowShare(true)}
+            onGiftPress={() => setShowGift(true)}
+            onProfilePress={(user) => { setSelectedUser(user); setShowProfile(true); }}
+            onAudioPress={() => setShowAudio(true)}
+            onProductPress={(service) => window.alert(`Đang chuyển sang trang Thanh toán: ${service.title}`)}
           />
         )}
         pagingEnabled
@@ -423,35 +463,27 @@ export default function VideoScreen() {
       />
 
       {/* Top Navigation */}
-      <SafeAreaView style={styles.topNavContainer}>
-        <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'transparent']}
-          style={StyleSheet.absoluteFill}
-        />
+      <SafeAreaView style={styles.topNavContainer} pointerEvents="box-none">
         <View style={styles.topNav}>
-          <TouchableOpacity onPress={() => router.replace('/home')} style={[styles.backBtn, styles.shadowIcon]}>
-            <Ionicons name="chevron-back" size={28} color="#FFF" />
+          <TouchableOpacity onPress={() => router.replace('/home')} style={styles.glassBtn}>
+            <Ionicons name="chevron-back" size={24} color="#FFF" />
           </TouchableOpacity>
           
-          <View style={styles.tabsRow}>
-            <TouchableOpacity onPress={() => setActiveTab('following')}>
-              <Text style={[styles.tabText, { fontFamily: theme.fontFamily }, activeTab === 'following' && styles.tabTextActive]}>
-                Đang theo dõi
+          <View style={styles.glassPillContainer}>
+            <TouchableOpacity onPress={() => setActiveTab('following')} style={[styles.pillBtn, activeTab === 'following' && styles.pillBtnActive]}>
+              <Text style={[styles.pillText, { fontFamily: theme.fontFamily }, activeTab === 'following' && styles.pillTextActive]}>
+                Bạn bè
               </Text>
             </TouchableOpacity>
-            <View style={styles.tabDivider} />
-            <TouchableOpacity onPress={() => setActiveTab('foryou')}>
-              <Text style={[styles.tabText, { fontFamily: theme.fontFamily }, activeTab === 'foryou' && styles.tabTextActive]}>
-                Dành cho bạn
+            <TouchableOpacity onPress={() => setActiveTab('foryou')} style={[styles.pillBtn, activeTab === 'foryou' && styles.pillBtnActive]}>
+              <Text style={[styles.pillText, { fontFamily: theme.fontFamily }, activeTab === 'foryou' && styles.pillTextActive]}>
+                Đề xuất
               </Text>
             </TouchableOpacity>
           </View>
           
-          <TouchableOpacity 
-            style={[styles.searchBtn, styles.shadowIcon]} 
-            onPress={() => window.alert('Tính năng Tìm kiếm đang phát triển')}
-          >
-            <Ionicons name="search" size={24} color="#FFF" />
+          <TouchableOpacity style={styles.glassBtn} onPress={() => setShowSearch(true)}>
+            <Ionicons name="search" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -533,6 +565,178 @@ export default function VideoScreen() {
         </View>
       </Modal>
 
+      {/* Gift Bottom Sheet */}
+      <Modal visible={showGift} transparent animationType="slide">
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowGift(false)} />
+          <BlurView intensity={80} tint="dark" style={[styles.sheetContent, { height: 380 }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { fontFamily: theme.fontFamily }]}>Tặng quà cho {currentVideo?.user.username}</Text>
+              <TouchableOpacity onPress={() => setShowGift(false)}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 20, justifyContent: 'space-between' }}>
+              {[
+                { name: 'Hoa hồng', price: '10', icon: '🌹' },
+                { name: 'Cà phê', price: '50', icon: '☕' },
+                { name: 'Trái tim', price: '99', icon: '💖' },
+                { name: 'Tên lửa', price: '299', icon: '🚀' },
+                { name: 'Vương miện', price: '500', icon: '👑' },
+                { name: 'Siêu xe', price: '1000', icon: '🏎️' },
+                { name: 'Biệt thự', price: '5000', icon: '🏡' },
+                { name: 'Du thuyền', price: '9999', icon: '🛥️' }
+              ].map((gift, i) => (
+                <TouchableOpacity key={i} style={{ width: '22%', alignItems: 'center', marginBottom: 20, backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                  <Text style={{ fontSize: 32, marginBottom: 8 }}>{gift.icon}</Text>
+                  <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }} numberOfLines={1}>{gift.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Ionicons name="logo-bitcoin" size={10} color="#FADB14" />
+                    <Text style={{ color: '#FADB14', fontSize: 11, marginLeft: 2, fontWeight: 'bold' }}>{gift.price}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={{ marginHorizontal: 20, backgroundColor: theme.accentHex, padding: 14, borderRadius: 25, alignItems: 'center' }} onPress={() => { window.alert('Nạp thêm xu để tặng quà!'); setShowGift(false); }}>
+              <Text style={{ color: '#000', fontWeight: '800', fontSize: 16 }}>Nạp xu</Text>
+            </TouchableOpacity>
+          </BlurView>
+        </View>
+      </Modal>
+
+      {/* Profile Modal */}
+      <Modal visible={showProfile} transparent animationType="slide">
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowProfile(false)} />
+          <BlurView intensity={80} tint="dark" style={[styles.sheetContent, { height: height * 0.7 }]}>
+            <View style={{ alignItems: 'center', padding: 20 }}>
+              <Image source={{ uri: selectedUser?.avatar }} style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: theme.accentHex, marginBottom: 12 }} />
+              <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>{selectedUser?.username}</Text>
+              <Text style={{ color: '#888', fontSize: 14, marginTop: 4 }}>Nhà sáng tạo nội dung</Text>
+              
+              <View style={{ flexDirection: 'row', marginTop: 24, width: '100%', justifyContent: 'space-around' }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>1.2M</Text>
+                  <Text style={{ color: '#888', fontSize: 12, marginTop: 4 }}>Đang follow</Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>5.8M</Text>
+                  <Text style={{ color: '#888', fontSize: 12, marginTop: 4 }}>Follower</Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>24M</Text>
+                  <Text style={{ color: '#888', fontSize: 12, marginTop: 4 }}>Thích</Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', marginTop: 24, width: '100%', justifyContent: 'center', gap: 12 }}>
+                <TouchableOpacity style={{ backgroundColor: '#FF4D4F', width: '45%', padding: 12, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Đang theo dõi</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ backgroundColor: 'rgba(255,255,255,0.1)', width: '45%', padding: 12, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Nhắn tin</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={{ borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.1)', flex: 1, backgroundColor: '#000' }}>
+              <View style={{ flexDirection: 'row', padding: 16 }}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16, borderBottomWidth: 2, borderBottomColor: '#FFF', paddingBottom: 4 }}>Video</Text>
+                <Text style={{ color: '#888', fontWeight: 'bold', fontSize: 16, marginLeft: 24 }}>Đã thích</Text>
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {/* Fake video grid */}
+                {[1,2,3].map(i => (
+                  <View key={i} style={{ width: '33.3%', height: 160, padding: 1 }}>
+                    <Image source={{ uri: currentVideo?.uri }} style={{ width: '100%', height: '100%', backgroundColor: '#333' }} />
+                    <View style={{ position: 'absolute', bottom: 4, left: 4, flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="play-outline" size={12} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 10, marginLeft: 2 }}>{100 + i}K</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </BlurView>
+        </View>
+      </Modal>
+
+      {/* Audio Modal */}
+      <Modal visible={showAudio} transparent animationType="slide">
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowAudio(false)} />
+          <BlurView intensity={80} tint="dark" style={[styles.sheetContent, { height: height * 0.45 }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { fontFamily: theme.fontFamily }]}>Âm thanh</Text>
+              <TouchableOpacity onPress={() => setShowAudio(false)}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Image source={{ uri: currentVideo?.user.avatar }} style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#333', marginBottom: 16 }} />
+              <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>{currentVideo?.music}</Text>
+              <Text style={{ color: '#888', fontSize: 14, marginTop: 6 }}>150K video đang sử dụng bài hát này</Text>
+              <TouchableOpacity style={{ marginTop: 30, backgroundColor: theme.accentHex, width: '90%', padding: 14, borderRadius: 25, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}>
+                <Ionicons name="videocam" size={22} color="#000" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#000', fontWeight: '800', fontSize: 16 }}>Sử dụng âm thanh này</Text>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </View>
+      </Modal>
+
+      {/* Search Modal */}
+      <Modal visible={showSearch} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: '#111', paddingTop: Platform.OS === 'ios' ? 50 : 30 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 60 }}>
+            <TouchableOpacity onPress={() => setShowSearch(false)}>
+              <Ionicons name="arrow-back" size={28} color="#FFF" />
+            </TouchableOpacity>
+            <View style={{ flex: 1, marginLeft: 16, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 40, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
+              <Ionicons name="search" size={20} color="#888" />
+              <TextInput autoFocus placeholder="Tìm kiếm video, người dùng..." placeholderTextColor="#888" style={{ flex: 1, marginLeft: 8, color: '#FFF', fontSize: 15 }} />
+            </View>
+            <TouchableOpacity style={{ marginLeft: 16 }} onPress={() => setShowSearch(false)}>
+              <Text style={{ color: theme.accentHex, fontWeight: 'bold', fontSize: 16 }}>Tìm</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: 20 }}>
+            <Text style={{ color: '#888', fontWeight: 'bold', marginBottom: 16, fontSize: 15 }}>Tìm kiếm phổ biến</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {['Xu hướng du lịch 2026', 'Review ẩm thực Sài Gòn', 'Outfit of the day', 'Cách chụp ảnh bằng iPhone', 'Nhạc trend tiktok', 'Siêu app 2026'].map((tag, i) => (
+                <TouchableOpacity key={i} style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20 }}>
+                  <Text style={{ color: '#FFF', fontSize: 14 }}>{tag}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomTabBar}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => router.replace('/home')}>
+          <Ionicons name="home-outline" size={24} color="rgba(255,255,255,0.6)" />
+          <Text style={[styles.tabItemText, { fontFamily: theme.fontFamily }]}>Trang chủ</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.tabItem}>
+          <Ionicons name="bag-handle-outline" size={24} color="rgba(255,255,255,0.6)" />
+          <Text style={[styles.tabItemText, { fontFamily: theme.fontFamily }]}>Cửa hàng</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.tabItemCenter}>
+          <View style={[styles.centerAddBtn, { backgroundColor: theme.accentHex }]}>
+            <Ionicons name="add" size={28} color="#000" />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.tabItem}>
+          <Ionicons name="chatbox-ellipses-outline" size={24} color="rgba(255,255,255,0.6)" />
+          <Text style={[styles.tabItemText, { fontFamily: theme.fontFamily }]}>Hộp thư</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.tabItem}>
+          <Ionicons name="person-outline" size={24} color="rgba(255,255,255,0.6)" />
+          <Text style={[styles.tabItemText, { fontFamily: theme.fontFamily }]}>Hồ sơ</Text>
+        </TouchableOpacity>
+      </View>
+
     </View>
   );
 }
@@ -541,6 +745,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    ...(Platform.OS === 'web' && { height: '100vh', overflow: 'hidden' }),
   },
   centerPlayIcon: {
     position: 'absolute',
@@ -557,116 +762,149 @@ const styles = StyleSheet.create({
     right: 0,
     height: 300,
   },
-  rightOverlay: {
+  superAppLayout: {
     position: 'absolute',
-    right: 8,
-    bottom: 60,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
+    paddingHorizontal: 16,
+    justifyContent: 'flex-end',
+  },
+  contentWrapper: {
+    marginBottom: 16,
+  },
+  userInfoCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    width: 60,
+    marginBottom: 12,
   },
-  actionItem: {
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  actionText: {
-    color: '#FFF',
-    fontSize: 12,
-    marginTop: 4,
-    fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  avatarContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 2,
+  userAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
     borderColor: '#FFF',
-    marginBottom: 8,
+    marginRight: 12,
+  },
+  userDetails: {
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-  },
-  followButton: {
-    position: 'absolute',
-    bottom: -8,
-    backgroundColor: '#FF4D4F',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  discContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#333',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  discImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-  },
-  bottomOverlay: {
-    position: 'absolute',
-    bottom: 20,
-    left: 16,
-    right: 80,
-  },
-  username: {
+  usernameText: {
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
-  caption: {
+  followPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  followPillText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  locationText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  captionBlock: {
+    marginBottom: 8,
+  },
+  captionText: {
     color: '#FFF',
     fontSize: 14,
-    marginBottom: 12,
     lineHeight: 20,
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
+  },
+  horizontalActionBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
+  },
+  actionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  actionPillText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  linkedServiceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 16,
+    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
+  },
+  linkedServiceIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  linkedServiceInfo: {
+    flex: 1,
+  },
+  linkedServiceTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  linkedServicePrice: {
+    color: '#FADB14',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  buyButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginLeft: 8,
+  },
+  buyButtonText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '800',
   },
   musicRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-    elevation: 3,
+    marginTop: 4,
   },
   musicText: {
-    color: '#FFF',
-    fontSize: 14,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
   },
   scrubberContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 4,
+    height: 3,
   },
   scrubberTrack: {
     ...StyleSheet.absoluteFillObject,
@@ -680,45 +918,50 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
   },
   topNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 10 : 30,
-    height: 80,
+    height: 50,
   },
-  backBtn: {
+  glassBtn: {
     width: 40,
-  },
-  tabsRow: {
-    flexDirection: 'row',
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
   },
-  tabText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 16,
+  glassPillContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
+  },
+  pillBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  pillBtnActive: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  pillText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
-  tabTextActive: {
+  pillTextActive: {
     color: '#FFF',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  tabDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    marginHorizontal: 16,
-  },
-  searchBtn: {
-    width: 40,
-    alignItems: 'flex-end',
   },
   sheetOverlay: {
     flex: 1,
@@ -811,5 +1054,43 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     lineHeight: 20,
+  },
+  bottomTabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: '#000',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    height: Platform.OS === 'ios' ? 80 : 60,
+    zIndex: 50,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  tabItemText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 10,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  tabItemCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  centerAddBtn: {
+    width: 44,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });

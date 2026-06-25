@@ -172,14 +172,7 @@ export default function AccountScreen() {
             <View style={styles.menuContainer}>
               <Text style={styles.menuSectionTitle}>Cài đặt hệ thống</Text>
 
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/appearance')}>
-                <View style={styles.menuItemLeft}>
-                  <Text style={styles.menuItemIcon}>🎨</Text>
-                  <Text style={styles.menuItemText}>Tùy chỉnh giao diện</Text>
-                </View>
-                <Text style={styles.menuItemChevron}>›</Text>
-              </TouchableOpacity>
-              
+              {/* Tùy chỉnh giao diện removed as requested */}
               <TouchableOpacity style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <Text style={styles.menuItemIcon}>⚙️</Text>
@@ -196,14 +189,7 @@ export default function AccountScreen() {
                 <Text style={styles.menuItemChevron}>›</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem}>
-                <View style={styles.menuItemLeft}>
-                  <Text style={styles.menuItemIcon}>💳</Text>
-                  <Text style={styles.menuItemText}>Thanh toán & Giao dịch</Text>
-                </View>
-                <Text style={styles.menuItemChevron}>›</Text>
-              </TouchableOpacity>
-
+              {/* Thanh toán & Giao dịch removed as requested */}
               <TouchableOpacity style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <Text style={styles.menuItemIcon}>❓</Text>

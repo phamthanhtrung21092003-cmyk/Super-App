@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   StatusBar,
   ImageBackground,
+  Image,
   useWindowDimensions,
   ScrollView
 } from 'react-native';
@@ -83,7 +84,7 @@ export default function LoginScreen() {
           resizeMode="cover"
         >
           <LinearGradient
-            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.85)']}
+            colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.5)']}
             style={styles.darkOverlay}
           />
           
@@ -99,14 +100,49 @@ export default function LoginScreen() {
             >
               {/* Top Logo */}
               <Animated.View entering={FadeInDown.duration(1000).springify()} style={styles.logoContainer}>
-                <View style={styles.logoIconWrapper}>
-                  <LinearGradient
-                    colors={['rgba(0, 198, 255, 0.2)', 'rgba(0, 114, 255, 0.2)']}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  <Ionicons name="diamond-outline" size={42} color="#00c6ff" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  {/* Stylized Diamond V */}
+                  <View style={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: '#00c6ff',
+                    backgroundColor: 'rgba(0, 198, 255, 0.1)',
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    marginRight: 16,
+                    transform: [{ rotate: '45deg' }],
+                    shadowColor: '#00c6ff',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 10,
+                  }}>
+                    <Text style={{ 
+                      fontFamily: 'Outfit', 
+                      fontSize: 30, 
+                      fontWeight: '900', 
+                      color: '#00c6ff', 
+                      transform: [{ rotate: '-45deg' }] 
+                    }}>V</Text>
+                  </View>
+                  
+                  {/* Clean Text with Subtle Color */}
+                  <Text style={[styles.logoTitle, { 
+                    fontFamily: 'Outfit', 
+                    fontSize: 42, 
+                    letterSpacing: 4, 
+                    fontWeight: '800', 
+                    textShadowColor: 'rgba(0, 198, 255, 0.3)',
+                    textShadowOffset: { width: 0, height: 2 },
+                    textShadowRadius: 10
+                  }]}>
+                    <Text style={{ color: '#FFFFFF' }}>L</Text>
+                    <Text style={{ color: '#B3E5FC' }}>I</Text>
+                    <Text style={{ color: '#4FC3F7' }}>F</Text>
+                    <Text style={{ color: '#00C6FF' }}>E</Text>
+                  </Text>
                 </View>
-                <Text style={[styles.logoTitle, { fontFamily: 'Outfit', color: '#00c6ff', fontSize: 32 }]}>SUPER APP</Text>
                 <Text style={[styles.logoSubtitle, { fontFamily: 'Outfit' }]}>Kỷ nguyên trải nghiệm mới</Text>
               </Animated.View>
 
