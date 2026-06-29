@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, useWindowDimensions, Alert
+  StatusBar, ScrollView, Image, Dimensions, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +29,7 @@ const PROVINCES = ['Hà Nội', 'Yên Bái', 'Phú Quốc', 'Quảng Ninh', 'Là
 export default function ProfileScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
+  const width = Dimensions.get('window').width;
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const [activeTab, setActiveTab] = useState<'stats' | 'badges' | 'wishlist' | 'itineraries'>('stats');
@@ -305,3 +305,4 @@ const S = StyleSheet.create({
   itineTitle: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   itineDate: { color: '#64748B', fontSize: 12, marginTop: 4 },
 });
+

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, TextInput, useWindowDimensions, Alert
+  StatusBar, ScrollView, Image, TextInput, Dimensions, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +40,7 @@ const TOURS = [
 export default function BookingScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
+  const width = Dimensions.get('window').width;
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const [activeTab, setActiveTab] = useState<BookingTab>('flight');
@@ -436,3 +436,4 @@ const S = StyleSheet.create({
   notifyBtn: { backgroundColor: '#0EA5E9', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 25 },
   notifyBtnTxt: { color: '#FFF', fontWeight: '700' },
 });
+

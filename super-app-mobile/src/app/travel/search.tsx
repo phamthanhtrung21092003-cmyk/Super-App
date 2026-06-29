@@ -41,18 +41,18 @@ const TRENDING = [
 const MONTHS = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
 
 const MONTH_SUGGESTIONS: Record<number, { places: string[]; tip: string }> = {
-  0:  { places: ['Hà Giang', 'Sa Pa', 'Mộc Châu'], tip: 'Tháng 1 – Hoa đào nở rộ, khí hậu se lạnh lý tưởng khám phá miền Bắc.' },
-  1:  { places: ['Đà Lạt', 'Lý Sơn', 'Mũi Né'], tip: 'Tháng 2 – Thời tiết mát mẻ, phù hợp du lịch biển miền Trung.' },
-  2:  { places: ['Hội An', 'Huế', 'Phong Nha'], tip: 'Tháng 3 – Mùa hoa cải vàng, trời trong xanh đẹp tuyệt vời.' },
-  3:  { places: ['Phú Quốc', 'Côn Đảo', 'Quy Nhơn'], tip: 'Tháng 4 – Bắt đầu mùa khô, biển đẹp tuyệt vời cho nghỉ dưỡng.' },
-  4:  { places: ['Cát Bà', 'Vịnh Hạ Long', 'Ninh Bình'], tip: 'Tháng 5 – Du lịch Bắc Bộ trước mùa hè nóng bức.' },
-  5:  { places: ['Đà Nẵng', 'Bà Nà Hills', 'Cù Lao Chàm'], tip: 'Tháng 6 – Mùa hè sôi động, lễ hội pháo hoa Đà Nẵng rực rỡ.' },
-  6:  { places: ['Phú Quốc', 'Phan Thiết', 'Vũng Tàu'], tip: 'Tháng 7 – Biển Tây Nam đẹp nhất trong năm, nước trong vắt.' },
-  7:  { places: ['Mù Cang Chải', 'Tây Nguyên', 'Buôn Ma Thuột'], tip: 'Tháng 8 – Mùa lúa vàng Mù Cang Chải đẹp mê hoặc.' },
-  8:  { places: ['Mù Cang Chải', 'Hà Giang', 'Đồng Văn'], tip: 'Tháng 9 – Ruộng bậc thang vào mùa đẹp nhất, lúa chín vàng ươm.' },
-  9:  { places: ['Sapa', 'Bắc Hà', 'Lai Châu'], tip: 'Tháng 10 – Tiết trời mát mẻ, lúa chín vàng ươm trên núi.' },
-  10: { places: ['Hội An', 'Đà Nẵng', 'Huế'], tip: 'Tháng 11 – Lễ hội đèn lồng Hội An lung linh, huyền ảo.' },
-  11: { places: ['Đà Lạt', 'Sa Pa', 'Hà Nội'], tip: 'Tháng 12 – Không khí Giáng sinh se lạnh, hoa anh đào nở.' },
+  0:  { places: ['Mộc Châu'], tip: 'Tháng 1 – Lễ hội hoa mận trắng tinh khiết, đón chào mùa xuân.' },
+  1:  { places: ['Tây Ninh'], tip: 'Tháng 2 – Hành hương Hội xuân Núi Bà Đen, cầu bình an đầu năm.' },
+  2:  { places: ['Điện Biên'], tip: 'Tháng 3 – Lễ hội Hoa Ban nở rực rỡ khắp núi rừng Tây Bắc.' },
+  3:  { places: ['Huế'], tip: 'Tháng 4 – Festival Di sản Cố Đô, đậm đà bản sắc văn hóa dân tộc.' },
+  4:  { places: ['Ninh Bình'], tip: 'Tháng 5 – Sắc vàng Tam Cốc, xuôi thuyền trên sông Ngô Đồng ngắm lúa chín.' },
+  5:  { places: ['Đà Nẵng'], tip: 'Tháng 6 – Lễ hội Pháo hoa Quốc tế, biển xanh cát trắng nắng vàng.' },
+  6:  { places: ['Quảng Bình'], tip: 'Tháng 7 – Lễ hội Hang động, trốn nóng mùa hè khám phá Phong Nha Kẻ Bàng.' },
+  7:  { places: ['Nha Trang'], tip: 'Tháng 8 – Festival Biển sôi động, tận hưởng hải sản tươi ngon.' },
+  8:  { places: ['Mù Cang Chải'], tip: 'Tháng 9 – Lễ hội Ruộng bậc thang, bay dù lượn ngắm lúa chín vàng.' },
+  9:  { places: ['Hà Giang'], tip: 'Tháng 10 – Lễ hội Hoa Tam giác mạch rực rỡ trên Cao nguyên đá Đồng Văn.' },
+  10: { places: ['Măng Đen'], tip: 'Tháng 11 – Mùa dã quỳ và săn mây, cái lạnh se se nơi đại ngàn Tây Nguyên.' },
+  11: { places: ['Đà Lạt'], tip: 'Tháng 12 – Festival Hoa lãng mạn, đón Giáng sinh rực rỡ sắc màu.' },
 };
 
 const BUDGET_OPTIONS = [

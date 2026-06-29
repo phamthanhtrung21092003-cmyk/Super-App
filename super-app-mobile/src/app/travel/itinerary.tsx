@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, FlatList, Animated, useWindowDimensions, Alert
+  StatusBar, ScrollView, Image, FlatList, Animated, Dimensions, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,7 +57,7 @@ const TYPE_COLORS: Record<string, string> = {
 export default function ItineraryScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
+  const width = Dimensions.get('window').width;
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const [activeDay, setActiveDay] = useState(0);
@@ -330,3 +330,4 @@ const S = StyleSheet.create({
   bookBtn: { borderRadius: 25, overflow: 'hidden' },
   bookBtnGrad: { paddingHorizontal: 20, paddingVertical: 10 },
 });
+

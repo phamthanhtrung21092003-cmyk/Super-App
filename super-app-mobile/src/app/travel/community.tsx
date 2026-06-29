@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, TextInput, Dimensions, useWindowDimensions, Alert
+  StatusBar, ScrollView, Image, TextInput, Dimensions, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,7 +62,7 @@ const POSTS = [
 export default function CommunityScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { width, height } = useWindowDimensions();
+  const width = Dimensions.get('window').width; const height = Dimensions.get('window').height;
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const [posts, setPosts] = useState(POSTS);
@@ -305,3 +305,4 @@ const S = StyleSheet.create({
   navAddBtn: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
   navLabel: { color: '#64748B', fontSize: 10, marginTop: 2 },
 });
+

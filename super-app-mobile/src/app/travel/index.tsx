@@ -11,7 +11,7 @@ import {
   StatusBar,
   StyleSheet,
   Alert,
-  useWindowDimensions,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,12 +46,12 @@ const BANNERS = [
 
 const CATEGORIES = [
   { id: '1', icon: '✈️', label: 'Vé máy bay', route: '/flights' },
-  { id: '2', icon: '🏨', label: 'Khách sạn', route: '/hotels' },
-  { id: '3', icon: '🏠', label: 'Homestay', route: null },
+  { id: '2', icon: '🏨', label: 'Khách sạn', route: '/travel/hotel' },
+  { id: '3', icon: '🏠', label: 'Homestay', route: '/travel/homestay' },
   { id: '4', icon: '🗺️', label: 'Tour', route: '/travel/booking' },
-  { id: '5', icon: '🚗', label: 'Thuê xe', route: null },
-  { id: '6', icon: '⛺', label: 'Camping', route: null },
-  { id: '7', icon: '🍜', label: 'Ẩm thực', route: null },
+  { id: '5', icon: '🚗', label: 'Thuê xe', route: '/travel/car' },
+  { id: '6', icon: '⛺', label: 'Camping', route: '/travel/camping' },
+  { id: '7', icon: '🍜', label: 'Ẩm thực', route: '/travel/food' },
   { id: '8', icon: '📸', label: 'Check-in', route: '/travel/community' },
 ];
 
@@ -66,45 +66,87 @@ interface SeasonItem {
 const SEASON_LIST: SeasonItem[] = [
   {
     emoji: '🌸',
-    title: 'Mộc Châu – Hoa mận trắng nở rộ',
-    desc: 'Những rừng hoa mận trắng tinh khiết phủ đầy núi đồi Mộc Châu, tạo nên cảnh sắc thiên nhiên huyền ảo.',
-    period: 'Tháng 1–2',
-    months: [1, 2],
+    title: 'Mộc Châu – Lễ hội hoa mận',
+    desc: 'Những rừng hoa mận trắng tinh khiết phủ đầy núi đồi Mộc Châu, đón chào mùa xuân và năm mới bình an.',
+    period: 'Tháng 1',
+    months: [1],
   },
   {
-    emoji: '🌺',
-    title: 'Hà Giang – Hoa tam giác mạch',
-    desc: 'Cao nguyên đá Đồng Văn rực rỡ với thảm hoa tam giác mạch tím hồng trải dài tít tắp.',
-    period: 'Tháng 3–4',
-    months: [3, 4],
+    emoji: '⛩️',
+    title: 'Tây Ninh – Hội xuân Núi Bà Đen',
+    desc: 'Hành hương đầu năm, cầu bình an và chiêm ngưỡng cảnh sắc non nước hữu tình tại nóc nhà Nam Bộ.',
+    period: 'Tháng 2',
+    months: [2],
   },
   {
-    emoji: '🌿',
-    title: 'Sapa – Ruộng bậc thang mùa nước đổ',
-    desc: 'Mùa nước đổ tháng 5, những thửa ruộng bậc thang lấp lánh như gương phản chiếu bầu trời.',
+    emoji: '🌼',
+    title: 'Điện Biên – Lễ hội Hoa Ban',
+    desc: 'Hòa mình vào không gian văn hóa Tây Bắc, ngắm hoa ban nở trắng rực rỡ khắp các sườn đồi.',
+    period: 'Tháng 3',
+    months: [3],
+  },
+  {
+    emoji: '🏮',
+    title: 'Huế – Festival Di sản Cố Đô',
+    desc: 'Khám phá văn hóa, xem biểu diễn nghệ thuật cung đình và đắm chìm trong vẻ đẹp thơ mộng của dòng sông Hương.',
+    period: 'Tháng 4',
+    months: [4],
+  },
+  {
+    emoji: '🌾',
+    title: 'Ninh Bình – Sắc vàng Tam Cốc',
+    desc: 'Xuôi thuyền trên sông Ngô Đồng, tham gia tuần lễ du lịch và ngắm những cánh đồng lúa chín vàng ươm.',
     period: 'Tháng 5',
     months: [5],
   },
   {
-    emoji: '🌊',
-    title: 'Phú Quốc – Biển trong xanh tuyệt đẹp',
-    desc: 'Mùa hè là thời điểm vàng để tắm biển Phú Quốc với làn nước trong vắt như pha lê.',
-    period: 'Tháng 6–8',
-    months: [6, 7, 8],
+    emoji: '🎆',
+    title: 'Đà Nẵng – Lễ hội Pháo hoa Quốc tế',
+    desc: 'Tận hưởng mùa hè sôi động với những màn trình diễn pháo hoa đỉnh cao và các bãi biển quyến rũ.',
+    period: 'Tháng 6',
+    months: [6],
   },
   {
-    emoji: '🌾',
-    title: 'Mù Cang Chải – Lúa chín vàng óng',
-    desc: 'Mùa vàng tháng 9-10 khiến Mù Cang Chải như một bức tranh sơn dầu khổng lồ của thiên nhiên.',
-    period: 'Tháng 9–10',
-    months: [9, 10],
+    emoji: '🦇',
+    title: 'Quảng Bình – Lễ hội Hang động',
+    desc: 'Trốn cái nóng mùa hè bằng cách khám phá thế giới kỳ bí bên trong hệ thống hang động Phong Nha - Kẻ Bàng.',
+    period: 'Tháng 7',
+    months: [7],
   },
   {
-    emoji: '🌼',
-    title: 'Đà Lạt – Hoa dã quỳ vàng rực',
-    desc: 'Những con đường ở Đà Lạt tràn ngập màu vàng rực rỡ của hoa dã quỳ vào độ cuối thu.',
-    period: 'Tháng 11–12',
-    months: [11, 12],
+    emoji: '🏖️',
+    title: 'Nha Trang – Festival Biển',
+    desc: 'Hòa mình vào làn nước xanh mát, tham gia các hoạt động thể thao biển và thưởng thức hải sản tươi ngon.',
+    period: 'Tháng 8',
+    months: [8],
+  },
+  {
+    emoji: '🍂',
+    title: 'Mù Cang Chải – Lễ hội Ruộng bậc thang',
+    desc: 'Trải nghiệm bay dù lượn trên mùa vàng lúa chín, chiêm ngưỡng bức tranh sơn dầu khổng lồ của thiên nhiên.',
+    period: 'Tháng 9',
+    months: [9],
+  },
+  {
+    emoji: '🌺',
+    title: 'Hà Giang – Lễ hội Hoa Tam giác mạch',
+    desc: 'Cao nguyên đá Đồng Văn rực rỡ với thảm hoa tam giác mạch tím hồng trải dài tít tắp sườn đồi.',
+    period: 'Tháng 10',
+    months: [10],
+  },
+  {
+    emoji: '☁️',
+    title: 'Măng Đen – Mùa dã quỳ & săn mây',
+    desc: 'Tận hưởng tiết trời se lạnh, nhâm nhi tách cà phê nguyên bản giữa đại ngàn Tây Nguyên hoang sơ.',
+    period: 'Tháng 11',
+    months: [11],
+  },
+  {
+    emoji: '🎄',
+    title: 'Đà Lạt – Festival Hoa',
+    desc: 'Thành phố ngàn hoa rực rỡ sắc màu trong không khí se lạnh cuối năm, mang đậm âm hưởng lễ hội.',
+    period: 'Tháng 12',
+    months: [12],
   },
 ];
 
@@ -240,7 +282,7 @@ function getSeasonSuggestion(): SeasonItem {
 export default function TravelHomeScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
+  const width = Dimensions.get('window').width;
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const [activeTab, setActiveTab] = useState(0);
@@ -343,9 +385,9 @@ export default function TravelHomeScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.headerIconBtn}
-          onPress={() => Alert.alert('💬 Tin nhắn', 'Đang mở tin nhắn...')}
+          onPress={() => router.push('/travel/wishlist' as any)}
         >
-          <Ionicons name="chatbubble-outline" size={22} color="#FFF" />
+          <Ionicons name="heart-outline" size={22} color="#FFF" />
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -1091,3 +1133,4 @@ const styles = StyleSheet.create({
   },
   fabEmoji: { fontSize: 24 },
 });
+

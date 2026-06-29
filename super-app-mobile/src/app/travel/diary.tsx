@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, useWindowDimensions, Alert
+  StatusBar, ScrollView, Image, Dimensions, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +49,7 @@ const EXPENSES = [
 export default function DiaryScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
+  const width = Dimensions.get('window').width;
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const [activeTrip, setActiveTrip] = useState(TRIPS[0]);
@@ -326,3 +326,4 @@ const S = StyleSheet.create({
   shareStoryBtn: { borderRadius: 25, overflow: 'hidden' },
   shareStoryGrad: { paddingHorizontal: 20, paddingVertical: 10 },
 });
+
