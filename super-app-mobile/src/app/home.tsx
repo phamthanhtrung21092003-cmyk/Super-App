@@ -45,7 +45,7 @@ export default function HomeScreen() {
     { id: 'wallet', title: 'Ví VN Pay', icon: '💳', route: '/wallet' },
     { id: 'video', title: 'Video', icon: '🎬', route: '/video' },
     { id: 'jobs', title: 'Việc làm', icon: '💼', route: '/jobs' },
-    { id: 'shop', title: 'Mua sắm', icon: '🛒', route: '/shop' },
+    { id: 'shop', title: 'Mua sắm', icon: '🛒', route: '/shopping' },
     { id: 'business', title: 'Doanh nghiệp', icon: '🏢', route: '/business' },
     { id: 'appearance', title: 'Giao diện', icon: '🎨', route: '/settings' },
   ];
@@ -57,7 +57,6 @@ export default function HomeScreen() {
       items: [
         { id: 'transport', title: 'Vận chuyển', icon: '🛵', route: '/transport' },
         { id: 'health', title: 'Sức khỏe', icon: '⚕️', route: '/health' },
-        { id: 'mart', title: 'Mua sắm', icon: '🛒', route: '/shopping' },
         { id: 'cleaning', title: 'Dọn dẹp', icon: '🧹', route: '/cleaning' },
       ]
     },
@@ -65,6 +64,7 @@ export default function HomeScreen() {
       id: 'entertainment',
       title: 'Giải trí & Du lịch',
       items: [
+        { id: 'travel', title: 'Du lịch', icon: '🏖️', route: '/travel' },
         { id: 'cinema', title: 'Xem phim', icon: '🎬', route: '/cinema' },
         { id: 'flights', title: 'Vé máy bay', icon: '✈️', route: '/flights' },
         { id: 'hotels', title: 'Khách sạn', icon: '🏨', route: '/hotels' },

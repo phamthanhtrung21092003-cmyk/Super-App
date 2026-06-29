@@ -12,26 +12,31 @@ import {
   ImageBackground,
   Image,
   useWindowDimensions,
-  ScrollView
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, AntDesign, FontAwesome5 } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useUser } from '../context/UserContext';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { loginCheck } = useUser();
   
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   const [isPhoneFocused, setIsPhoneFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   const [phoneError, setPhoneError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
@@ -51,8 +56,9 @@ export default function LoginScreen() {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     let isValid = true;
+    setLoginError('');
     const phoneRegex = /^0[0-9]{9,10}$/;
     if (!phone) {
       setPhoneError('Vui lòng nhập số điện thoại');
@@ -70,8 +76,16 @@ export default function LoginScreen() {
       isValid = false;
     }
 
-    if (isValid) {
-      router.push('/otp');
+    if (!isValid) return;
+
+    setIsLoading(true);
+    const result = await loginCheck(phone, password);
+    setIsLoading(false);
+
+    if (result.success) {
+      router.push({ pathname: '/otp', params: { name: result.fullName } });
+    } else {
+      setLoginError(result.message);
     }
   };
 
@@ -204,15 +218,28 @@ export default function LoginScreen() {
                       <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity activeOpacity={0.8} onPress={handleLogin} style={styles.loginButtonWrapper}>
+                    {loginError ? (
+                      <Animated.View entering={FadeInDown} style={styles.loginErrorBox}>
+                        <Ionicons name="alert-circle-outline" size={16} color="#FF4D4D" />
+                        <Text style={styles.loginErrorText}>{loginError}</Text>
+                      </Animated.View>
+                    ) : null}
+
+                    <TouchableOpacity activeOpacity={0.8} onPress={handleLogin} style={styles.loginButtonWrapper} disabled={isLoading}>
                       <LinearGradient
-                        colors={['#00c6ff', '#0072ff']}
+                        colors={isLoading ? ['#444', '#333'] : ['#00c6ff', '#0072ff']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.loginButton}
                       >
-                        <Text style={styles.loginButtonText}>ĐĂNG NHẬP</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#FFF" style={styles.loginButtonIcon} />
+                        {isLoading ? (
+                          <ActivityIndicator color="#FFF" />
+                        ) : (
+                          <>
+                            <Text style={styles.loginButtonText}>ĐĂNG NHẬP</Text>
+                            <Ionicons name="arrow-forward" size={20} color="#FFF" style={styles.loginButtonIcon} />
+                          </>
+                        )}
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -441,6 +468,24 @@ const styles = StyleSheet.create({
     color: '#00c6ff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  loginErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 77, 77, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 77, 77, 0.3)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  loginErrorText: {
+    color: '#FF4D4D',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
   loginButtonWrapper: {
     marginTop: 8,

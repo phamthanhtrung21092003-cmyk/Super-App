@@ -46,7 +46,8 @@ export default function SavingsScreen() {
   const [topUpAmountInput, setTopUpAmountInput] = useState('');
 
   const handleBack = () => {
-    router.replace('/wallet');
+    if (router.canGoBack()) router.back();
+    else router.replace('/wallet');
   };
 
   // --- STANDARD CALCS ---

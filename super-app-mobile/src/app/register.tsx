@@ -11,7 +11,8 @@ import {
   StatusBar,
   ImageBackground,
   ScrollView,
-  useWindowDimensions
+  useWindowDimensions,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -22,7 +23,7 @@ import { useUser } from '../context/UserContext';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { setUserName } = useUser();
+  const { setUserName, registerAccount } = useUser();
   
   // States
   const [fullName, setFullName] = useState('');
@@ -32,6 +33,8 @@ export default function RegisterScreen() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [registerError, setRegisterError] = useState('');
 
   // Focus states
   const [isNameFocused, setIsNameFocused] = useState(false);
@@ -57,8 +60,23 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleRegister = () => {
+  // Password strength criteria
+  const passwordCriteria = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+  };
+
+  const passedCount = Object.values(passwordCriteria).filter(Boolean).length;
+  const strengthLevel = passedCount <= 1 ? 'weak' : passedCount <= 3 ? 'medium' : passedCount === 4 ? 'strong' : 'very-strong';
+  const strengthColor = { weak: '#FF4D4D', medium: '#FFA500', strong: '#00c6ff', 'very-strong': '#22c55e' }[strengthLevel];
+  const strengthLabel = { weak: 'Yếu', medium: 'Trung bình', strong: 'Mạnh', 'very-strong': 'Rất mạnh' }[strengthLevel];
+
+  const handleRegister = async () => {
     let isValid = true;
+    setRegisterError('');
 
     if (!fullName.trim()) {
       setNameError('Vui lòng nhập họ và tên');
@@ -78,15 +96,11 @@ export default function RegisterScreen() {
       setPhoneError('');
     }
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/; 
     if (!password) {
       setPasswordError('Vui lòng nhập mật khẩu');
       isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Mật khẩu quá ngắn');
-      isValid = false;
-    } else if (!passwordRegex.test(password)) {
-      setPasswordError('Yêu cầu có hoa, thường và số');
+    } else if (passedCount < 5) {
+      setPasswordError('Mật khẩu chưa đủ tiêu chí bảo mật');
       isValid = false;
     } else {
       setPasswordError('');
@@ -109,9 +123,17 @@ export default function RegisterScreen() {
       setTermsError('');
     }
 
-    if (isValid) {
-      setUserName(fullName);
-      router.push('/');
+    if (!isValid) return;
+
+    setIsLoading(true);
+    const result = await registerAccount(phone, password, fullName.trim());
+    setIsLoading(false);
+
+    if (result.success) {
+      await setUserName(fullName.trim());
+      router.replace('/');
+    } else {
+      setRegisterError(result.message);
     }
   };
 
@@ -209,7 +231,7 @@ export default function RegisterScreen() {
                       <Ionicons name="lock-closed-outline" size={20} color={isPasswordFocused ? "#00c6ff" : "#8F9BB3"} />
                       <TextInput
                         style={styles.input}
-                        placeholder="••••••••"
+                        placeholder="Tối thiểu 8 ký tự"
                         placeholderTextColor="#6B7A90"
                         secureTextEntry={!showPassword}
                         value={password}
@@ -222,6 +244,49 @@ export default function RegisterScreen() {
                       </TouchableOpacity>
                     </View>
                     {passwordError ? <Animated.Text entering={FadeInDown} style={styles.errorText}>{passwordError}</Animated.Text> : null}
+
+                    {/* Password Strength Indicator */}
+                    {password.length > 0 && (
+                      <Animated.View entering={FadeInDown.duration(300)} style={styles.strengthContainer}>
+                        {/* Strength Bar */}
+                        <View style={styles.strengthBarRow}>
+                          <View style={styles.strengthBarsWrapper}>
+                            {[1,2,3,4,5].map((i) => (
+                              <View
+                                key={i}
+                                style={[
+                                  styles.strengthBar,
+                                  { backgroundColor: passedCount >= i ? strengthColor : 'rgba(255,255,255,0.1)' }
+                                ]}
+                              />
+                            ))}
+                          </View>
+                          <Text style={[styles.strengthLabel, { color: strengthColor }]}>{strengthLabel}</Text>
+                        </View>
+
+                        {/* Criteria Checklist */}
+                        <View style={styles.criteriaList}>
+                          {[
+                            { key: 'length',    label: 'Ít nhất 8 ký tự',           ok: passwordCriteria.length },
+                            { key: 'uppercase', label: 'Có chữ in hoa (A-Z)',        ok: passwordCriteria.uppercase },
+                            { key: 'lowercase', label: 'Có chữ thường (a-z)',        ok: passwordCriteria.lowercase },
+                            { key: 'number',    label: 'Có chữ số (0-9)',            ok: passwordCriteria.number },
+                            { key: 'special',   label: 'Có ký tự đặc biệt (!@#$…)', ok: passwordCriteria.special },
+                          ].map((c) => (
+                            <View key={c.key} style={styles.criteriaRow}>
+                              <Ionicons
+                                name={c.ok ? 'checkmark-circle' : 'ellipse-outline'}
+                                size={15}
+                                color={c.ok ? '#22c55e' : '#64748B'}
+                              />
+                              <Text style={[styles.criteriaText, c.ok && styles.criteriaTextDone]}>
+                                {c.label}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </Animated.View>
+                    )}
 
                     {/* Confirm Password Input */}
                     <Text style={[styles.label, {marginTop: 20}]}>XÁC NHẬN MẬT KHẨU</Text>
@@ -267,16 +332,29 @@ export default function RegisterScreen() {
                     </View>
                     {termsError ? <Animated.Text entering={FadeInDown} style={[styles.errorText, {marginTop: -10, marginBottom: 16}]}>{termsError}</Animated.Text> : null}
 
+                    {registerError ? (
+                      <Animated.View entering={FadeInDown} style={styles.registerErrorBox}>
+                        <Ionicons name="alert-circle-outline" size={16} color="#FF4D4D" />
+                        <Text style={styles.registerErrorText}>{registerError}</Text>
+                      </Animated.View>
+                    ) : null}
+
                     {/* Register Button */}
-                    <TouchableOpacity activeOpacity={0.8} onPress={handleRegister} style={styles.loginButtonWrapper}>
+                    <TouchableOpacity activeOpacity={0.8} onPress={handleRegister} style={styles.loginButtonWrapper} disabled={isLoading}>
                       <LinearGradient
-                        colors={['#00c6ff', '#0072ff']}
+                        colors={isLoading ? ['#444', '#333'] : ['#00c6ff', '#0072ff']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.loginButton}
                       >
-                        <Text style={styles.loginButtonText}>TẠO TÀI KHOẢN</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#FFF" style={styles.loginButtonIcon} />
+                        {isLoading ? (
+                          <ActivityIndicator color="#FFF" />
+                        ) : (
+                          <>
+                            <Text style={styles.loginButtonText}>TẠO TÀI KHOẢN</Text>
+                            <Ionicons name="arrow-forward" size={20} color="#FFF" style={styles.loginButtonIcon} />
+                          </>
+                        )}
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -501,6 +579,71 @@ const styles = StyleSheet.create({
   termsLink: {
     color: '#00c6ff',
     fontWeight: '600',
+  },
+  registerErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 77, 77, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 77, 77, 0.3)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  registerErrorText: {
+    color: '#FF4D4D',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  strengthContainer: {
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  strengthBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  strengthBarsWrapper: {
+    flexDirection: 'row',
+    flex: 1,
+    gap: 4,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 5,
+    borderRadius: 4,
+  },
+  strengthLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 10,
+    minWidth: 70,
+    textAlign: 'right',
+  },
+  criteriaList: {
+    gap: 6,
+  },
+  criteriaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  criteriaText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  criteriaTextDone: {
+    color: '#22c55e',
   },
   loginButtonWrapper: {
     marginTop: 8,

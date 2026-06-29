@@ -193,6 +193,7 @@ export default function HealthScreen() {
       <View style={S.topBar}>
         <TouchableOpacity style={S.backBtn} onPress={() => {
           if (state !== 'idle') setState('idle');
+          else if (router.canGoBack()) router.back();
           else router.replace('/utilities');
         }}>
           <Ionicons name="chevron-back" size={28} color={T.text} />

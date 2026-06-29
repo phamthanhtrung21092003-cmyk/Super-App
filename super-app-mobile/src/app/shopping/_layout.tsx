@@ -7,6 +7,12 @@ export default function ShoppingLayout() {
       <Stack.Screen name="product" />
       <Stack.Screen name="cart" />
       <Stack.Screen name="checkout" />
+      <Stack.Screen name="live" />
+      <Stack.Screen name="shorts" />
+      <Stack.Screen name="seller" />
+      <Stack.Screen name="admin" />
+      <Stack.Screen name="shop" />
+      <Stack.Screen name="brand" />
     </Stack>
   );
 }

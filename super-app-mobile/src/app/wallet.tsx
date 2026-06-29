@@ -355,7 +355,7 @@ export default function WalletScreen() {
               />
             )}
             <View style={[styles.headerTop, currentTier.isDiamondMockup && { paddingTop: Platform.OS === 'ios' ? 50 : 40 }]}>
-              <TouchableOpacity onPress={() => router.replace('/home')} style={styles.backButton}>
+              <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/home')} style={styles.backButton}>
                 <Ionicons name="chevron-back" size={28} color="#FFF" />
               </TouchableOpacity>
               

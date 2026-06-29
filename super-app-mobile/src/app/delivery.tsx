@@ -63,6 +63,7 @@ export default function DeliveryScreen() {
       <TouchableOpacity style={S.topBtn} onPress={() => {
         if (state === 'form') setState('home');
         else if (state === 'finding') setState('form');
+        else if (router.canGoBack()) router.back();
         else router.replace('/transport');
       }}>
         <Ionicons name="chevron-back" size={28} color={T.text} />

@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Animated, Dimensions, Switch, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
 
 // ─── COLORS ────────────────────────────────────────────────────────
@@ -263,6 +264,11 @@ export default function SocialScreen() {
       {/* TOP NAVBAR */}
       {screen!=='live' && screen!=='reels' && (
         <View style={g.navbar}>
+          {/* Nút quay lại ở góc trên bên trái */}
+          <TouchableOpacity style={[g.navClose, { marginRight: 8 }]} onPress={() => router.canGoBack() ? router.back() : router.replace('/home')}>
+            <Ionicons name="arrow-back" size={22} color="#050505" />
+          </TouchableOpacity>
+
           <View style={g.navL}>
             <View style={g.navLogo}><Text style={g.navLogoTxt}>f</Text></View>
             <TouchableOpacity style={g.navSearchBox} onPress={()=>setScreen('search')}>
@@ -275,7 +281,17 @@ export default function SocialScreen() {
               {k:'friends' as Screen,icon:'👥'},
               {k:'watch'  as Screen,icon:'▶️'},
             ]).map(t=>(
-              <TouchableOpacity key={t.k} style={[g.navTab,screen===t.k&&g.navTabA]} onPress={()=>setScreen(t.k)}>
+              <TouchableOpacity
+                key={t.k}
+                style={[g.navTab,screen===t.k&&g.navTabA]}
+                onPress={() => {
+                  if (t.k === 'watch') {
+                    router.replace('/video');
+                  } else {
+                    setScreen(t.k);
+                  }
+                }}
+              >
                 <Text style={[g.navTabIcon,screen===t.k&&{color:C.blue}]}>{t.icon}</Text>
                 {screen===t.k&&<View style={g.navLine}/>}
               </TouchableOpacity>
@@ -292,9 +308,6 @@ export default function SocialScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={[g.navBtn,{padding:0,overflow:'hidden'}]} onPress={()=>setScreen('menu')}>
               <Image source={{uri:avatarUrl}} style={{width:36,height:36,borderRadius:18}}/>
-            </TouchableOpacity>
-            <TouchableOpacity style={g.navClose} onPress={()=>router.canGoBack()?router.replace('/home'):router.replace('/home')}>
-              <Text style={g.navCloseTxt}>✕</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1047,7 +1060,7 @@ export default function SocialScreen() {
       {icon:'⏰',label:'Kỷ niệm',   action:()=>setScreen('memories')},
       {icon:'🔖',label:'Đã lưu',     action:()=>setScreen('saved')},
       {icon:'🌍',label:'Nhóm',       action:()=>setScreen('groups')},
-      {icon:'🎬',label:'Thước phim', action:()=>setScreen('reels')},
+      {icon:'🎬',label:'Thước phim', action:()=>router.replace('/video')},
       {icon:'🛒',label:'Marketplace',action:()=>setScreen('market')},
       {icon:'⬇️',label:'Xem thêm',   action:()=>{}},
     ];

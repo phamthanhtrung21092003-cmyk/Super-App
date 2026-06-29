@@ -1,18 +1,19 @@
 import React from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform,
-  SafeAreaView, StatusBar, Image, ScrollView,
+  SafeAreaView, StatusBar, Image, ScrollView, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useShopping, CartItem } from '../../context/ShoppingContext';
 
 const T = {
-  black: '#0F172A',
+  black: '#222222',
   white: '#FFFFFF',
-  bg: '#F8FAFC',
-  sub: '#64748B',
-  border: '#E2E8F0',
+  bg: '#F5F5F5',
+  sub: '#888888',
+  border: '#E8E8E8',
+  orange: '#4F46E5',
 };
 
 const formatMoney = (val: number) => val.toLocaleString('vi-VN') + 'đ';
@@ -95,6 +96,15 @@ export default function PremiumCart() {
                         </View>
                       </View>
                     ))}
+                    
+                    {/* Shop Voucher Row */}
+                    <View style={S.shopVoucherRow}>
+                      <Ionicons name="pricetag-outline" size={14} color="#4F46E5" style={{ marginRight: 6 }} />
+                      <Text style={S.shopVoucherText}>Khuyến mãi Shop: Giảm 10k đơn từ 200k</Text>
+                      <TouchableOpacity style={S.shopVoucherBtn} onPress={() => Alert.alert('Khuyến mãi', 'Đã áp dụng giảm 10.000đ từ Shop!')}>
+                        <Text style={S.shopVoucherBtnTxt}>Áp dụng</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })}
@@ -137,7 +147,7 @@ const S = StyleSheet.create({
   
   emptyState: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyTxt: { marginTop: 20, color: T.sub, fontSize: 14, marginBottom: 30 },
-  shopNowBtn: { backgroundColor: T.black, paddingHorizontal: 30, paddingVertical: 15, borderRadius: 30 },
+  shopNowBtn: { backgroundColor: T.orange, paddingHorizontal: 30, paddingVertical: 15, borderRadius: 30 },
   shopNowTxt: { color: T.white, fontWeight: '600', letterSpacing: 1, fontSize: 12 },
   
   shopGroup: { marginBottom: 30 },
@@ -161,7 +171,13 @@ const S = StyleSheet.create({
   checkAllTxt: { fontSize: 13, marginLeft: 10, color: T.sub },
   totalWrap: { flex: 1, alignItems: 'flex-end' },
   totalLabel: { fontSize: 10, letterSpacing: 1, color: T.sub, marginBottom: 4 },
-  totalPrice: { fontSize: 18, fontWeight: '600', color: T.black },
-  checkoutBtn: { width: '100%', backgroundColor: T.black, paddingVertical: 18, borderRadius: 8, alignItems: 'center' },
+  totalPrice: { fontSize: 18, fontWeight: '700', color: T.orange },
+  checkoutBtn: { width: '100%', backgroundColor: T.orange, paddingVertical: 18, borderRadius: 8, alignItems: 'center' },
   checkoutBtnTxt: { color: T.white, fontSize: 14, fontWeight: '700', letterSpacing: 1 },
+
+  // Shop Voucher Styles
+  shopVoucherRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.orangeLight, padding: 12, borderRadius: 10, marginTop: 12 },
+  shopVoucherText: { fontSize: 11, color: T.orange, fontWeight: '600', flex: 1 },
+  shopVoucherBtn: { backgroundColor: T.orange, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
+  shopVoucherBtnTxt: { color: T.white, fontSize: 10, fontWeight: '700' },
 });

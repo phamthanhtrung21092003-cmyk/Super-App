@@ -208,7 +208,7 @@ export default function NotificationsScreen() {
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <View style={styles.header}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <TouchableOpacity onPress={() => router.replace('/home')} style={{marginRight: 12}} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/home')} style={{marginRight: 12}} activeOpacity={0.7}>
               <Ionicons name="chevron-back" size={28} color="#050505" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Thông báo</Text>

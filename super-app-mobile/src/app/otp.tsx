@@ -148,7 +148,7 @@ export default function OTPScreen() {
           
           {/* Nút Quay Lại */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.replace('/')} style={styles.backButton} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backButton} activeOpacity={0.7}>
               <Ionicons name="chevron-back" size={28} color="#00c6ff" style={{marginRight: 4}} />
               <Text style={[styles.backButtonText, { color: '#00c6ff', fontFamily: 'Outfit' }]}>Quay lại</Text>
             </TouchableOpacity>

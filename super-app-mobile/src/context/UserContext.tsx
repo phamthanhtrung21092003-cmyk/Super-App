@@ -11,6 +11,24 @@ export type SavingsBook = {
   endDate: string;
 };
 
+export type Account = {
+  phone: string;
+  password: string;
+  fullName: string;
+};
+
+export type Address = {
+  id: string;
+  receiverName: string;
+  receiverPhone: string;
+  province: string;
+  district: string;
+  ward: string;
+  detailAddress: string;
+  note?: string;
+  isDefault: boolean;
+};
+
 type UserContextType = {
   userName: string;
   setUserName: (name: string) => void;
@@ -35,6 +53,19 @@ type UserContextType = {
   savingsBooks: SavingsBook[];
   openSavingsBook: (book: SavingsBook) => void;
   topUpSavingsBook: (id: string, amount: number) => void;
+  // Auth
+  registerAccount: (phone: string, password: string, fullName: string) => Promise<{ success: boolean; message: string }>;
+  loginCheck: (phone: string, password: string) => Promise<{ success: boolean; fullName?: string; message: string }>;
+  // Marketplace Additions
+  addresses: Address[];
+  addAddress: (address: Omit<Address, 'id'>) => void;
+  deleteAddress: (id: string) => void;
+  setDefaultAddress: (id: string) => void;
+  coins: number;
+  setCoins: (coins: number) => void;
+  rewardPoints: number;
+  setRewardPoints: (points: number) => void;
+  vipTier: 'Đồng' | 'Bạc' | 'Vàng' | 'Kim cương';
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -60,6 +91,82 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     { id: 'vcb', name: 'Vietcombank', account: '**** 1234', color: '#10B981', icon: 'leaf' }
   ]);
   const [savingsBooks, setSavingsBooks] = useState<SavingsBook[]>([]);
+
+  // Marketplace Additions
+  const [addresses, setAddresses] = useState<Address[]>([
+    {
+      id: 'addr_1',
+      receiverName: 'Phạm Thành Trung',
+      receiverPhone: '0987654321',
+      province: 'TP. Hồ Chí Minh',
+      district: 'Quận 1',
+      ward: 'Phường Bến Nghé',
+      detailAddress: '45 Lê Lợi',
+      note: 'Giao giờ hành chính',
+      isDefault: true
+    }
+  ]);
+  const [coins, setCoins] = useState(15000); 
+  const [rewardPoints, setRewardPoints] = useState(1850); 
+  const [vipTier, setVipTier] = useState<'Đồng' | 'Bạc' | 'Vàng' | 'Kim cương'>('Vàng');
+
+  const addAddress = (addr: Omit<Address, 'id'>) => {
+    const newAddr: Address = {
+      ...addr,
+      id: 'addr_' + Date.now()
+    };
+    if (newAddr.isDefault) {
+      setAddresses(addresses.map(a => ({ ...a, isDefault: false })).concat(newAddr));
+    } else {
+      setAddresses([...addresses, newAddr]);
+    }
+  };
+
+  const deleteAddress = (id: string) => {
+    setAddresses(addresses.filter(a => a.id !== id));
+  };
+
+  const setDefaultAddress = (id: string) => {
+    setAddresses(addresses.map(a => a.id === id ? { ...a, isDefault: true } : { ...a, isDefault: false }));
+  };
+
+  // Auth helpers
+  const getAccounts = async (): Promise<Account[]> => {
+    try {
+      const stored = await AsyncStorage.getItem('accounts');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const registerAccount = async (phone: string, password: string, fullName: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const accounts = await getAccounts();
+      const exists = accounts.find((a) => a.phone === phone);
+      if (exists) {
+        return { success: false, message: 'Số điện thoại này đã được đăng ký!' };
+      }
+      const newAccounts = [...accounts, { phone, password, fullName }];
+      await AsyncStorage.setItem('accounts', JSON.stringify(newAccounts));
+      return { success: true, message: 'Đăng ký thành công!' };
+    } catch {
+      return { success: false, message: 'Có lỗi xảy ra, vui lòng thử lại.' };
+    }
+  };
+
+  const loginCheck = async (phone: string, password: string): Promise<{ success: boolean; fullName?: string; message: string }> => {
+    try {
+      const accounts = await getAccounts();
+      const found = accounts.find((a) => a.phone === phone && a.password === password);
+      if (found) {
+        return { success: true, fullName: found.fullName, message: 'Đăng nhập thành công!' };
+      }
+      return { success: false, message: 'Số điện thoại hoặc mật khẩu không đúng.' };
+    } catch {
+      return { success: false, message: 'Có lỗi xảy ra, vui lòng thử lại.' };
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -189,7 +296,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       bgUrl, setBgUrl,
       walletBalance, transactions, addTransaction,
       linkedBanks, addLinkedBank,
-      savingsBooks, openSavingsBook, topUpSavingsBook
+      savingsBooks, openSavingsBook, topUpSavingsBook,
+      registerAccount, loginCheck,
+      addresses, addAddress, deleteAddress, setDefaultAddress,
+      coins, setCoins, rewardPoints, setRewardPoints, vipTier,
     }}>
       {children}
     </UserContext.Provider>

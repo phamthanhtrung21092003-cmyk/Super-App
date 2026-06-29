@@ -73,9 +73,12 @@ export default function TransportScreen() {
           if (currentState === 'in_trip') return; // Cannot go back
           if (currentState === 'finding_driver') setCurrentState('choosing_vehicle');
           else if (currentState === 'choosing_vehicle') setCurrentState('search_location');
-          else if (currentState === 'hub_home') router.replace('/utilities');
+          else if (currentState === 'hub_home') {
+            if (router.canGoBack()) router.back();
+            else router.replace('/utilities');
+          }
         }} activeOpacity={0.8}>
-          <Ionicons name={currentState === 'hub_home' ? "close" : "chevron-back"} size={24} color={T.text} />
+          <Ionicons name="arrow-back" size={24} color={T.text} />
         </TouchableOpacity>
       </Animated.View>
     );

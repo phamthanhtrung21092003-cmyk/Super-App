@@ -108,13 +108,19 @@ export default function FoodScreen() {
   const renderTopBar = () => (
     <Animated.View entering={FadeInDown} exiting={FadeOut} style={S.topBar}>
       <TouchableOpacity style={S.topBtn} onPress={() => {
-        if (state === 'tracking') router.replace('/transport');
+        if (state === 'tracking') {
+          if (router.canGoBack()) router.back();
+          else router.replace('/transport');
+        }
         else if (state === 'cart') setState('restaurant');
         else if (state === 'item') setState('restaurant');
         else if (state === 'restaurant') setState('home');
-        else router.replace('/transport');
+        else {
+          if (router.canGoBack()) router.back();
+          else router.replace('/transport');
+        }
       }}>
-        <Ionicons name={state === 'home' ? "close" : "chevron-back"} size={24} color={T.text} />
+        <Ionicons name="arrow-back" size={24} color={T.text} />
       </TouchableOpacity>
       <Text style={S.topTitle}>{state === 'home' ? 'Giao Đồ Ăn' : state === 'cart' ? 'Giỏ Hàng' : state === 'tracking' ? 'Theo Dõi' : ''}</Text>
       <View style={{ width: 40 }} />

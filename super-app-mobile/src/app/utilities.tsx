@@ -22,7 +22,6 @@ const UTILITY_GROUPS = [
     items: [
       { id: 'transport', title: 'Vận chuyển', icon: '🛵' },
       { id: 'health', title: 'Sức khỏe', icon: '⚕️' },
-      { id: 'mart', title: 'Mua sắm', icon: '🛒' },
       { id: 'cleaning', title: 'Dọn dẹp', icon: '🧹' },
     ]
   },
