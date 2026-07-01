@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, TextInput, Dimensions, Alert
+  StatusBar, ScrollView, Image, TextInput, Dimensions, Alert, ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,9 @@ export default function BookingScreen() {
   const [activeTab, setActiveTab] = useState<BookingTab>('flight');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>('roundtrip');
   const [sortBy, setSortBy] = useState<'price' | 'time' | 'rating'>('price');
+  
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ';
 
@@ -131,10 +134,17 @@ export default function BookingScreen() {
                     </View>
                   </View>
                 </View>
-                <TouchableOpacity style={S.searchBtn} onPress={() => Alert.alert('Tìm chuyến', 'Đang tìm kiếm chuyến bay...')}>
+                <TouchableOpacity 
+                  style={S.searchBtn} 
+                  onPress={() => {
+                    setIsSearching(true);
+                    setTimeout(() => setIsSearching(false), 1500);
+                  }}
+                  disabled={isSearching}
+                >
                   <LinearGradient colors={['#0EA5E9', '#0369A1']} style={S.searchBtnGrad}>
-                    <Ionicons name="search" size={18} color="#FFF" />
-                    <Text style={S.searchBtnTxt}>Tìm chuyến bay</Text>
+                    {isSearching ? <ActivityIndicator color="#FFF" size="small" style={{ marginRight: 8 }} /> : <Ionicons name="search" size={18} color="#FFF" />}
+                    <Text style={S.searchBtnTxt}>{isSearching ? 'Đang tìm...' : 'Tìm chuyến bay'}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </LinearGradient>
@@ -194,7 +204,10 @@ export default function BookingScreen() {
                         <Text style={S.flightCode}>{fl.to}</Text>
                       </View>
                     </View>
-                    <TouchableOpacity style={S.bookFlightBtn} onPress={() => Alert.alert('Đặt vé', `Đang chuyển đến thanh toán vé ${fl.airline}...`)}>
+                    <TouchableOpacity 
+                      style={S.bookFlightBtn} 
+                      onPress={() => router.push({ pathname: '/travel/checkout', params: { type: 'flight', name: `Vé máy bay ${fl.airline}`, price: fl.price } })}
+                    >
                       <Text style={S.bookFlightBtnTxt}>Chọn vé</Text>
                     </TouchableOpacity>
                   </View>
@@ -264,7 +277,10 @@ export default function BookingScreen() {
                         </View>
                       </View>
                     </View>
-                    <TouchableOpacity style={S.bookHotelBtn} onPress={() => Alert.alert('Đặt phòng', `Đang xử lý đặt phòng ${h.name}...`)}>
+                    <TouchableOpacity 
+                      style={S.bookHotelBtn} 
+                      onPress={() => router.push({ pathname: '/travel/checkout', params: { type: 'hotel', name: h.name, price: h.price } })}
+                    >
                       <LinearGradient colors={['#0EA5E9', '#0369A1']} style={S.bookHotelGrad}>
                         <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Đặt phòng</Text>
                       </LinearGradient>
@@ -312,7 +328,7 @@ export default function BookingScreen() {
                         <Text style={{ color: '#64748B', fontSize: 10 }}>Giá từ</Text>
                         <Text style={S.tourPrice}>{fmt(t.price)}/người</Text>
                       </View>
-                      <TouchableOpacity onPress={() => Alert.alert('Đặt tour', t.name)}>
+                      <TouchableOpacity onPress={() => router.push({ pathname: '/travel/checkout', params: { type: 'tour', name: t.name, price: t.price } })}>
                         <LinearGradient colors={['#F97316', '#DC2626']} style={S.bookTourBtn}>
                           <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Đặt ngay</Text>
                         </LinearGradient>
@@ -330,8 +346,11 @@ export default function BookingScreen() {
               <Text style={{ fontSize: 60 }}>{activeTab === 'homestay' ? '🏠' : '🚗'}</Text>
               <Text style={S.comingTitle}>Sắp ra mắt!</Text>
               <Text style={S.comingDesc}>Dịch vụ {activeTab === 'homestay' ? 'Homestay' : 'Thuê xe'} đang được hoàn thiện và sẽ sớm có mặt.</Text>
-              <TouchableOpacity style={S.notifyBtn} onPress={() => Alert.alert('Đăng ký', 'Đã đăng ký nhận thông báo!')}>
-                <Text style={S.notifyBtnTxt}>Nhận thông báo</Text>
+              <TouchableOpacity 
+                style={[S.notifyBtn, isSubscribed && { backgroundColor: '#10B981', borderColor: '#059669' }]} 
+                onPress={() => setIsSubscribed(!isSubscribed)}
+              >
+                <Text style={S.notifyBtnTxt}>{isSubscribed ? 'Đã đăng ký' : 'Nhận thông báo'}</Text>
               </TouchableOpacity>
             </View>
           )}

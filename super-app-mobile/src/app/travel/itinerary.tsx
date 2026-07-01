@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, FlatList, Animated, Dimensions, Alert
+  StatusBar, ScrollView, Image, FlatList, Animated, Dimensions, Alert, Share
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,10 +61,11 @@ export default function ItineraryScreen() {
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const [activeDay, setActiveDay] = useState(0);
+  const [daysState, setDaysState] = useState(DAYS);
   const [doneItems, setDoneItems] = useState<Set<string>>(new Set());
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
-  const currentDay = DAYS[activeDay];
+  const currentDay = daysState[activeDay];
 
   const toggleDone = (key: string) => {
     setDoneItems(prev => {
@@ -74,7 +75,7 @@ export default function ItineraryScreen() {
     });
   };
 
-  const totalActivities = DAYS.reduce((s, d) => s + d.activities.length, 0);
+  const totalActivities = daysState.reduce((s, d) => s + d.activities.length, 0);
   const doneCount = doneItems.size;
 
   return (
@@ -91,7 +92,7 @@ export default function ItineraryScreen() {
             <Text style={S.headerTitle}>Lịch trình AI</Text>
             <Text style={S.headerSub}>Mù Cang Chải • 3 ngày 2 đêm</Text>
           </View>
-          <TouchableOpacity style={S.shareBtn} onPress={() => Alert.alert('Chia sẻ', 'Đã sao chép link lịch trình!')}>
+          <TouchableOpacity style={S.shareBtn} onPress={() => Share.share({ message: `Lịch trình chuyến đi của tôi: ${daysState.length} ngày!` })}>
             <Ionicons name="share-outline" size={22} color="#FFF" />
           </TouchableOpacity>
           <TouchableOpacity style={S.shareBtn}>
@@ -121,13 +122,16 @@ export default function ItineraryScreen() {
         {/* DAY TABS */}
         <View style={S.dayTabs}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
-            {DAYS.map((d, i) => (
+            {daysState.map((d, i) => (
               <TouchableOpacity key={i} onPress={() => setActiveDay(i)} style={[S.dayTab, activeDay === i && S.dayTabActive]}>
                 <Text style={[S.dayTabNum, activeDay === i && S.dayTabNumActive]}>Ngày {d.day}</Text>
                 <Text style={[S.dayTabDate, activeDay === i && { color: '#0EA5E9' }]}>{d.date.split(',')[0]}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={S.addDayBtn} onPress={() => Alert.alert('Thêm ngày', 'Tính năng sắp ra mắt!')}>
+            <TouchableOpacity style={S.addDayBtn} onPress={() => {
+              setDaysState(prev => [...prev, { day: prev.length + 1, title: 'Ngày tự do', date: 'Ngày mới', activities: [] }]);
+              setActiveDay(daysState.length);
+            }}>
               <Ionicons name="add" size={20} color="#0EA5E9" />
               <Text style={{ color: '#0EA5E9', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Thêm ngày</Text>
             </TouchableOpacity>
@@ -212,7 +216,12 @@ export default function ItineraryScreen() {
           </View>
 
           {/* ADD ACTIVITY */}
-          <TouchableOpacity style={S.addActBtn} onPress={() => Alert.alert('Thêm hoạt động', 'Tính năng sắp ra mắt!')}>
+          <TouchableOpacity style={S.addActBtn} onPress={() => {
+            setDaysState(prev => prev.map((d, i) => i === activeDay ? { 
+              ...d, 
+              activities: [...d.activities, { time: '12:00', icon: '📍', title: 'Hoạt động mới', desc: 'Nhấn để chỉnh sửa', type: 'activity', done: false }]
+            } : d));
+          }}>
             <Ionicons name="add-circle-outline" size={22} color="#0EA5E9" />
             <Text style={S.addActTxt}>Thêm hoạt động vào Ngày {currentDay.day}</Text>
           </TouchableOpacity>
@@ -250,7 +259,7 @@ export default function ItineraryScreen() {
             <Text style={{ color: '#0EA5E9', fontWeight: '800', fontSize: 18 }}>4.050.000đ</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={S.outlineBtn} onPress={() => Alert.alert('Xuất', 'Đang xuất PDF lịch trình...')}>
+            <TouchableOpacity style={S.outlineBtn} onPress={() => Share.share({ message: 'Đây là bản xuất PDF lịch trình (Text thay thế) của chuyến đi!' })}>
               <Ionicons name="download-outline" size={18} color="#0EA5E9" />
               <Text style={{ color: '#0EA5E9', fontWeight: '600', marginLeft: 4 }}>Xuất</Text>
             </TouchableOpacity>

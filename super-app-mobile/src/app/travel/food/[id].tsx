@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, SafeAreaView, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, SafeAreaView, StatusBar, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -88,11 +88,11 @@ export default function FoodDetailScreen() {
 
       {/* BOTTOM ACTION BAR */}
       <View style={S.bottomBar}>
-        <TouchableOpacity style={S.dirBtn} onPress={() => Alert.alert('Bản đồ', 'Đang mở Google Maps')}>
+        <TouchableOpacity style={S.dirBtn} onPress={() => Linking.openURL('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(food.address))}>
           <Ionicons name="navigate" size={20} color="#3B82F6" />
           <Text style={S.dirBtnText}>Dẫn đường</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={S.bookBtn} onPress={() => Alert.alert('Đặt bàn', 'Yêu cầu đặt bàn đã được gửi')}>
+        <TouchableOpacity style={S.bookBtn} onPress={() => router.push({ pathname: '/travel/checkout', params: { type: 'table', name: food.name, price: 0 } })}>
           <Text style={S.bookBtnText}>Đặt bàn trước</Text>
         </TouchableOpacity>
       </View>

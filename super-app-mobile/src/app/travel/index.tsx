@@ -52,7 +52,7 @@ const CATEGORIES = [
   { id: '5', icon: '🚗', label: 'Thuê xe', route: '/travel/car' },
   { id: '6', icon: '⛺', label: 'Camping', route: '/travel/camping' },
   { id: '7', icon: '🍜', label: 'Ẩm thực', route: '/travel/food' },
-  { id: '8', icon: '📸', label: 'Check-in', route: '/travel/community' },
+  { id: '8', icon: '🤖', label: 'AI Kế hoạch', route: '/travel/budget' },
 ];
 
 interface SeasonItem {
@@ -320,7 +320,7 @@ export default function TravelHomeScreen() {
       if (route) {
         router.push(route as any);
       } else {
-        Alert.alert('🚧 Sắp ra mắt', `Tính năng "${label}" đang được phát triển!\nHãy quay lại sớm nhé 🙌`);
+        router.push('/travel/search' as any);
       }
     },
     [router]
@@ -353,16 +353,21 @@ export default function TravelHomeScreen() {
       end={{ x: 1, y: 1 }}
       style={styles.header}
     >
-      <TouchableOpacity style={styles.headerLeft} onPress={() => router.push('/travel/profile' as any)}>
-        <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80' }}
-          style={styles.headerAvatar}
-        />
-        <View style={{ marginLeft: 8 }}>
-          <Text style={styles.headerGreeting}>Du lịch cùng</Text>
-          <Text style={styles.headerName}>Nguyễn Lý ✨</Text>
-        </View>
-      </TouchableOpacity>
+      <View style={styles.headerLeft}>
+        <TouchableOpacity style={styles.headerBackBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/')}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.headerProfileRow} onPress={() => router.push('/travel/profile' as any)}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80' }}
+            style={styles.headerAvatar}
+          />
+          <View style={{ marginLeft: 8 }}>
+            <Text style={styles.headerGreeting}>Du lịch cùng</Text>
+            <Text style={styles.headerName}>Nguyễn Lý ✨</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.headerCenter}>
         <LinearGradient
@@ -378,7 +383,7 @@ export default function TravelHomeScreen() {
       <View style={styles.headerRight}>
         <TouchableOpacity
           style={styles.headerIconBtn}
-          onPress={() => Alert.alert('🔔 Thông báo', 'Bạn có 3 thông báo mới!')}
+          onPress={() => router.push('/notifications' as any)}
         >
           <Ionicons name="notifications-outline" size={22} color="#FFF" />
           <View style={styles.notifDot} />
@@ -408,13 +413,13 @@ export default function TravelHomeScreen() {
         <View style={styles.searchActions}>
           <TouchableOpacity
             style={styles.searchIconBtn}
-            onPress={() => Alert.alert('🎙️ Tìm kiếm giọng nói', 'Hãy nói điểm đến bạn muốn đến...')}
+            onPress={() => router.push({ pathname: '/travel/search', params: { autoFocus: 'voice' } } as any)}
           >
             <Ionicons name="mic" size={18} color="#0EA5E9" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.searchIconBtn}
-            onPress={() => Alert.alert('📷 Tìm kiếm bằng ảnh', 'Chụp hoặc chọn ảnh địa điểm bạn muốn tới...')}
+            onPress={() => router.push({ pathname: '/travel/search', params: { autoFocus: 'camera' } } as any)}
           >
             <Ionicons name="camera" size={18} color="#14B8A6" />
           </TouchableOpacity>
@@ -558,7 +563,7 @@ export default function TravelHomeScreen() {
         <Text style={[styles.sectionTitle, { marginBottom: 0, paddingHorizontal: 0 }]}>
           Khám phá Việt Nam
         </Text>
-        <TouchableOpacity onPress={() => Alert.alert('🗺️', 'Xem tất cả địa điểm')}>
+        <TouchableOpacity onPress={() => router.push('/travel/search' as any)}>
           <Text style={styles.seeAllText}>Xem tất cả</Text>
         </TouchableOpacity>
       </View>
@@ -646,7 +651,7 @@ export default function TravelHomeScreen() {
             key={vid.id}
             style={styles.videoCard}
             activeOpacity={0.85}
-            onPress={() => Alert.alert('▶️ Video', 'Đang phát: ' + vid.title)}
+            onPress={() => router.push('/video' as any)}
           >
             <Image source={{ uri: vid.thumbnail }} style={styles.videoThumb} />
             <View style={styles.playOverlay}>
@@ -789,6 +794,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  headerBackBtn: { padding: 6, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20 },
+  headerProfileRow: { flexDirection: 'row', alignItems: 'center' },
   headerAvatar: {
     width: 38,
     height: 38,

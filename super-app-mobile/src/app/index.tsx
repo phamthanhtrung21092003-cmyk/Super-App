@@ -244,26 +244,7 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Social Login */}
-                  <View style={styles.socialSection}>
-                    <View style={styles.orDivider}>
-                      <View style={styles.orLine} />
-                      <Text style={styles.orText}>HOẶC ĐĂNG NHẬP BẰNG</Text>
-                      <View style={styles.orLine} />
-                    </View>
 
-                    <View style={styles.socialButtonsContainer}>
-                      <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#FFFFFF'}]} activeOpacity={0.8}>
-                        <AntDesign name="google" size={20} color="#DB4437" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#1877F2'}]} activeOpacity={0.8}>
-                        <FontAwesome5 name="facebook-f" size={20} color="#FFFFFF" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#000000'}]} activeOpacity={0.8}>
-                        <AntDesign name="apple-o" size={22} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
                 </BlurView>
               </Animated.View>
 
@@ -512,43 +493,7 @@ const styles = StyleSheet.create({
   loginButtonIcon: {
     marginLeft: 10,
   },
-  socialSection: {
-    alignItems: 'center',
-  },
-  orDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 28,
-    width: '100%',
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  orText: {
-    marginHorizontal: 16,
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
-    letterSpacing: 1.5,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    ...(Platform.OS === 'web' && { gap: 24 }),
-  },
-  socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: Platform.OS !== 'web' ? 12 : 0, 
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
+
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',

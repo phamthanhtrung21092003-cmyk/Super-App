@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, TextInput, Dimensions, Alert
+  StatusBar, ScrollView, Image, TextInput, Dimensions, Alert, Share, Modal
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,6 +69,8 @@ export default function CommunityScreen() {
   const [commentText, setCommentText] = useState('');
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('Nổi bật');
+  const [isPostModalVisible, setIsPostModalVisible] = useState(false);
+  const [postText, setPostText] = useState('');
 
   const toggleLike = (id: string) => {
     setPosts(prev => prev.map(p => p.id === id ? { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 } : p));
@@ -184,7 +186,11 @@ export default function CommunityScreen() {
                   <Ionicons name="chatbubble-outline" size={24} color="#FFF" />
                   <Text style={S.actionCount}>{fmtNum(post.comments)}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={S.actionBtn} onPress={() => Alert.alert('Chia sẻ', 'Đã sao chép link!')}>
+                <TouchableOpacity style={S.actionBtn} onPress={() => {
+                  Share.share({
+                    message: `Hãy xem bài viết tuyệt vời này của ${post.user.name} trên VN Travel!`,
+                  });
+                }}>
                   <Ionicons name="share-social-outline" size={24} color="#FFF" />
                   <Text style={S.actionCount}>{fmtNum(post.shares)}</Text>
                 </TouchableOpacity>
@@ -218,7 +224,13 @@ export default function CommunityScreen() {
                     onChangeText={setCommentText}
                     multiline
                   />
-                  <TouchableOpacity onPress={() => { Alert.alert('Đã bình luận!'); setCommentText(''); setActiveCommentId(null); }}>
+                  <TouchableOpacity onPress={() => { 
+                    if (commentText.trim()) {
+                      setPosts(prev => prev.map(p => p.id === post.id ? { ...p, comments: p.comments + 1 } : p));
+                      setCommentText(''); 
+                      setActiveCommentId(null); 
+                    }
+                  }}>
                     <Ionicons name="send" size={22} color="#0EA5E9" />
                   </TouchableOpacity>
                 </View>
@@ -236,7 +248,7 @@ export default function CommunityScreen() {
             { icon: 'people', label: 'Cộng đồng', route: '/travel/community', active: true },
             { icon: 'person-outline', label: 'Hồ sơ', route: '/travel/profile' },
           ].map((tab, i) => (
-            <TouchableOpacity key={i} style={S.navTab} onPress={() => tab.route ? router.push(tab.route as any) : Alert.alert('Đăng bài', 'Tính năng sắp ra mắt!')}>
+            <TouchableOpacity key={i} style={S.navTab} onPress={() => tab.route ? router.push(tab.route as any) : setIsPostModalVisible(true)}>
               {tab.accent ? (
                 <LinearGradient colors={['#0EA5E9', '#14B8A6']} style={S.navAddBtn}>
                   <Ionicons name={tab.icon as any} size={26} color="#FFF" />
@@ -248,6 +260,60 @@ export default function CommunityScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* POST MODAL */}
+        <Modal visible={isPostModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsPostModalVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: '#1E293B', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, minHeight: 400 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>Tạo bài viết mới</Text>
+                <TouchableOpacity onPress={() => setIsPostModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={{ backgroundColor: '#0F172A', color: '#FFF', borderRadius: 12, padding: 16, minHeight: 120, textAlignVertical: 'top' }}
+                placeholder="Bạn đang nghĩ gì về chuyến đi?"
+                placeholderTextColor="#64748B"
+                multiline
+                value={postText}
+                onChangeText={setPostText}
+              />
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <TouchableOpacity style={{ padding: 12, backgroundColor: '#0F172A', borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="image" size={20} color="#10B981" />
+                  <Text style={{ color: '#E2E8F0' }}>Ảnh/Video</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ padding: 12, backgroundColor: '#0F172A', borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="location" size={20} color="#F59E0B" />
+                  <Text style={{ color: '#E2E8F0' }}>Check-in</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity 
+                style={{ backgroundColor: '#0EA5E9', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 'auto' }}
+                onPress={() => {
+                  if (postText.trim()) {
+                    setPosts(prev => [{
+                      id: 'new_' + Date.now(),
+                      user: { name: 'Nguyễn Lý', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100', followers: '0', verified: true },
+                      image: 'https://images.unsplash.com/photo-1506744626753-143d46cb5b85?w=400',
+                      caption: postText,
+                      location: 'Tại đây',
+                      likes: 0, comments: 0, shares: 0, saves: 0,
+                      time: 'Vừa xong',
+                      tags: [], type: 'image', isLiked: false, isSaved: false,
+                    }, ...prev]);
+                    setPostText('');
+                    setIsPostModalVisible(false);
+                  }
+                }}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Đăng bài</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </View>
   );

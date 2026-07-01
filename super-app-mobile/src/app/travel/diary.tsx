@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, Dimensions, Alert
+  StatusBar, ScrollView, Image, Dimensions, Alert, Share, Modal
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +54,7 @@ export default function DiaryScreen() {
 
   const [activeTrip, setActiveTrip] = useState(TRIPS[0]);
   const [activeTab, setActiveTab] = useState<'photos' | 'map' | 'expense' | 'story'>('photos');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ';
 
@@ -68,7 +69,7 @@ export default function DiaryScreen() {
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={S.headerTitle}>Nhật ký chuyến đi</Text>
-          <TouchableOpacity style={S.addBtn} onPress={() => Alert.alert('Tạo nhật ký', 'Tính năng sắp ra mắt!')}>
+          <TouchableOpacity style={S.addBtn} onPress={() => router.push('/travel/itinerary' as any)}>
             <Ionicons name="add" size={24} color="#0EA5E9" />
           </TouchableOpacity>
         </LinearGradient>
@@ -93,7 +94,7 @@ export default function DiaryScreen() {
                   )}
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity style={S.addTripCard} onPress={() => Alert.alert('Tạo chuyến đi', 'Tính năng sắp ra mắt!')}>
+              <TouchableOpacity style={S.addTripCard} onPress={() => router.push('/travel/itinerary' as any)}>
                 <LinearGradient colors={['#1E293B', '#334155']} style={S.addTripInner}>
                   <Ionicons name="add-circle-outline" size={32} color="#0EA5E9" />
                   <Text style={S.addTripTxt}>Thêm chuyến đi mới</Text>
@@ -158,7 +159,7 @@ export default function DiaryScreen() {
           {activeTab === 'photos' && (
             <View style={S.photoGrid}>
               {[...activeTrip.photos, ...activeTrip.photos, ...activeTrip.photos].slice(0, 9).map((url, i) => (
-                <TouchableOpacity key={i} style={S.photoCell} onPress={() => Alert.alert('Xem ảnh', 'Phóng to ảnh...')}>
+                <TouchableOpacity key={i} style={S.photoCell} onPress={() => setSelectedImage(url)}>
                   <Image source={{ uri: url }} style={S.photoImg} />
                   {i === 8 && (
                     <View style={S.photoMore}>
@@ -227,11 +228,11 @@ export default function DiaryScreen() {
                   {"Chuyến đi Mù Cang Chải tháng 11 là một trong những trải nghiệm đáng nhớ nhất của năm 2024. Màu vàng ươm của lúa chín trải dài trên những thửa ruộng bậc thang, tiếng gió rừng xào xạc, và hương thơm của xôi nếp Tú Lệ theo khói bếp lan tỏa vào buổi sáng sớm...\n\nĐèo Khau Phạ mờ trong mây, bộ ảnh ghi lại khoảnh khắc bình minh trên cánh đồng La Pán Tẩn, và cái cảm giác lơ lửng trên chiếc dù lượn nhìn toàn bộ thung lũng từ trên cao — những điều đó không phải camera nào ghi lại được đầy đủ."}
                 </Text>
                 <View style={S.storyFooter}>
-                  <TouchableOpacity style={S.exportBtn} onPress={() => Alert.alert('Xuất Story', 'Đang tạo Travel Story...')}>
+                  <TouchableOpacity style={S.exportBtn} onPress={() => Share.share({ message: `Nhật ký chuyến đi: ${activeTrip.title} - Rất tuyệt vời!` })}>
                     <Ionicons name="share-outline" size={16} color="#0EA5E9" />
                     <Text style={S.exportBtnTxt}>Xuất Travel Story</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={S.shareStoryBtn} onPress={() => Alert.alert('Chia sẻ', 'Đã chia sẻ lên Cộng đồng!')}>
+                  <TouchableOpacity style={S.shareStoryBtn} onPress={() => Share.share({ message: `Đọc nhật ký hành trình ${activeTrip.title} của tôi trên VN Travel ngay!` })}>
                     <LinearGradient colors={['#0EA5E9', '#14B8A6']} style={S.shareStoryGrad}>
                       <Text style={{ color: '#FFF', fontWeight: '700' }}>Chia sẻ</Text>
                     </LinearGradient>
@@ -241,6 +242,19 @@ export default function DiaryScreen() {
             </View>
           )}
         </ScrollView>
+
+        {/* IMAGE VIEWER MODAL */}
+        <Modal visible={!!selectedImage} transparent={true} animationType="fade" onRequestClose={() => setSelectedImage(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }} onPress={() => setSelectedImage(null)}>
+              <Ionicons name="close-circle" size={36} color="#FFF" />
+            </TouchableOpacity>
+            {selectedImage && (
+              <Image source={{ uri: selectedImage }} style={{ width: '100%', height: '80%' }} resizeMode="contain" />
+            )}
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </View>
   );
