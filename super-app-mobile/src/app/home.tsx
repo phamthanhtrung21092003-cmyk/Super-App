@@ -24,16 +24,10 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   
   const [showBalance, setShowBalance] = useState(false);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(5); // Thay bằng số lượng thực tế
   const [searchQuery, setSearchQuery] = useState('');
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
-
-  const MOCK_NOTIFS = [
-    { id: 'social', title: 'Mạng xã hội', icon: '🌐', count: 5 },
-    { id: 'wallet', title: 'Ví VN Pay', icon: '💳', count: 2 },
-    { id: 'shop', title: 'Mua sắm', icon: '🛒', count: 1 },
-  ];
 
   const BANNERS = [
     { id: '1', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80', title: 'Siêu Sale 50%' },
@@ -47,6 +41,7 @@ export default function HomeScreen() {
     { id: 'jobs', title: 'Việc làm', icon: '💼', route: '/jobs' },
     { id: 'shop', title: 'Mua sắm', icon: '🛒', route: '/shopping' },
     { id: 'business', title: 'Doanh nghiệp', icon: '🏢', route: '/business' },
+    { id: 'utilities', title: 'Tiện ích', icon: '🧰', route: '/utilities' },
     { id: 'appearance', title: 'Giao diện', icon: '🎨', route: '/settings' },
   ];
 
@@ -56,6 +51,7 @@ export default function HomeScreen() {
       title: 'Dịch vụ Đa dụng (Siêu App)',
       items: [
         { id: 'transport', title: 'Vận chuyển', icon: '🛵', route: '/transport' },
+        { id: 'food', title: 'Đặt đồ ăn', icon: '🍔', route: '/food' },
         { id: 'health', title: 'Sức khỏe', icon: '⚕️', route: '/health' },
         { id: 'cleaning', title: 'Dọn dẹp', icon: '🧹', route: '/cleaning' },
       ]
@@ -107,15 +103,6 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
 
-            <View style={styles.headerRight}>
-              <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={() => setIsNotifOpen(true)}
-              >
-                <Text style={styles.iconText}>🔔</Text>
-                <View style={[styles.badge, { backgroundColor: '#EF4444' }]} />
-              </TouchableOpacity>
-            </View>
           </View>
 
           <ScrollView 
@@ -173,6 +160,24 @@ export default function HomeScreen() {
                   >
                     <View style={[styles.gridIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.1)`, borderColor: `rgba(${accentRgb}, 0.3)` }]}>
                       <Text style={styles.gridIcon}>{item.icon}</Text>
+                      {item.id === 'utilities' && notificationCount > 0 && (
+                        <View style={[styles.badge, { 
+                          backgroundColor: '#EF4444', 
+                          top: -6, 
+                          right: -6, 
+                          width: 20, 
+                          height: 20, 
+                          borderRadius: 10,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderWidth: 2,
+                          borderColor: '#111827'
+                        }]}>
+                          <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>
+                            {notificationCount > 99 ? '99+' : notificationCount}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <Text style={[styles.gridTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 13 * theme.fontSizeScale }]}>{item.title}</Text>
                   </View>
@@ -231,49 +236,6 @@ export default function HomeScreen() {
               <Text style={[styles.tabText, { fontFamily: theme.fontFamily, fontSize: 12 * theme.fontSizeScale }]}>Tài khoản</Text>
             </TouchableOpacity>
           </View>
-
-          {/* ===== NOTIFICATION SIDEBAR MODAL ===== */}
-          <Modal
-            visible={isNotifOpen}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setIsNotifOpen(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <TouchableOpacity 
-                style={styles.modalBackdrop} 
-                activeOpacity={1} 
-                onPress={() => setIsNotifOpen(false)} 
-              />
-              <View style={[styles.sidebar, { borderColor: `rgba(${accentRgb}, 0.3)` }]}>
-                <Text style={[styles.sidebarTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 22 * theme.fontSizeScale }]}>Thông báo</Text>
-                <Text style={[styles.sidebarSubtitle, { fontFamily: theme.fontFamily }]}>Theo ứng dụng</Text>
-
-                <ScrollView style={styles.sidebarContent}>
-                  {MOCK_NOTIFS.map((notif) => (
-                    <TouchableOpacity 
-                      key={notif.id} 
-                      style={styles.notifRowContainer}
-                    >
-                      <View style={styles.notifRow}>
-                        <View style={styles.notifLeft}>
-                          <View style={[styles.notifIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.15)` }]}>
-                            <Text style={styles.notifIcon}>{notif.icon}</Text>
-                          </View>
-                          <Text style={[styles.notifAppTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 16 * theme.fontSizeScale }]}>{notif.title}</Text>
-                        </View>
-                        
-                        {/* Badge Số lượng */}
-                        <View style={[styles.notifBadge, { backgroundColor: accentHex }]}>
-                          <Text style={styles.notifBadgeText}>{notif.count}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </View>
-          </Modal>
 
         </ImageBackground>
       </SafeAreaView>

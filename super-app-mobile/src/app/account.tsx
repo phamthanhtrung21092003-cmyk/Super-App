@@ -522,6 +522,8 @@ export default function AccountScreen() {
                 <View style={styles.sheetHandle} />
                 <Text style={[styles.moreTitle, { fontFamily: theme.fontFamily }]}>Tùy chọn</Text>
                 {[
+                  { icon: 'briefcase-outline', label: 'Kênh Đối tác (Partner)', color: accentHex, fn: () => router.push('/partner') },
+                  { icon: 'restaurant-outline', label: 'Quản lý Cửa hàng (Food Merchant)', color: '#F97316', fn: () => router.push('/food-merchant') },
                   { icon: 'shield-checkmark-outline', label: 'Cài đặt quyền riêng tư', color: '#FFF', fn: () => router.push('/settings') },
                   { icon: 'log-out-outline', label: 'Đăng xuất tài khoản', color: '#FF4D4D', fn: handleLogout },
                 ].map((opt, i) => (

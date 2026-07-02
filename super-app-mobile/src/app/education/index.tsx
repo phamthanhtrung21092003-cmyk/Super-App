@@ -36,7 +36,7 @@ export default function RoleSelection() {
       <StatusBar barStyle="dark-content" backgroundColor={T.bg} />
       <SafeAreaView style={S.safe}>
         <View style={S.header}>
-          <TouchableOpacity onPress={() => router.replace('/')} style={S.backBtn}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/home')} style={S.backBtn}>
             <Ionicons name="arrow-back" size={24} color={T.primary} />
           </TouchableOpacity>
           <Text style={S.headerTitle}>HỆ SINH THÁI GIÁO DỤC</Text>

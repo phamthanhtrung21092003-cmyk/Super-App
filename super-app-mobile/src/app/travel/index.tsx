@@ -52,7 +52,7 @@ const CATEGORIES = [
   { id: '5', icon: '🚗', label: 'Thuê xe', route: '/travel/car' },
   { id: '6', icon: '⛺', label: 'Camping', route: '/travel/camping' },
   { id: '7', icon: '🍜', label: 'Ẩm thực', route: '/travel/food' },
-  { id: '8', icon: '🤖', label: 'AI Kế hoạch', route: '/travel/budget' },
+  { id: '8', icon: '🤖', label: 'Lên kế hoạch AI', route: '/travel/budget' },
 ];
 
 interface SeasonItem {
@@ -329,10 +329,11 @@ export default function TravelHomeScreen() {
   const handleAIAssistant = () => {
     Alert.alert(
       '🤖 Trợ lý AI VN Travel',
-      `Xin chào! Dựa vào tháng ${new Date().getMonth() + 1} hiện tại, tôi gợi ý:\n\n${currentSeason.emoji} ${currentSeason.title}\n\n${currentSeason.desc}\n\nBạn có muốn xem chi tiết hành trình không?`,
+      `Xin chào! Tôi có thể giúp bạn lên kế hoạch du lịch hoàn hảo dựa trên ngân sách, số người và số ngày đi của bạn.\n\nHoặc tôi cũng có thể gợi ý lịch trình theo mùa (Tháng ${new Date().getMonth() + 1}). Bạn muốn chọn chức năng nào?`,
       [
-        { text: 'Để sau', style: 'cancel' },
-        { text: '🗺️ Lên kế hoạch ngay', onPress: () => router.push('/travel/itinerary' as any) },
+        { text: 'Lên ngân sách AI', onPress: () => router.push('/travel/budget' as any) },
+        { text: 'Lịch trình theo mùa', onPress: () => router.push('/travel/itinerary' as any) },
+        { text: 'Đóng', style: 'cancel' },
       ]
     );
   };
