@@ -41,7 +41,6 @@ export default function HomeScreen() {
     { id: 'jobs', title: 'Việc làm', icon: '💼', route: '/jobs' },
     { id: 'shop', title: 'Mua sắm', icon: '🛒', route: '/shopping' },
     { id: 'business', title: 'Doanh nghiệp', icon: '🏢', route: '/business' },
-    { id: 'utilities', title: 'Tiện ích', icon: '🧰', route: '/utilities' },
     { id: 'appearance', title: 'Giao diện', icon: '🎨', route: '/settings' },
   ];
 

@@ -5,18 +5,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import WebMap from '../../components/WebMap';
 import * as Location from 'expo-location';
 
 export default function RideSearch() {
   const router = useRouter();
   const [pickup, setPickup] = useState('Vị trí hiện tại');
   const [destination, setDestination] = useState('');
-  const [region, setRegion] = useState({
-    latitude: 21.028511,
-    longitude: 105.804817,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+  const [coords, setCoords] = useState({
+    lat: 21.028511,
+    lng: 105.804817
   });
 
   useEffect(() => {
@@ -24,14 +22,16 @@ export default function RideSearch() {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
       let location = await Location.getCurrentPositionAsync({});
-      setRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+      setCoords({
+        lat: location.coords.latitude,
+        lng: location.coords.longitude
       });
     })();
   }, []);
+
+  const mapPoints = [
+    { lat: coords.lat, lng: coords.lng, label: 'Điểm đón của bạn', color: '#3B82F6' }
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -40,7 +40,13 @@ export default function RideSearch() {
         {/* Top Search Area */}
         <View style={styles.searchHeader}>
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity 
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+                else router.replace('/ride');
+              }} 
+              style={styles.backButton}
+            >
               <Ionicons name="arrow-back" size={24} color="#0F172A" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Chọn điểm đến</Text>
@@ -70,7 +76,12 @@ export default function RideSearch() {
                 autoFocus
               />
             </View>
-            <TouchableOpacity style={styles.addStopBtn}>
+            <TouchableOpacity 
+              style={styles.addStopBtn}
+              onPress={() => {
+                if (Platform.OS === 'web') window.alert('Thêm điểm dừng: Tính năng hỗ trợ đặt xe tối đa 3 điểm dừng.');
+              }}
+            >
               <Ionicons name="add" size={24} color="#0F172A" />
             </TouchableOpacity>
           </View>
@@ -78,15 +89,12 @@ export default function RideSearch() {
 
         {/* Map Area */}
         <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            region={region}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            // provider={PROVIDER_GOOGLE}
-          >
-            <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
-          </MapView>
+          <WebMap
+            points={mapPoints}
+            showRoute={false}
+            height={200}
+            zoom={15}
+          />
           
           {/* Mock AI Suggestion for Search */}
           {destination.toLowerCase().includes('royal') && (
@@ -98,7 +106,7 @@ export default function RideSearch() {
         </View>
 
         {/* Suggestions List */}
-        <ScrollView style={styles.suggestionsList}>
+        <ScrollView style={styles.suggestionsList} showsVerticalScrollIndicator={false}>
           <TouchableOpacity style={styles.suggestionItem} onPress={() => router.push('/ride/booking')}>
             <View style={styles.suggestionIcon}>
               <Ionicons name="business" size={20} color="#475569" />
@@ -139,20 +147,19 @@ const styles = StyleSheet.create({
   timeline: { alignItems: 'center', marginRight: 16, width: 12 },
   dotBlue: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#3B82F6' },
   line: { width: 2, height: 40, backgroundColor: '#E2E8F0', marginVertical: 4 },
-  dotRed: { width: 10, height: 10, backgroundColor: '#EF4444' }, // Square for destination
+  dotRed: { width: 10, height: 10, backgroundColor: '#EF4444' },
   
   inputs: { flex: 1, gap: 12 },
-  inputBox: { backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, fontSize: 16, color: '#0F172A', fontWeight: '500' },
+  inputBox: { backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, fontSize: 16, color: '#0F172A', fontWeight: '500', ...(Platform.OS === 'web' && { outlineStyle: 'none' as any }) },
   inputBoxActive: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#10B981' },
   addStopBtn: { padding: 12, marginLeft: 8 },
   
-  mapContainer: { flex: 1, position: 'relative' },
-  map: { ...StyleSheet.absoluteFillObject },
+  mapContainer: { height: 200, position: 'relative' },
   
-  aiFloatingBubble: { position: 'absolute', top: 16, left: 16, right: 16, backgroundColor: '#FFFFFF', padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', elevation: 4, shadowColor: '#10B981', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+  aiFloatingBubble: { position: 'absolute', top: 16, left: 16, right: 16, backgroundColor: '#FFFFFF', padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', elevation: 4, shadowColor: '#10B981', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, zIndex: 100 },
   aiFloatingText: { color: '#0F172A', fontWeight: '500', fontSize: 14, flex: 1 },
   
-  suggestionsList: { height: 250, backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, padding: 20, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+  suggestionsList: { flex: 1, backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, padding: 20, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, zIndex: 10 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   suggestionIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   suggestionInfo: { flex: 1 },

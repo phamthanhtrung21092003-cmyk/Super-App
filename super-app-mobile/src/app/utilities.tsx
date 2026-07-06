@@ -96,7 +96,7 @@ export default function UtilitiesScreen() {
                       activeOpacity={0.7}
                       onPress={() => {
                         if (item.id === 'transport') {
-                          router.push('/transport');
+                          router.push('/delivery');
                         } else if (item.id === 'health') {
                           router.push('/health');
                         } else if (item.id === 'mart') {
