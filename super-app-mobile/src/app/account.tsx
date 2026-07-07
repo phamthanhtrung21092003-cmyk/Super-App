@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Image,
   ScrollView, StatusBar, Platform, Modal, TextInput,
-  useWindowDimensions, SafeAreaView, Alert, ImageBackground,
+  useWindowDimensions, SafeAreaView, Alert, ImageBackground, Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';

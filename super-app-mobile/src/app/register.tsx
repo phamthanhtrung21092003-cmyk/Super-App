@@ -75,55 +75,23 @@ export default function RegisterScreen() {
   const strengthLabel = { weak: 'Yếu', medium: 'Trung bình', strong: 'Mạnh', 'very-strong': 'Rất mạnh' }[strengthLevel];
 
   const handleRegister = async () => {
-    let isValid = true;
     setRegisterError('');
+    setNameError('');
+    setPhoneError('');
+    setPasswordError('');
+    setConfirmError('');
+    setTermsError('');
 
-    if (!fullName.trim()) {
-      setNameError('Vui lòng nhập họ và tên');
-      isValid = false;
-    } else {
-      setNameError('');
-    }
-
-    const phoneRegex = /^0[0-9]{9,10}$/;
-    if (!phone) {
-      setPhoneError('Vui lòng nhập số điện thoại');
-      isValid = false;
-    } else if (!phoneRegex.test(phone)) {
-      setPhoneError('Số điện thoại không hợp lệ');
-      isValid = false;
-    } else {
-      setPhoneError('');
-    }
-
-    if (!password) {
-      setPasswordError('Vui lòng nhập mật khẩu');
-      isValid = false;
-    } else if (passedCount < 5) {
-      setPasswordError('Mật khẩu chưa đủ tiêu chí bảo mật');
-      isValid = false;
-    } else {
-      setPasswordError('');
-    }
-
-    if (!confirmPassword) {
-      setConfirmError('Vui lòng xác nhận mật khẩu');
-      isValid = false;
-    } else if (confirmPassword !== password) {
+    // Basic password match check
+    if (password && confirmPassword && password !== confirmPassword) {
       setConfirmError('Mật khẩu không khớp');
-      isValid = false;
-    } else {
-      setConfirmError('');
+      return;
     }
 
     if (!agreeTerms) {
       setTermsError('Vui lòng đồng ý với Điều khoản');
-      isValid = false;
-    } else {
-      setTermsError('');
+      return;
     }
-
-    if (!isValid) return;
 
     setIsLoading(true);
     const result = await registerAccount(phone, password, fullName.trim());

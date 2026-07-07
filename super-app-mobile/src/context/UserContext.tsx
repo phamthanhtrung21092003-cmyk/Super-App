@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../services/authService';
+
 
 export type SavingsBook = {
   id: string;
@@ -56,6 +58,9 @@ type UserContextType = {
   // Auth
   registerAccount: (phone: string, password: string, fullName: string) => Promise<{ success: boolean; message: string }>;
   loginCheck: (phone: string, password: string) => Promise<{ success: boolean; fullName?: string; message: string }>;
+  isLoggedIn: boolean;
+  currentUser: any;
+
   // Marketplace Additions
   addresses: Address[];
   addAddress: (address: Omit<Address, 'id'>) => void;
@@ -71,7 +76,10 @@ type UserContextType = {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [userName, setUserNameState] = useState('Phạm Thành Trung ✨');
+
   // Ảnh mặc định sẽ là chữ cái đầu của tên (PT) với màu nền cố định để không bị đổi màu liên tục
   const [avatarUrl, setAvatarUrlState] = useState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512');
   const [bio, setBioState] = useState('Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨');
@@ -142,28 +150,59 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const registerAccount = async (phone: string, password: string, fullName: string): Promise<{ success: boolean; message: string }> => {
     try {
-      const accounts = await getAccounts();
-      const exists = accounts.find((a) => a.phone === phone);
-      if (exists) {
-        return { success: false, message: 'Số điện thoại này đã được đăng ký!' };
-      }
-      const newAccounts = [...accounts, { phone, password, fullName }];
-      await AsyncStorage.setItem('accounts', JSON.stringify(newAccounts));
+      await authService.register(phone, password, fullName);
       return { success: true, message: 'Đăng ký thành công!' };
-    } catch {
+    } catch (error: any) {
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        if (status === 409) {
+          return { success: false, message: 'Số điện thoại đã tồn tại.' };
+        }
+        if (status === 400 && data && data.message) {
+          return { success: false, message: data.message };
+        }
+      }
+      if (error.request) {
+        return { success: false, message: 'Không thể kết nối máy chủ.' };
+      }
       return { success: false, message: 'Có lỗi xảy ra, vui lòng thử lại.' };
     }
   };
 
+
   const loginCheck = async (phone: string, password: string): Promise<{ success: boolean; fullName?: string; message: string }> => {
     try {
-      const accounts = await getAccounts();
-      const found = accounts.find((a) => a.phone === phone && a.password === password);
-      if (found) {
-        return { success: true, fullName: found.fullName, message: 'Đăng nhập thành công!' };
+      const result = await authService.login(phone, password);
+      
+      const tokenExpiresAt = Date.now() + result.expiresIn * 1000;
+
+      // Save tokens and user to AsyncStorage
+      await AsyncStorage.setItem('accessToken', result.accessToken);
+      await AsyncStorage.setItem('refreshToken', result.refreshToken);
+      await AsyncStorage.setItem('currentUser', JSON.stringify(result.user));
+      await AsyncStorage.setItem('tokenExpiresAt', tokenExpiresAt.toString());
+      
+      // Update local state
+      setCurrentUser(result.user);
+      setIsLoggedIn(true);
+
+      // Update userName state in context & AsyncStorage to display correct name in UI
+      setUserNameState(result.user.fullName);
+      await AsyncStorage.setItem('userName', result.user.fullName);
+
+      return { success: true, fullName: result.user.fullName, message: 'Đăng nhập thành công!' };
+
+    } catch (error: any) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          return { success: false, message: 'Số điện thoại hoặc mật khẩu không đúng.' };
+        }
       }
-      return { success: false, message: 'Số điện thoại hoặc mật khẩu không đúng.' };
-    } catch {
+      if (error.request) {
+        return { success: false, message: 'Không thể kết nối máy chủ.' };
+      }
       return { success: false, message: 'Có lỗi xảy ra, vui lòng thử lại.' };
     }
   };
@@ -195,7 +234,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (storedTx) setTransactions(JSON.parse(storedTx));
         if (storedBanks) setLinkedBanks(JSON.parse(storedBanks));
         if (storedSavings) setSavingsBooks(JSON.parse(storedSavings));
+
+        // Restore auth session
+        const token = await AsyncStorage.getItem('accessToken');
+        const rToken = await AsyncStorage.getItem('refreshToken');
+        const userStr = await AsyncStorage.getItem('currentUser');
+        if (token && rToken && userStr) {
+          setCurrentUser(JSON.parse(userStr));
+          setIsLoggedIn(true);
+        }
       } catch (e) {
+
         console.log('Failed to load user data');
       }
     };
@@ -298,6 +347,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       linkedBanks, addLinkedBank,
       savingsBooks, openSavingsBook, topUpSavingsBook,
       registerAccount, loginCheck,
+      isLoggedIn, currentUser,
       addresses, addAddress, deleteAddress, setDefaultAddress,
       coins, setCoins, rewardPoints, setRewardPoints, vipTier,
     }}>

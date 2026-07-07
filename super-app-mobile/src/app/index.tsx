@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+
 import { 
   StyleSheet, 
   Text, 
@@ -24,7 +25,14 @@ import { useUser } from '../context/UserContext';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { loginCheck } = useUser();
+  const { loginCheck, isLoggedIn } = useUser();
+  
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.replace('/home');
+    }
+  }, [isLoggedIn]);
+
   
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -83,7 +91,7 @@ export default function LoginScreen() {
     setIsLoading(false);
 
     if (result.success) {
-      router.push({ pathname: '/otp', params: { name: result.fullName } });
+      router.replace('/home');
     } else {
       setLoginError(result.message);
     }
