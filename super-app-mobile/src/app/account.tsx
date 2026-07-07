@@ -3,6 +3,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity, Image,
   ScrollView, StatusBar, Platform, Modal, TextInput,
   useWindowDimensions, SafeAreaView, Alert, ImageBackground, Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,7 +65,7 @@ export default function AccountScreen() {
   const { theme } = useTheme();
   const { 
     userName, avatarUrl, setAvatarUrl, bio, setBio, accentHex, accentRgb, bgUrl, setUserName,
-    addresses, addAddress, deleteAddress, setDefaultAddress, coins, rewardPoints, vipTier 
+    addresses, addAddress, deleteAddress, setDefaultAddress, coins, rewardPoints, vipTier, logout
   } = useUser();
   const { width, height } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
@@ -91,6 +92,7 @@ export default function AccountScreen() {
   // Edit states
   const [editName, setEditName] = useState(userName);
   const [editBio, setEditBio] = useState(bio);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState({ visible: false, message: '' });
@@ -136,13 +138,20 @@ export default function AccountScreen() {
   };
 
   const handleLogout = () => {
+    const performLogout = async () => {
+      setIsLoggingOut(true);
+      await logout();
+      setIsLoggingOut(false);
+      router.replace('/');
+    };
+
     if (Platform.OS === 'web') {
       const confirm = window.confirm('Bạn có chắc chắn muốn đăng xuất không?');
-      if (confirm) router.replace('/');
+      if (confirm) performLogout();
     } else {
       Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất không?', [
         { text: 'Hủy', style: 'cancel' },
-        { text: 'Đăng xuất', style: 'destructive', onPress: () => router.replace('/') }
+        { text: 'Đăng xuất', style: 'destructive', onPress: performLogout }
       ]);
     }
   };
@@ -668,6 +677,25 @@ export default function AccountScreen() {
               </BlurView>
             </View>
           </Modal>
+
+          {isLoggingOut && (
+            <View style={{
+              ...StyleSheet.absoluteFill,
+              backgroundColor: 'rgba(0,0,0,0.65)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 99999,
+            }}>
+              <ActivityIndicator size="large" color={accentHex} />
+              <Text style={{
+                color: '#FFF',
+                marginTop: 16,
+                fontFamily: theme.fontFamily,
+                fontSize: 15,
+                fontWeight: '600',
+              }}>Đang đăng xuất...</Text>
+            </View>
+          )}
 
         </ImageBackground>
       </SafeAreaView>

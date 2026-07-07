@@ -9,11 +9,22 @@ export const authService = {
     });
   },
 
-  async login(phone: string, password: string): Promise<{ user: any; accessToken: string; refreshToken: string }> {
+  async login(phone: string, password: string): Promise<{ user: any; accessToken: string; refreshToken: string; expiresIn: number }> {
     const response = await apiClient.post('/auth/login', {
       phone,
       password,
     });
     return response.data;
+  },
+
+  async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    const response = await apiClient.post('/auth/refresh', {
+      refreshToken,
+    });
+    return response.data;
+  },
+
+  async logout(): Promise<void> {
+    await apiClient.post('/auth/logout');
   },
 };

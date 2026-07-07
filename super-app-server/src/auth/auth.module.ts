@@ -12,7 +12,7 @@ import { AuthController } from './auth.controller';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'super-app-secret-jwt-key-2026',
+        secret: configService.get<string>('JWT_ACCESS_SECRET') || 'super-app-secret-jwt-key-2026',
         signOptions: {
           expiresIn: '15m',
         },

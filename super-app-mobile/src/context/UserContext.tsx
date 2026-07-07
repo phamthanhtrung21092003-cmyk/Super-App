@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
+import { setSessionExpiredHandler } from '../services/apiClient';
 
 
 export type SavingsBook = {
@@ -60,6 +61,8 @@ type UserContextType = {
   loginCheck: (phone: string, password: string) => Promise<{ success: boolean; fullName?: string; message: string }>;
   isLoggedIn: boolean;
   currentUser: any;
+  restoreSession: () => Promise<void>;
+  logout: () => Promise<void>;
 
   // Marketplace Additions
   addresses: Address[];
@@ -207,7 +210,128 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const restoreSession = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      const rToken = await AsyncStorage.getItem('refreshToken');
+      const userStr = await AsyncStorage.getItem('currentUser');
+      const expiresAtStr = await AsyncStorage.getItem('tokenExpiresAt');
+
+      if (!token || !rToken || !userStr || !expiresAtStr) {
+        setIsLoggedIn(false);
+        setCurrentUser(null);
+        return;
+      }
+
+      const expiresAt = parseInt(expiresAtStr, 10);
+      const now = Date.now();
+
+      // Kiểm tra xem Access Token còn hạn không (trừ đi 5 giây độ trễ mạng)
+      if (expiresAt > now + 5000) {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        setUserNameState(user.fullName || 'Phạm Thành Trung ✨');
+        setIsLoggedIn(true);
+        console.log('Session restored.');
+      } else {
+        console.log('Access token expired. Attempting refresh...');
+        try {
+          const result = await authService.refreshToken(rToken);
+          
+          const newTokenExpiresAt = Date.now() + result.expiresIn * 1000;
+          await AsyncStorage.setItem('accessToken', result.accessToken);
+          await AsyncStorage.setItem('refreshToken', result.refreshToken);
+          await AsyncStorage.setItem('tokenExpiresAt', newTokenExpiresAt.toString());
+
+          const user = JSON.parse(userStr);
+          setCurrentUser(user);
+          setUserNameState(user.fullName || 'Phạm Thành Trung ✨');
+          setIsLoggedIn(true);
+          console.log('Access Token refreshed.');
+        } catch (refreshError) {
+          console.log('Session expired.');
+          await AsyncStorage.removeItem('accessToken');
+          await AsyncStorage.removeItem('refreshToken');
+          await AsyncStorage.removeItem('currentUser');
+          await AsyncStorage.removeItem('tokenExpiresAt');
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+        }
+      }
+    } catch (e) {
+      console.log('Failed to restore session:', e);
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      console.log('User logout...');
+      await authService.logout();
+    } catch (error) {
+      console.warn('API logout failed, clearing local session anyway:', error);
+    } finally {
+      // Xóa tất cả các khóa lưu trữ thông tin cá nhân và cài đặt người dùng khỏi AsyncStorage
+      await AsyncStorage.removeItem('accessToken');
+      await AsyncStorage.removeItem('refreshToken');
+      await AsyncStorage.removeItem('currentUser');
+      await AsyncStorage.removeItem('tokenExpiresAt');
+      await AsyncStorage.removeItem('userName');
+      await AsyncStorage.removeItem('avatarUrl');
+      await AsyncStorage.removeItem('bio');
+      await AsyncStorage.removeItem('walletBalance');
+      await AsyncStorage.removeItem('transactions');
+      await AsyncStorage.removeItem('linkedBanks');
+      await AsyncStorage.removeItem('savingsBooks');
+      await AsyncStorage.removeItem('addresses');
+      await AsyncStorage.removeItem('coins');
+      await AsyncStorage.removeItem('rewardPoints');
+      await AsyncStorage.removeItem('vipTier');
+
+      // Khôi phục các biến state local về giá trị mặc định ban đầu
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+      setUserNameState('Phạm Thành Trung ✨');
+      setAvatarUrlState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512');
+      setBioState('Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨');
+      setWalletBalance(1000000000);
+      setTransactions([
+        { id: '1', title: 'Highlands Coffee', amount: '-45.000đ', type: 'out', date: 'Hôm nay, 08:30', icon: 'cafe-outline', bg: '#FEE2E2', color: '#EF4444' },
+        { id: '2', title: 'Nguyễn Văn A', desc: 'Chuyển tiền ăn trưa', amount: '+250.000đ', type: 'in', date: 'Hôm qua, 15:45', icon: 'person-outline', bg: '#D1FAE5', color: '#10B981' },
+      ]);
+      setLinkedBanks([
+        { id: 'vcb', name: 'Vietcombank', account: '**** 1234', color: '#10B981', icon: 'leaf' }
+      ]);
+      setSavingsBooks([]);
+      setAddresses([
+        {
+          id: 'addr_1',
+          receiverName: 'Phạm Thành Trung',
+          receiverPhone: '0987654321',
+          province: 'TP. Hồ Chí Minh',
+          district: 'Quận 1',
+          ward: 'Phường Bến Nghé',
+          detailAddress: '45 Lê Lợi',
+          note: 'Giao giờ hành chính',
+          isDefault: true
+        }
+      ]);
+      setCoins(15000);
+      setRewardPoints(1850);
+      setVipTier('Vàng');
+
+      console.log('Session and all personal data cleared.');
+    }
+  };
+
   useEffect(() => {
+    // Thiết lập handler thông báo hết hạn phiên làm việc cho apiClient
+    setSessionExpiredHandler(() => {
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+    });
+
     const loadData = async () => {
       try {
         const storedUserName = await AsyncStorage.getItem('userName');
@@ -235,16 +359,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (storedBanks) setLinkedBanks(JSON.parse(storedBanks));
         if (storedSavings) setSavingsBooks(JSON.parse(storedSavings));
 
-        // Restore auth session
-        const token = await AsyncStorage.getItem('accessToken');
-        const rToken = await AsyncStorage.getItem('refreshToken');
-        const userStr = await AsyncStorage.getItem('currentUser');
-        if (token && rToken && userStr) {
-          setCurrentUser(JSON.parse(userStr));
-          setIsLoggedIn(true);
-        }
+        // Khôi phục phiên làm việc
+        await restoreSession();
       } catch (e) {
-
         console.log('Failed to load user data');
       }
     };
@@ -347,7 +464,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       linkedBanks, addLinkedBank,
       savingsBooks, openSavingsBook, topUpSavingsBook,
       registerAccount, loginCheck,
-      isLoggedIn, currentUser,
+      isLoggedIn, currentUser, restoreSession, logout,
       addresses, addAddress, deleteAddress, setDefaultAddress,
       coins, setCoins, rewardPoints, setRewardPoints, vipTier,
     }}>
