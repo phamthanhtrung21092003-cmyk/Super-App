@@ -1,9 +1,23 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserRegisterDto } from './dto/user-register.dto';
 import { UserLoginDto } from './dto/user-login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Auth')
@@ -15,7 +29,11 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Đăng ký tài khoản người dùng (User)' })
   @ApiBody({ type: UserRegisterDto })
-  @ApiResponse({ status: 201, description: 'Đăng ký thành công', schema: { example: { message: 'Register successfully' } } })
+  @ApiResponse({
+    status: 201,
+    description: 'Đăng ký thành công',
+    schema: { example: { message: 'Register successfully' } },
+  })
   @ApiResponse({ status: 400, description: 'Dữ liệu đầu vào DTO không hợp lệ' })
   @ApiResponse({ status: 409, description: 'Số điện thoại đã tồn tại' })
   async register(@Body() dto: UserRegisterDto) {
@@ -44,7 +62,10 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Số điện thoại hoặc mật khẩu không chính xác' })
+  @ApiResponse({
+    status: 401,
+    description: 'Số điện thoại hoặc mật khẩu không chính xác',
+  })
   async login(@Body() dto: UserLoginDto) {
     return this.authService.loginUser(dto);
   }
@@ -65,7 +86,10 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 400, description: 'Dữ liệu đầu vào không hợp lệ' })
-  @ApiResponse({ status: 401, description: 'Refresh token không hợp lệ hoặc hết hạn' })
+  @ApiResponse({
+    status: 401,
+    description: 'Refresh token không hợp lệ hoặc hết hạn',
+  })
   async refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshToken(dto);
   }
@@ -75,7 +99,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Đăng xuất người dùng' })
-  @ApiResponse({ status: 200, description: 'Logout successfully', schema: { example: { message: 'Logout successfully' } } })
+  @ApiResponse({
+    status: 200,
+    description: 'Logout successfully',
+    schema: { example: { message: 'Logout successfully' } },
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async logout(@Req() req: any) {
     const userId = req.user.sub;

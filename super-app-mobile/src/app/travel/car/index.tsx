@@ -22,7 +22,7 @@ export default function CarRentalScreen() {
   const [activeFilter, setActiveFilter] = useState('Tất cả');
 
   return (
-    <View style={[S.root, { backgroundColor: theme.background }]}>
+    <View style={[S.root, { backgroundColor: theme.background || '#F8FAFC' }]}>
       <SafeAreaView style={S.safe}>
         <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
         

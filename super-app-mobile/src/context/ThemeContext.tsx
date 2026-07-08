@@ -10,6 +10,7 @@ export interface ThemeState {
   fontSizeScale: number;
   textColor: string;
   backgroundImage: string | null;
+  background?: string;
 }
 
 const DEFAULT_THEME: ThemeState = {
@@ -17,6 +18,7 @@ const DEFAULT_THEME: ThemeState = {
   fontSizeScale: 1.0,
   textColor: '#FFFFFF',
   backgroundImage: null, // null means use default array
+  background: '#F8FAFC', // Default bright background for travel/explore content screens
 };
 
 interface ThemeContextProps {

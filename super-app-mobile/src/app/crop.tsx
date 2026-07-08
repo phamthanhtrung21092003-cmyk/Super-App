@@ -108,11 +108,13 @@ export default function CropScreen() {
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      setAvatarUrl(result.uri);
+      await setAvatarUrl(result.uri);
       router.back();
     } catch (error) {
       console.error(error);
-      alert('Đã xảy ra lỗi khi cắt ảnh!');
+      const err = error as { response?: { data?: { message?: string } } };
+      const errMsg = err.response?.data?.message || 'Đã xảy ra lỗi khi tải ảnh lên!';
+      alert(errMsg);
       setLoading(false);
     }
   };

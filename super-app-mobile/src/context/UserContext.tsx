@@ -1,9 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setSessionExpiredHandler } from '../services/apiClient';
+import { setSessionExpiredHandler, getBaseURL } from '../services/apiClient';
 import { authRepository } from '../modules/auth/repository/authRepository';
 import { paymentRepository } from '../modules/payment/repository/paymentRepository';
 import { userRepository } from '../modules/user/repository/userRepository';
+import { authService } from '../services/authService';
 
 
 export type SavingsBook = {
@@ -61,6 +62,7 @@ type UserContextType = {
   // Auth
   registerAccount: (phone: string, password: string, fullName: string) => Promise<{ success: boolean; message: string }>;
   loginCheck: (phone: string, password: string) => Promise<{ success: boolean; fullName?: string; message: string }>;
+  updateAvatar: (file: { uri: string; name: string; type: string }) => Promise<any>;
   isLoggedIn: boolean;
   currentUser: any;
   restoreSession: () => Promise<void>;
@@ -84,6 +86,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userName, setUserNameState] = useState('Phạm Thành Trung ✨');
+
+  const getFullAvatarUrl = (url: string | null | undefined): string => {
+    if (!url) {
+      return 'https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512';
+    }
+    if (url.startsWith('http')) return url;
+    const baseUrl = getBaseURL();
+    const serverUrl = baseUrl.replace('/api/v1', '');
+    return `${serverUrl}${url}`;
+  };
 
   // Ảnh mặc định sẽ là chữ cái đầu của tên (PT) với màu nền cố định để không bị đổi màu liên tục
   const [avatarUrl, setAvatarUrlState] = useState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512');
@@ -182,7 +194,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const addrs = await userRepository.getAddresses(result.user.id);
         
         setUserNameState(profile.fullName);
-        setAvatarUrlState(profile.avatarUrl);
+        setAvatarUrlState(getFullAvatarUrl(profile.avatarUrl));
         setBioState(profile.bio);
         setCoins(profile.coins);
         setRewardPoints(profile.rewardPoints);
@@ -220,7 +232,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const addrs = await userRepository.getAddresses(result.user.id);
         
         setUserNameState(profile.fullName);
-        setAvatarUrlState(profile.avatarUrl);
+        setAvatarUrlState(getFullAvatarUrl(profile.avatarUrl));
         setBioState(profile.bio);
         setCoins(profile.coins);
         setRewardPoints(profile.rewardPoints);
@@ -338,10 +350,47 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const setAvatarUrl = async (url: string) => {
     if (!currentUser) return;
     try {
-      const updated = await userRepository.updateProfile(currentUser.id, { avatarUrl: url });
-      setAvatarUrlState(updated.avatarUrl);
+      if (
+        url.startsWith('file://') ||
+        url.startsWith('content://') ||
+        url.startsWith('ph://')
+      ) {
+        // Local file URI -> Upload to server!
+        const filename = url.split('/').pop() || 'avatar.jpg';
+        await updateAvatar({
+          uri: url,
+          name: filename,
+          type: 'image/jpeg',
+        });
+      } else {
+        const updated = await userRepository.updateProfile(currentUser.id, {
+          avatarUrl: url,
+        });
+        setAvatarUrlState(getFullAvatarUrl(updated.avatarUrl));
+      }
     } catch (e) {
       console.error('Failed to update avatar:', e);
+      throw e;
+    }
+  };
+
+  const updateAvatar = async (file: {
+    uri: string;
+    name: string;
+    type: string;
+  }) => {
+    if (!currentUser) return;
+    try {
+      const updated = await authService.uploadAvatar(file);
+      const fullUrl = getFullAvatarUrl(updated.avatarUrl);
+      setAvatarUrlState(fullUrl);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      setCurrentUser((prev: any) => ({ ...prev, avatarUrl: updated.avatarUrl }));
+      await AsyncStorage.setItem('avatarUrl', fullUrl);
+      return updated;
+    } catch (e) {
+      console.error('Failed to upload avatar:', e);
+      throw e;
     }
   };
 
@@ -428,7 +477,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       walletBalance, transactions, addTransaction,
       linkedBanks, addLinkedBank,
       savingsBooks, openSavingsBook, topUpSavingsBook,
-      registerAccount, loginCheck,
+      registerAccount, loginCheck, updateAvatar,
       isLoggedIn, currentUser, restoreSession, logout,
       addresses, addAddress, deleteAddress, setDefaultAddress,
       coins, setCoins, rewardPoints, setRewardPoints, vipTier,

@@ -25,16 +25,17 @@ import { AdminModule } from './admin/admin.module';
         customProps: () => ({
           context: 'HTTP',
         }),
-        transport: process.env.NODE_ENV !== 'production'
-          ? {
-              target: 'pino-pretty',
-              options: {
-                singleLine: true,
-                colorize: true,
-                translateTime: 'UTC:yyyy-mm-dd HH:MM:ss.l o',
-              },
-            }
-          : undefined,
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
+                  colorize: true,
+                  translateTime: 'UTC:yyyy-mm-dd HH:MM:ss.l o',
+                },
+              }
+            : undefined,
       },
     }),
     PrismaModule,

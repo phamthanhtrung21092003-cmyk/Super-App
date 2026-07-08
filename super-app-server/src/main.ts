@@ -4,15 +4,31 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import * as path from 'path';
+import * as fs from 'fs';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
 
   // Use Pino Logger
   app.useLogger(app.get(Logger));
 
   // Enable CORS
   app.enableCors();
+
+  // Ensure uploads/avatars directory exists on startup
+  const avatarsDir = path.join(process.cwd(), 'uploads', 'avatars');
+  if (!fs.existsSync(avatarsDir)) {
+    fs.mkdirSync(avatarsDir, { recursive: true });
+  }
+
+  // Expose static files
+  app.useStaticAssets(path.join(process.cwd(), 'uploads'), {
+    prefix: '/uploads',
+  });
 
   // Set Global API Prefix
   app.setGlobalPrefix('api');
@@ -58,10 +74,12 @@ async function bootstrap() {
 
   const port = process.env.PORT || 5000;
   await app.listen(port);
-  
+
   // Log startup using Pino Logger
   const loggerInstance = app.get(Logger);
   loggerInstance.log(`Server is running on: http://localhost:${port}`);
-  loggerInstance.log(`Swagger documentation available at: http://localhost:${port}/api/docs`);
+  loggerInstance.log(
+    `Swagger documentation available at: http://localhost:${port}/api/docs`,
+  );
 }
-bootstrap();
+void bootstrap();

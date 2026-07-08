@@ -29,12 +29,12 @@ const CATEGORIES = [
 ];
 
 const BANNERS = [
-  { id: '1', img: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80', title: 'Freeship mọi đơn' },
-  { id: '2', img: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80', title: 'Giảm 50% BBQ' },
+  { id: '1', img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80', title: 'Freeship mọi đơn' },
+  { id: '2', img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80', title: 'Giảm 50% BBQ' },
 ];
 
 const SUGGESTIONS = [
-  { id: '1', title: 'Trời mưa ăn lẩu nhé?', desc: 'Giảm giá 30% các quán lẩu gần bạn', img: 'https://images.unsplash.com/photo-1526424382096-74a93e105682?auto=format&fit=crop&w=400&q=80' },
+  { id: '1', title: 'Trời mưa ăn lẩu nhé?', desc: 'Giảm giá 30% các quán lẩu gần bạn', img: 'https://images.unsplash.com/photo-1547825407-2d060104b7f8?auto=format&fit=crop&w=400&q=80' },
   { id: '2', title: 'Gợi ý nạp năng lượng', desc: 'Các món Healthy dưới 300 Kcal', img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80' },
 ];
 
@@ -54,7 +54,7 @@ export default function FoodHomeScreen() {
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <LinearGradient
-          colors={['#FFF7ED', '#F8FAFC']}
+          colors={['#FFF9F5', '#FFFFFF']}
           style={StyleSheet.absoluteFillObject}
         />
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFF', width: '100%' },
   desktopFrame: { maxWidth: 414, maxHeight: 896, aspectRatio: 414 / 896, borderWidth: 10, borderColor: '#E2E8F0', borderRadius: 55, overflow: 'hidden' },
   
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 50 : 30, paddingHorizontal: 16, paddingBottom: 15, backgroundColor: 'rgba(255, 255, 255, 0.9)' },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 50 : 30, paddingHorizontal: 16, paddingBottom: 15, backgroundColor: '#FFF' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { color: '#0F172A', fontSize: 18, fontWeight: '800', letterSpacing: 1 },
   locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 },
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
 
   scrollContent: { paddingTop: 20 },
   
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: '#FFEDD5', shadowColor: '#F97316', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
   searchInput: { flex: 1, marginLeft: 12, color: '#0F172A', fontSize: 15, ...(Platform.OS === 'web' && { outlineStyle: 'none' } as any) },
   micBtn: { padding: 8 },
 

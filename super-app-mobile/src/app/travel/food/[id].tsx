@@ -37,11 +37,19 @@ export default function FoodDetailScreen() {
   };
 
   return (
-    <View style={[S.root, { backgroundColor: theme.background }]}>
+    <View style={[S.root, { backgroundColor: theme.background || '#F8FAFC' }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View style={S.imageHeader}>
           <Image source={{ uri: food.image }} style={S.mainImage} />
+          <View style={[S.headerBtns, { position: 'absolute', top: Platform.OS === 'ios' ? 50 : 30, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', zIndex: 10 }]}>
+            <TouchableOpacity style={S.iconBtn} onPress={handleBack}>
+              <Ionicons name="arrow-back" size={24} color="#0F172A" />
+            </TouchableOpacity>
+            <TouchableOpacity style={S.iconBtn}>
+              <Ionicons name="heart-outline" size={24} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={S.content}>
@@ -66,7 +74,7 @@ export default function FoodDetailScreen() {
           {/* AI SUGGESTION */}
           <View style={S.aiBox}>
             <View style={S.aiHeader}>
-              <Ionicons name="restaurant" size={18} color="#D97706" />
+              <Ionicons name="restaurant" size={18} color="#EA580C" />
               <Text style={S.aiTitle}>AI Gợi ý chọn món</Text>
             </View>
             <Text style={S.aiText}>{food.aiSuggestion}</Text>
@@ -106,7 +114,7 @@ const S = StyleSheet.create({
   mainImage: { width: '100%', height: '100%' },
   headerGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 100, zIndex: 10, elevation: 10 },
   headerBtns: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   
   content: { padding: 16, marginTop: -24, backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
@@ -117,20 +125,20 @@ const S = StyleSheet.create({
   metaText: { fontSize: 14, color: '#64748B', flex: 1 },
   description: { fontSize: 15, color: '#334155', lineHeight: 22, marginVertical: 16 },
 
-  aiBox: { backgroundColor: '#FFFBEB', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#FEF3C7', marginBottom: 24 },
+  aiBox: { backgroundColor: '#FFF7ED', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#FFEDD5', marginBottom: 24 },
   aiHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 },
-  aiTitle: { fontSize: 15, fontWeight: '700', color: '#B45309' },
-  aiText: { fontSize: 14, color: '#92400E', lineHeight: 20 },
+  aiTitle: { fontSize: 15, fontWeight: '700', color: '#EA580C' },
+  aiText: { fontSize: 14, color: '#C2410C', lineHeight: 20 },
 
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 12 },
   menuBox: { backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
   menuItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   menuItemName: { fontSize: 15, color: '#1E293B', flex: 1 },
-  menuItemPrice: { fontSize: 15, fontWeight: '600', color: '#D97706', marginLeft: 16 },
+  menuItemPrice: { fontSize: 15, fontWeight: '600', color: '#F97316', marginLeft: 16 },
 
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: Platform.OS === 'ios' ? 32 : 16, borderTopWidth: 1, borderTopColor: '#E2E8F0', gap: 12 },
   dirBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
   dirBtnText: { color: '#3B82F6', fontSize: 16, fontWeight: '600' },
-  bookBtn: { flex: 1, backgroundColor: '#D97706', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 12 },
+  bookBtn: { flex: 1, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 12 },
   bookBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

@@ -61,7 +61,7 @@ export default function FoodListScreen() {
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <LinearGradient
-          colors={['#F8FAFC', '#F1F5F9']}
+          colors={['#FFF9F5', '#FFFFFF']}
           style={StyleSheet.absoluteFillObject}
         />
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -163,12 +163,12 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFF', width: '100%' },
   desktopFrame: { maxWidth: 414, maxHeight: 896, aspectRatio: 414 / 896, borderWidth: 10, borderColor: '#E2E8F0', borderRadius: 55, overflow: 'hidden' },
   
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 50 : 30, paddingHorizontal: 16, paddingBottom: 15, backgroundColor: 'rgba(255, 255, 255, 0.9)' },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 50 : 30, paddingHorizontal: 16, paddingBottom: 15, backgroundColor: '#FFF' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { color: '#0F172A', fontSize: 18, fontWeight: '800', letterSpacing: 1 },
   
-  filterWrapper: { paddingVertical: 12, backgroundColor: 'rgba(255, 255, 255, 0.9)' },
+  filterWrapper: { paddingVertical: 12, backgroundColor: '#FFF' },
   filterScroll: { paddingHorizontal: 16, gap: 10 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
   filterText: { color: '#334155', fontSize: 13, fontWeight: '600' },

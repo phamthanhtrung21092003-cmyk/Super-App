@@ -47,7 +47,7 @@ export default function HomestayDetailScreen() {
   };
 
   return (
-    <View style={[S.root, { backgroundColor: theme.background }]}>
+    <View style={[S.root, { backgroundColor: theme.background || '#F8FAFC' }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View style={S.imageHeader}>

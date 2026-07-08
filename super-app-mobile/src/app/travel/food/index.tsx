@@ -19,11 +19,11 @@ export default function FoodScreen() {
   const [activeFilter, setActiveFilter] = useState('Tất cả');
 
   return (
-    <View style={[S.root, { backgroundColor: theme.background }]}>
+    <View style={[S.root, { backgroundColor: theme.background || '#F8FAFC' }]}>
       <SafeAreaView style={S.safe}>
-        <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
+        <StatusBar barStyle="dark-content" />
         
-        <LinearGradient colors={['#D97706', '#B45309']} style={S.header}>
+        <LinearGradient colors={['#F97316', '#F59E0B']} style={S.header}>
           <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
@@ -113,7 +113,7 @@ const S = StyleSheet.create({
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600' },
   headerRight: { padding: 4 },
   
-  searchSection: { padding: 16, backgroundColor: '#D97706', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  searchSection: { padding: 16, backgroundColor: '#F97316', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   searchContainer: { backgroundColor: '#FFF', borderRadius: 12, padding: 8, elevation: 4 },
   searchInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 15, color: '#333' },
@@ -121,14 +121,14 @@ const S = StyleSheet.create({
   filterSection: { marginTop: 16, paddingBottom: 16 },
   filterScroll: { paddingHorizontal: 16, gap: 8 },
   filterBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#E2E8F0', borderWidth: 1, borderColor: 'transparent' },
-  filterBadgeActive: { backgroundColor: '#FEF3C7', borderColor: '#D97706' },
+  filterBadgeActive: { backgroundColor: '#FFEDD5', borderColor: '#F97316' },
   filterText: { fontSize: 14, color: '#475569', fontWeight: '500' },
-  filterTextActive: { color: '#D97706', fontWeight: '600' },
+  filterTextActive: { color: '#F97316', fontWeight: '600' },
 
-  aiBanner: { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFFBEB', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#FEF3C7' },
+  aiBanner: { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFF7ED', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#FFEDD5' },
   aiBannerHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 },
-  aiBannerTitle: { fontSize: 14, fontWeight: '700', color: '#B45309' },
-  aiBannerText: { fontSize: 13, color: '#92400E', lineHeight: 20 },
+  aiBannerTitle: { fontSize: 14, fontWeight: '700', color: '#EA580C' },
+  aiBannerText: { fontSize: 13, color: '#C2410C', lineHeight: 20 },
 
   listSection: { paddingHorizontal: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 12 },
@@ -145,6 +145,6 @@ const S = StyleSheet.create({
   tagTxt: { fontSize: 11, color: '#475569' },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12 },
   priceValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-  foodType: { fontSize: 13, fontWeight: '500', color: '#D97706' },
+  foodType: { fontSize: 13, fontWeight: '500', color: '#F97316' },
 });
 

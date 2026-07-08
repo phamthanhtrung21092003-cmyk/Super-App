@@ -3,12 +3,12 @@ import { IUserService, UserProfile, Address } from '../types';
 
 export const realUserService: IUserService = {
   async getUserProfile(userId: string): Promise<UserProfile> {
-    const response = await apiClient.get(`/users/${userId}`);
+    const response = await apiClient.get('/users/me');
     return response.data;
   },
 
   async updateProfile(userId: string, data: Partial<UserProfile>): Promise<UserProfile> {
-    const response = await apiClient.patch(`/users/${userId}`, data);
+    const response = await apiClient.patch('/users/me', data);
     return response.data;
   },
 

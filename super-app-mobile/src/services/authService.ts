@@ -27,4 +27,17 @@ export const authService = {
   async logout(): Promise<void> {
     await apiClient.post('/auth/logout');
   },
+
+  async uploadAvatar(file: { uri: string; name: string; type: string }): Promise<any> {
+    const formData = new FormData();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    formData.append('avatar', file as any);
+
+    const response = await apiClient.patch('/users/me/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };

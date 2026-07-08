@@ -45,7 +45,7 @@ export default function HotelDetailScreen() {
   };
 
   return (
-    <View style={[S.root, { backgroundColor: theme.background }]}>
+    <View style={[S.root, { backgroundColor: theme.background || '#F8FAFC' }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         {/* HEADER IMAGE */}

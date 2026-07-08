@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRegisterDto } from './dto/user-register.dto';
 import { UserLoginDto } from './dto/user-login.dto';
@@ -59,28 +63,43 @@ export class AuthService {
     const value = parseInt(match[1], 10);
     const unit = match[2];
     switch (unit) {
-      case 's': return value;
-      case 'm': return value * 60;
-      case 'h': return value * 3600;
-      case 'd': return value * 86400;
-      default: return 900;
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 3600;
+      case 'd':
+        return value * 86400;
+      default:
+        return 900;
     }
   }
 
   // Helper 1: Generate Access Token and Refresh Token dynamically
-  async generateTokens(userId: string, phone: string, role: string): Promise<{ accessToken: string; refreshToken: string }> {
-    const payload = { 
-      sub: userId, 
-      phone, 
+  async generateTokens(
+    userId: string,
+    phone: string,
+    role: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const payload = {
+      sub: userId,
+      phone,
       role,
       jti: crypto.randomUUID(), // Đảm bảo tính duy nhất cho mỗi token được sinh ra
     };
-    
-    const accessTokenExpires = this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
-    const refreshTokenExpires = this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') || '7d';
 
-    const accessTokenSecret = this.configService.get<string>('JWT_ACCESS_SECRET') || 'super-app-secret-jwt-key-2026';
-    const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || 'super-app-refresh-secret-jwt-key-2026';
+    const accessTokenExpires =
+      this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
+    const refreshTokenExpires =
+      this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') || '7d';
+
+    const accessTokenSecret =
+      this.configService.get<string>('JWT_ACCESS_SECRET') ||
+      'super-app-secret-jwt-key-2026';
+    const refreshTokenSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') ||
+      'super-app-refresh-secret-jwt-key-2026';
 
     const accessToken = this.jwtService.sign(payload, {
       secret: accessTokenSecret,
@@ -96,11 +115,18 @@ export class AuthService {
   }
 
   // Helper 2: Hash and Update Refresh Token in DB for User/Driver
-  async updateRefreshToken(userId: string, refreshToken: string | null, role: 'USER' | 'DRIVER'): Promise<void> {
+  async updateRefreshToken(
+    userId: string,
+    refreshToken: string | null,
+    role: 'USER' | 'DRIVER',
+  ): Promise<void> {
     let hashedRefreshToken: string | null = null;
     if (refreshToken) {
       // Hash với SHA-256 trước để tránh giới hạn 72 ký tự của bcrypt, sau đó băm bằng bcrypt
-      const sha256Hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const sha256Hash = crypto
+        .createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
       hashedRefreshToken = await bcrypt.hash(sha256Hash, 12);
     }
 
@@ -141,14 +167,19 @@ export class AuthService {
     }
 
     // Generate tokens dynamically
-    const { accessToken, refreshToken } = await this.generateTokens(user.id, user.phone, user.role);
+    const { accessToken, refreshToken } = await this.generateTokens(
+      user.id,
+      user.phone,
+      user.role,
+    );
 
     // Save hashed refresh token
     await this.updateRefreshToken(user.id, refreshToken, 'USER');
 
     this.logger.log(`User login: ${phone}`);
 
-    const accessTokenExpires = this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
+    const accessTokenExpires =
+      this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
     const expiresIn = this.parseTimeToSeconds(accessTokenExpires);
 
     return {
@@ -167,14 +198,16 @@ export class AuthService {
   // Refresh Token Rotation logic
   async refreshToken(dto: RefreshTokenDto) {
     const { refreshToken } = dto;
-    const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || 'super-app-refresh-secret-jwt-key-2026';
+    const refreshTokenSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') ||
+      'super-app-refresh-secret-jwt-key-2026';
 
     let payload: any;
     let userPhone = 'unknown';
 
     // Decode unverified token to extract phone for logging if verification fails
     try {
-      const decoded = this.jwtService.decode(refreshToken) as any;
+      const decoded = this.jwtService.decode(refreshToken);
       if (decoded && decoded.phone) {
         userPhone = decoded.phone;
       }
@@ -190,7 +223,9 @@ export class AuthService {
       if (error.name === 'TokenExpiredError') {
         this.logger.warn(`Refresh token expired: ${userPhone}`);
       } else {
-        this.logger.warn(`Invalid refresh token verification failed: ${userPhone}`);
+        this.logger.warn(
+          `Invalid refresh token verification failed: ${userPhone}`,
+        );
       }
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -212,8 +247,14 @@ export class AuthService {
     }
 
     // Verify refresh token matching the hashed one in DB
-    const sha256Hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const isTokenMatching = await bcrypt.compare(sha256Hash, user.hashedRefreshToken);
+    const sha256Hash = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
+    const isTokenMatching = await bcrypt.compare(
+      sha256Hash,
+      user.hashedRefreshToken,
+    );
     if (!isTokenMatching) {
       this.logger.warn(`Invalid refresh token: ${user.phone} (hash mismatch)`);
       throw new UnauthorizedException('Invalid refresh token');
@@ -227,7 +268,8 @@ export class AuthService {
 
     this.logger.log(`Refresh token rotated: ${user.phone}`);
 
-    const accessTokenExpires = this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
+    const accessTokenExpires =
+      this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
     const expiresIn = this.parseTimeToSeconds(accessTokenExpires);
 
     return {
@@ -246,7 +288,9 @@ export class AuthService {
       });
       this.logger.log(`User logout: ${user.phone}`);
     } catch (error) {
-      this.logger.warn(`User logout warning: User record not found or already logged out for ID ${userId}`);
+      this.logger.warn(
+        `User logout warning: User record not found or already logged out for ID ${userId}`,
+      );
     }
     return { message: 'Logout successfully' };
   }

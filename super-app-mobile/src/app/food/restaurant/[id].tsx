@@ -42,19 +42,19 @@ export default function RestaurantDetailScreen() {
   return (
     <View style={styles.webWrapper}>
       <View style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
         {/* Back & Icons */}
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/food')}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color="#0F172A" />
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="share-social-outline" size={24} color="#FFF" />
+              <Ionicons name="share-social-outline" size={24} color="#0F172A" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="heart-outline" size={24} color="#FFF" />
+              <Ionicons name="heart-outline" size={24} color="#EF4444" />
             </TouchableOpacity>
           </View>
         </View>
@@ -63,7 +63,7 @@ export default function RestaurantDetailScreen() {
           onScroll={onScroll} 
           scrollEventThrottle={16} 
           showsVerticalScrollIndicator={false}
-          style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+          style={{ flex: 1, backgroundColor: '#FFF' }}
         >
           {/* Parallax Header */}
           <View style={{ height: HEADER_HEIGHT }}>
@@ -71,7 +71,7 @@ export default function RestaurantDetailScreen() {
               source={{ uri: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80' }} 
               style={[StyleSheet.absoluteFill, headerStyle]} 
             />
-            <LinearGradient colors={['transparent', 'rgba(248, 250, 252, 1)']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['rgba(255,255,255,0.05)', '#FFF']} style={StyleSheet.absoluteFillObject} />
           </View>
 
           <View style={styles.content}>
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   desktopFrame: { maxWidth: 414, maxHeight: 896, aspectRatio: 414 / 896, borderWidth: 10, borderColor: '#E2E8F0', borderRadius: 55, overflow: 'hidden' },
   
   topBar: { position: 'absolute', top: Platform.OS === 'ios' ? 50 : 30, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', zIndex: 10 },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   
   content: { paddingHorizontal: 16, marginTop: -60 },
   

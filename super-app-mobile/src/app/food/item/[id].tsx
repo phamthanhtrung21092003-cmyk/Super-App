@@ -43,23 +43,23 @@ export default function ItemDetailScreen() {
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
         {/* Floating Header */}
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/food')}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color="#0F172A" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="share-social-outline" size={24} color="#FFF" />
+            <Ionicons name="share-social-outline" size={24} color="#0F172A" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: '#FFF' }}>
           
           <Animated.View entering={FadeInDown.duration(400)}>
             <Image source={{ uri: MOCK_ITEM.img }} style={styles.heroImg} />
-            <LinearGradient colors={['transparent', '#F8FAFC']} style={styles.heroGradient} />
+            <LinearGradient colors={['rgba(255,255,255,0.05)', '#FFF']} style={styles.heroGradient} />
           </Animated.View>
 
           <View style={styles.content}>
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   desktopFrame: { maxWidth: 414, maxHeight: 896, aspectRatio: 414 / 896, borderWidth: 10, borderColor: '#E2E8F0', borderRadius: 55, overflow: 'hidden' },
   
   topBar: { position: 'absolute', top: Platform.OS === 'ios' ? 50 : 30, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', zIndex: 10 },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   
   heroImg: { width: '100%', height: 350 },
   heroGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 100 },

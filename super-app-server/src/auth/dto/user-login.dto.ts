@@ -2,7 +2,10 @@ import { IsNotEmpty, IsString, Length, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UserLoginDto {
-  @ApiProperty({ example: '0912345678', description: 'Số điện thoại người dùng' })
+  @ApiProperty({
+    example: '0912345678',
+    description: 'Số điện thoại người dùng',
+  })
   @IsNotEmpty({ message: 'Số điện thoại không được để trống' })
   @IsString({ message: 'Số điện thoại phải là chuỗi' })
   @Matches(/^[0-9]{10}$/, { message: 'Số điện thoại phải có đúng 10 chữ số' })

@@ -22,7 +22,7 @@ export default function WishlistScreen() {
   const filtered = activeTab === 'Tất cả' ? MOCK_WISHLIST : MOCK_WISHLIST.filter(i => i.type === activeTab);
 
   return (
-    <View style={[S.root, { backgroundColor: theme.background }]}>
+    <View style={[S.root, { backgroundColor: theme.background || '#F8FAFC' }]}>
       <SafeAreaView style={S.safe}>
         <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
         
