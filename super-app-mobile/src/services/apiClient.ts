@@ -8,8 +8,19 @@ export const setSessionExpiredHandler = (handler: () => void) => {
   onSessionExpired = handler;
 };
 
+const appEnv = process.env.EXPO_PUBLIC_APP_ENV || 'dev';
+const devApiUrl = process.env.EXPO_PUBLIC_DEV_API || 'http://192.168.12.109:5000/api/v1';
+const prodApiUrl = process.env.EXPO_PUBLIC_PROD_API || 'https://api.vlife.vn/api/v1';
+
+export const getBaseURL = () => {
+  if (appEnv === 'production') {
+    return prodApiUrl;
+  }
+  return devApiUrl;
+};
+
 const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.238:5000/api/v1',
+  baseURL: getBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -86,7 +97,7 @@ apiClient.interceptors.response.use(
         }
 
         // Gọi API refresh trực tiếp qua axios thường để tránh đệ quy qua interceptor
-        const baseURL = apiClient.defaults.baseURL || 'http://192.168.0.238:5000/api/v1';
+        const baseURL = apiClient.defaults.baseURL || getBaseURL();
         const refreshResponse = await axios.post(
           `${baseURL}/auth/refresh`,
           { refreshToken },

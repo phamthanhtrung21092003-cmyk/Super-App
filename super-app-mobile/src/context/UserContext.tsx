@@ -1,7 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from '../services/authService';
 import { setSessionExpiredHandler } from '../services/apiClient';
+import { authRepository } from '../modules/auth/repository/authRepository';
+import { paymentRepository } from '../modules/payment/repository/paymentRepository';
+import { userRepository } from '../modules/user/repository/userRepository';
 
 
 export type SavingsBook = {
@@ -121,24 +123,37 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [rewardPoints, setRewardPoints] = useState(1850); 
   const [vipTier, setVipTier] = useState<'Đồng' | 'Bạc' | 'Vàng' | 'Kim cương'>('Vàng');
 
-  const addAddress = (addr: Omit<Address, 'id'>) => {
-    const newAddr: Address = {
-      ...addr,
-      id: 'addr_' + Date.now()
-    };
-    if (newAddr.isDefault) {
-      setAddresses(addresses.map(a => ({ ...a, isDefault: false })).concat(newAddr));
-    } else {
-      setAddresses([...addresses, newAddr]);
+  const addAddress = async (addr: Omit<Address, 'id'>) => {
+    if (!currentUser) return;
+    try {
+      await userRepository.addAddress(currentUser.id, addr);
+      const list = await userRepository.getAddresses(currentUser.id);
+      setAddresses(list);
+    } catch (e) {
+      console.error('Failed to add address:', e);
     }
   };
 
-  const deleteAddress = (id: string) => {
-    setAddresses(addresses.filter(a => a.id !== id));
+  const deleteAddress = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      await userRepository.deleteAddress(currentUser.id, id);
+      const list = await userRepository.getAddresses(currentUser.id);
+      setAddresses(list);
+    } catch (e) {
+      console.error('Failed to delete address:', e);
+    }
   };
 
-  const setDefaultAddress = (id: string) => {
-    setAddresses(addresses.map(a => a.id === id ? { ...a, isDefault: true } : { ...a, isDefault: false }));
+  const setDefaultAddress = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      await userRepository.setDefaultAddress(currentUser.id, id);
+      const list = await userRepository.getAddresses(currentUser.id);
+      setAddresses(list);
+    } catch (e) {
+      console.error('Failed to set default address:', e);
+    }
   };
 
   // Auth helpers
@@ -152,114 +167,82 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const registerAccount = async (phone: string, password: string, fullName: string): Promise<{ success: boolean; message: string }> => {
-    try {
-      await authService.register(phone, password, fullName);
-      return { success: true, message: 'Đăng ký thành công!' };
-    } catch (error: any) {
-      if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-        if (status === 409) {
-          return { success: false, message: 'Số điện thoại đã tồn tại.' };
-        }
-        if (status === 400 && data && data.message) {
-          return { success: false, message: data.message };
-        }
-      }
-      if (error.request) {
-        return { success: false, message: 'Không thể kết nối máy chủ.' };
-      }
-      return { success: false, message: 'Có lỗi xảy ra, vui lòng thử lại.' };
-    }
+    return await authRepository.register(phone, password, fullName);
   };
 
-
   const loginCheck = async (phone: string, password: string): Promise<{ success: boolean; fullName?: string; message: string }> => {
-    try {
-      const result = await authService.login(phone, password);
-      
-      const tokenExpiresAt = Date.now() + result.expiresIn * 1000;
-
-      // Save tokens and user to AsyncStorage
-      await AsyncStorage.setItem('accessToken', result.accessToken);
-      await AsyncStorage.setItem('refreshToken', result.refreshToken);
-      await AsyncStorage.setItem('currentUser', JSON.stringify(result.user));
-      await AsyncStorage.setItem('tokenExpiresAt', tokenExpiresAt.toString());
-      
-      // Update local state
+    const result = await authRepository.login(phone, password);
+    if (result.success) {
       setCurrentUser(result.user);
       setIsLoggedIn(true);
-
-      // Update userName state in context & AsyncStorage to display correct name in UI
-      setUserNameState(result.user.fullName);
-      await AsyncStorage.setItem('userName', result.user.fullName);
-
-      return { success: true, fullName: result.user.fullName, message: 'Đăng nhập thành công!' };
-
-    } catch (error: any) {
-      if (error.response) {
-        const status = error.response.status;
-        if (status === 401) {
-          return { success: false, message: 'Số điện thoại hoặc mật khẩu không đúng.' };
-        }
+      
+      // Load thông tin người dùng từ userRepository
+      try {
+        const profile = await userRepository.getUserProfile(result.user.id);
+        const addrs = await userRepository.getAddresses(result.user.id);
+        
+        setUserNameState(profile.fullName);
+        setAvatarUrlState(profile.avatarUrl);
+        setBioState(profile.bio);
+        setCoins(profile.coins);
+        setRewardPoints(profile.rewardPoints);
+        setVipTier(profile.vipTier);
+        setAddresses(addrs);
+      } catch (profileError) {
+        console.warn('Failed to load user profile on login:', profileError);
+        setUserNameState(result.fullName || result.user.fullName);
       }
-      if (error.request) {
-        return { success: false, message: 'Không thể kết nối máy chủ.' };
+
+      // Load ví từ repository sau khi đăng nhập thành công
+      try {
+        const balance = await paymentRepository.getWalletBalance();
+        const txs = await paymentRepository.getTransactions();
+        const banks = await paymentRepository.getLinkedBanks();
+        setWalletBalance(balance);
+        setTransactions(txs);
+        setLinkedBanks(banks);
+      } catch (e) {
+        console.warn('Failed to load wallet data on login:', e);
       }
-      return { success: false, message: 'Có lỗi xảy ra, vui lòng thử lại.' };
     }
+    return result;
   };
 
   const restoreSession = async () => {
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      const rToken = await AsyncStorage.getItem('refreshToken');
-      const userStr = await AsyncStorage.getItem('currentUser');
-      const expiresAtStr = await AsyncStorage.getItem('tokenExpiresAt');
+    const result = await authRepository.restoreSession();
+    if (result.success) {
+      setCurrentUser(result.user);
+      setIsLoggedIn(true);
 
-      if (!token || !rToken || !userStr || !expiresAtStr) {
-        setIsLoggedIn(false);
-        setCurrentUser(null);
-        return;
+      // Load thông tin người dùng từ userRepository
+      try {
+        const profile = await userRepository.getUserProfile(result.user.id);
+        const addrs = await userRepository.getAddresses(result.user.id);
+        
+        setUserNameState(profile.fullName);
+        setAvatarUrlState(profile.avatarUrl);
+        setBioState(profile.bio);
+        setCoins(profile.coins);
+        setRewardPoints(profile.rewardPoints);
+        setVipTier(profile.vipTier);
+        setAddresses(addrs);
+      } catch (profileError) {
+        console.warn('Failed to load user profile on restore session:', profileError);
+        setUserNameState(result.user.fullName);
       }
 
-      const expiresAt = parseInt(expiresAtStr, 10);
-      const now = Date.now();
-
-      // Kiểm tra xem Access Token còn hạn không (trừ đi 5 giây độ trễ mạng)
-      if (expiresAt > now + 5000) {
-        const user = JSON.parse(userStr);
-        setCurrentUser(user);
-        setUserNameState(user.fullName || 'Phạm Thành Trung ✨');
-        setIsLoggedIn(true);
-        console.log('Session restored.');
-      } else {
-        console.log('Access token expired. Attempting refresh...');
-        try {
-          const result = await authService.refreshToken(rToken);
-          
-          const newTokenExpiresAt = Date.now() + result.expiresIn * 1000;
-          await AsyncStorage.setItem('accessToken', result.accessToken);
-          await AsyncStorage.setItem('refreshToken', result.refreshToken);
-          await AsyncStorage.setItem('tokenExpiresAt', newTokenExpiresAt.toString());
-
-          const user = JSON.parse(userStr);
-          setCurrentUser(user);
-          setUserNameState(user.fullName || 'Phạm Thành Trung ✨');
-          setIsLoggedIn(true);
-          console.log('Access Token refreshed.');
-        } catch (refreshError) {
-          console.log('Session expired.');
-          await AsyncStorage.removeItem('accessToken');
-          await AsyncStorage.removeItem('refreshToken');
-          await AsyncStorage.removeItem('currentUser');
-          await AsyncStorage.removeItem('tokenExpiresAt');
-          setCurrentUser(null);
-          setIsLoggedIn(false);
-        }
+      // Load ví từ repository sau khi khôi phục phiên
+      try {
+        const balance = await paymentRepository.getWalletBalance();
+        const txs = await paymentRepository.getTransactions();
+        const banks = await paymentRepository.getLinkedBanks();
+        setWalletBalance(balance);
+        setTransactions(txs);
+        setLinkedBanks(banks);
+      } catch (e) {
+        console.warn('Failed to load wallet data on restore session:', e);
       }
-    } catch (e) {
-      console.log('Failed to restore session:', e);
+    } else {
       setIsLoggedIn(false);
       setCurrentUser(null);
     }
@@ -268,21 +251,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       console.log('User logout...');
-      await authService.logout();
+      await authRepository.logout();
     } catch (error) {
       console.warn('API logout failed, clearing local session anyway:', error);
     } finally {
-      // Xóa tất cả các khóa lưu trữ thông tin cá nhân và cài đặt người dùng khỏi AsyncStorage
-      await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('refreshToken');
-      await AsyncStorage.removeItem('currentUser');
-      await AsyncStorage.removeItem('tokenExpiresAt');
-      await AsyncStorage.removeItem('userName');
+      // Xóa các khóa lưu trữ của ví điện tử và user profile khỏi AsyncStorage
+      await AsyncStorage.removeItem('wallet_balance');
+      await AsyncStorage.removeItem('transactions_list');
+      await AsyncStorage.removeItem('linked_banks');
+      await AsyncStorage.removeItem('user_profile');
+      await AsyncStorage.removeItem('user_addresses');
       await AsyncStorage.removeItem('avatarUrl');
       await AsyncStorage.removeItem('bio');
-      await AsyncStorage.removeItem('walletBalance');
-      await AsyncStorage.removeItem('transactions');
-      await AsyncStorage.removeItem('linkedBanks');
       await AsyncStorage.removeItem('savingsBooks');
       await AsyncStorage.removeItem('addresses');
       await AsyncStorage.removeItem('coins');
@@ -296,13 +276,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setAvatarUrlState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512');
       setBioState('Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨');
       setWalletBalance(1000000000);
-      setTransactions([
-        { id: '1', title: 'Highlands Coffee', amount: '-45.000đ', type: 'out', date: 'Hôm nay, 08:30', icon: 'cafe-outline', bg: '#FEE2E2', color: '#EF4444' },
-        { id: '2', title: 'Nguyễn Văn A', desc: 'Chuyển tiền ăn trưa', amount: '+250.000đ', type: 'in', date: 'Hôm qua, 15:45', icon: 'person-outline', bg: '#D1FAE5', color: '#10B981' },
-      ]);
-      setLinkedBanks([
-        { id: 'vcb', name: 'Vietcombank', account: '**** 1234', color: '#10B981', icon: 'leaf' }
-      ]);
+      setTransactions([]);
+      setLinkedBanks([]);
       setSavingsBooks([]);
       setAddresses([
         {
@@ -340,9 +315,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const storedAccentHex = await AsyncStorage.getItem('accentHex');
         const storedAccentRgb = await AsyncStorage.getItem('accentRgb');
         const storedBgUrl = await AsyncStorage.getItem('bgUrl');
-        const storedBalance = await AsyncStorage.getItem('walletBalance');
-        const storedTx = await AsyncStorage.getItem('transactions');
-        const storedBanks = await AsyncStorage.getItem('linkedBanks');
         const storedSavings = await AsyncStorage.getItem('savingsBooks');
 
         if (storedUserName) setUserNameState(storedUserName);
@@ -351,15 +323,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (storedAccentHex) setAccentHexState(storedAccentHex);
         if (storedAccentRgb) setAccentRgbState(storedAccentRgb);
         if (storedBgUrl) setBgUrlState(storedBgUrl);
-        // FORCE 1 BILLION FOR TESTING: Bỏ qua storedBalance
-        setWalletBalance(1000000000);
-        await AsyncStorage.setItem('walletBalance', '1000000000');
         
-        if (storedTx) setTransactions(JSON.parse(storedTx));
-        if (storedBanks) setLinkedBanks(JSON.parse(storedBanks));
         if (storedSavings) setSavingsBooks(JSON.parse(storedSavings));
 
-        // Khôi phục phiên làm việc
+        // Khôi phục phiên làm việc và load dữ liệu ví tự động
         await restoreSession();
       } catch (e) {
         console.log('Failed to load user data');
@@ -369,13 +336,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setAvatarUrl = async (url: string) => {
-    setAvatarUrlState(url);
-    await AsyncStorage.setItem('avatarUrl', url);
+    if (!currentUser) return;
+    try {
+      const updated = await userRepository.updateProfile(currentUser.id, { avatarUrl: url });
+      setAvatarUrlState(updated.avatarUrl);
+    } catch (e) {
+      console.error('Failed to update avatar:', e);
+    }
   };
 
   const setBio = async (newBio: string) => {
-    setBioState(newBio);
-    await AsyncStorage.setItem('bio', newBio);
+    if (!currentUser) return;
+    try {
+      const updated = await userRepository.updateProfile(currentUser.id, { bio: newBio });
+      setBioState(updated.bio);
+    } catch (e) {
+      console.error('Failed to update bio:', e);
+    }
   };
 
   const setThemeColor = async (hex: string, rgb: string) => {
@@ -391,49 +368,37 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Wallet Actions
-  const addTransaction = async (amount: number, type: 'in' | 'out', title: string, desc?: string, icon?: string, bg?: string, color?: string) => {
-    const newTx = {
-      id: Date.now().toString(),
-      title,
-      desc,
-      amount: `${type === 'in' ? '+' : '-'}${amount.toLocaleString('vi-VN')}đ`,
-      type,
-      date: 'Vừa xong',
-      icon: icon || (type === 'in' ? 'arrow-down-outline' : 'arrow-up-outline'),
-      bg: bg || (type === 'in' ? '#D1FAE5' : '#FEE2E2'),
-      color: color || (type === 'in' ? '#10B981' : '#EF4444'),
-    };
-    
-    const newBalance = type === 'in' ? walletBalance + amount : walletBalance - amount;
-    
-    setWalletBalance(newBalance);
-    const newTxList = [newTx, ...transactions];
-    setTransactions(newTxList);
-    
-    await AsyncStorage.setItem('walletBalance', newBalance.toString());
-    await AsyncStorage.setItem('transactions', JSON.stringify(newTxList));
+  const addTransaction = async (amount: number, type: 'in' | 'out', title: string, desc?: string) => {
+    try {
+      await paymentRepository.addTransaction(amount, type, title, desc);
+      const updatedBalance = await paymentRepository.getWalletBalance();
+      const updatedTxs = await paymentRepository.getTransactions();
+      
+      setWalletBalance(updatedBalance);
+      setTransactions(updatedTxs);
+    } catch (e) {
+      console.error('Failed to add transaction:', e);
+    }
   };
 
-  const addLinkedBank = async (name: string, account: string, color?: string, icon?: string) => {
-    const colors = ['#10B981', '#EF4444', '#3B82F6', '#F59E0B', '#8B5CF6'];
-    const icons = ['leaf', 'diamond', 'star', 'flash', 'business'];
-    const randomColor = color || colors[Math.floor(Math.random() * colors.length)];
-    const randomIcon = icon || icons[Math.floor(Math.random() * icons.length)];
-    const newBank = {
-      id: Date.now().toString(),
-      name,
-      account: `**** ${account.slice(-4)}`,
-      color: randomColor,
-      icon: randomIcon
-    };
-    const newBankList = [...linkedBanks, newBank];
-    setLinkedBanks(newBankList);
-    await AsyncStorage.setItem('linkedBanks', JSON.stringify(newBankList));
+  const addLinkedBank = async (name: string, account: string) => {
+    try {
+      await paymentRepository.addLinkedBank(name, account);
+      const updatedBanks = await paymentRepository.getLinkedBanks();
+      setLinkedBanks(updatedBanks);
+    } catch (e) {
+      console.error('Failed to link bank:', e);
+    }
   };
 
   const setUserName = async (name: string) => {
-    setUserNameState(name);
-    await AsyncStorage.setItem('userName', name);
+    if (!currentUser) return;
+    try {
+      const updated = await userRepository.updateProfile(currentUser.id, { fullName: name });
+      setUserNameState(updated.fullName);
+    } catch (e) {
+      console.error('Failed to update userName:', e);
+    }
   };
 
   const openSavingsBook = async (book: SavingsBook) => {
