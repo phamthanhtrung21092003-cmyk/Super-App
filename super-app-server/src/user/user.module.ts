@@ -3,6 +3,7 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MulterModule } from '@nestjs/platform-express';
+import { AddressModule } from './address/address.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { MulterModule } from '@nestjs/platform-express';
     MulterModule.register({
       dest: './uploads',
     }),
+    AddressModule,
   ],
   controllers: [UserController],
   providers: [UserService],

@@ -28,4 +28,12 @@ export const realAuthService: IAuthService = {
   async logout(): Promise<void> {
     await apiClient.post('/auth/logout');
   },
+
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
+    await apiClient.patch('/users/me/change-password', {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+  },
 };

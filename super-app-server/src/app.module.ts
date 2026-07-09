@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { DriverModule } from './driver/driver.module';
 import { WalletModule } from './wallet/wallet.module';
+import { TransactionModule } from './transaction/transaction.module';
 import { RideModule } from './ride/ride.module';
 import { FoodModule } from './food/food.module';
 import { TravelModule } from './travel/travel.module';
@@ -43,6 +44,7 @@ import { AdminModule } from './admin/admin.module';
     UserModule,
     DriverModule,
     WalletModule,
+    TransactionModule,
     RideModule,
     FoodModule,
     TravelModule,

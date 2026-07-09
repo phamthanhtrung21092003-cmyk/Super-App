@@ -58,5 +58,10 @@ export const mockAuthService: IAuthService = {
   async logout(): Promise<void> {
     await simulateLatency(200, 600);
     return Promise.resolve();
-  }
+  },
+
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
+    await simulateLatency(400, 1000);
+    return Promise.resolve();
+  },
 };

@@ -2,15 +2,21 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Logger } from 'nestjs-pino';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UserService {
+  private changePasswordAttempts = new Map<string, { count: number; resetTime: number }>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: Logger,
@@ -157,5 +163,72 @@ export class UserService {
       }
       throw dbError;
     }
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    // 1. Rate Limit: tối đa 5 lần / phút
+    const now = Date.now();
+    const windowMs = 60 * 1000;
+    const maxRequests = 5;
+
+    let attempts = this.changePasswordAttempts.get(userId);
+    if (!attempts || now > attempts.resetTime) {
+      attempts = { count: 1, resetTime: now + windowMs };
+      this.changePasswordAttempts.set(userId, attempts);
+    } else {
+      if (attempts.count >= maxRequests) {
+        throw new HttpException(
+          'Quá nhiều yêu cầu đổi mật khẩu. Vui lòng thử lại sau 1 phút.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      attempts.count++;
+    }
+
+    // 2. Kiểm tra mật khẩu mới và xác nhận mật khẩu mới
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Mật khẩu mới và xác nhận mật khẩu không trùng khớp');
+    }
+
+    // 3. Kiểm tra mật khẩu mới khác mật khẩu cũ
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại');
+    }
+
+    // 4. Tìm người dùng
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      this.logger.warn(`Change password failed: User not found for ID ${userId}`);
+      throw new NotFoundException('User not found');
+    }
+
+    // 5. So sánh mật khẩu hiện tại
+    const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!isPasswordValid) {
+      this.logger.warn(`Change password failed: Incorrect current password for user: ${user.phone}`);
+      throw new BadRequestException('Mật khẩu hiện tại không chính xác');
+    }
+
+    // 6. Mã hóa mật khẩu mới và đặt hashedRefreshToken thành null
+    const hashedNewPassword = await bcrypt.hash(dto.newPassword, 12);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedNewPassword,
+        hashedRefreshToken: null,
+      },
+    });
+
+    // 7. Ghi log bảo mật (chỉ log số điện thoại, tuyệt đối không log mật khẩu)
+    this.logger.log(`User changed password: ${user.phone}`);
+
+    // 8. Trả về thông báo thành công
+    return {
+      message: 'Password changed successfully',
+    };
   }
 }

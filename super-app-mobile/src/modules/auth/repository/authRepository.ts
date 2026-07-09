@@ -134,6 +134,26 @@ export const authRepository: IAuthRepository = {
       console.error('[AuthRepository] Failed to restore session:', e);
       return { success: false };
     }
+  },
+
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<{ success: boolean; message: string }> {
+    try {
+      await authService.changePassword(currentPassword, newPassword, confirmPassword);
+      return { success: true, message: 'Đổi mật khẩu thành công!' };
+    } catch (error: any) {
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        if ((status === 400 || status === 429) && data && data.message) {
+          const msg = Array.isArray(data.message) ? data.message[0] : data.message;
+          return { success: false, message: msg };
+        }
+        if (status === 401) {
+          return { success: false, message: 'Phiên làm việc hết hạn. Vui lòng đăng nhập lại.' };
+        }
+      }
+      return { success: false, message: 'Không thể kết nối máy chủ.' };
+    }
   }
 };
 export default authRepository;

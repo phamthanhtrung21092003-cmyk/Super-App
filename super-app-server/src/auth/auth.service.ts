@@ -36,21 +36,36 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    await this.prisma.user.create({
-      data: {
-        phone,
-        password: hashedPassword,
-        fullName,
-        role: 'USER',
-        avatarUrl: null,
-        hashedRefreshToken: null,
-      },
-      select: {
-        id: true,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          phone,
+          password: hashedPassword,
+          fullName,
+          role: 'USER',
+          avatarUrl: null,
+          hashedRefreshToken: null,
+        },
+      });
+
+      // Sinh mã ví duy nhất
+      const randomDigits = Math.floor(1000000000 + Math.random() * 9000000000);
+      const walletNumber = `VL${randomDigits}`;
+
+      await tx.wallet.create({
+        data: {
+          userId: user.id,
+          walletNumber,
+          balance: 0,
+          pendingBalance: 0,
+          rewardPoints: 0,
+          currency: 'VND',
+          status: 'ACTIVE',
+        },
+      });
     });
 
-    this.logger.log(`User registered: ${phone}`);
+    this.logger.log(`User registered and wallet created: ${phone}`);
   }
 
   // Helper: Chuyển đổi định dạng thời gian sang giây (VD: 15m -> 900s)

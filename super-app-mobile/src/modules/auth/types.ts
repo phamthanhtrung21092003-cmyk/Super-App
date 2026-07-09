@@ -10,6 +10,7 @@ export interface IAuthService {
   login(phone: string, password: string): Promise<LoginResponse>;
   refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }>;
   logout(): Promise<void>;
+  changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void>;
 }
 
 export interface IAuthRepository {
@@ -17,4 +18,5 @@ export interface IAuthRepository {
   login(phone: string, password: string): Promise<{ success: boolean; fullName?: string; message: string; user?: any }>;
   logout(): Promise<void>;
   restoreSession(): Promise<{ success: boolean; user?: any }>;
+  changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<{ success: boolean; message: string }>;
 }

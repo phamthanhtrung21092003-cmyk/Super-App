@@ -25,6 +25,7 @@ import { extname } from 'path';
 import { diskStorage } from 'multer';
 import { randomUUID } from 'crypto';
 import { UploadAvatarDto } from './dto/upload-avatar.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 export const multerOptions = {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
@@ -167,5 +168,31 @@ export class UserController {
       throw new BadRequestException('Avatar file is required');
     }
     return this.userService.updateAvatar(user.id, file);
+  }
+
+  @Patch('me/change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Đổi mật khẩu người dùng' })
+  @ApiResponse({
+    status: 200,
+    description: 'Đổi mật khẩu thành công',
+    schema: {
+      example: {
+        message: 'Password changed successfully',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Yêu cầu không hợp lệ / Mật khẩu hiện tại không chính xác / Mật khẩu mới trùng mật khẩu cũ',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 429, description: 'Quá nhiều yêu cầu đổi mật khẩu (Rate limit)' })
+  async changePassword(
+    @CurrentUser() user: { id: string },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.userService.changePassword(user.id, dto);
   }
 }

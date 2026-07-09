@@ -15,15 +15,38 @@ enum Role {
 }
 
 model User {
-  id                 String   @id @default(uuid())
-  phone              String   @unique
+  id                 String    @id @default(uuid())
+  phone              String    @unique
   password           String
   fullName           String
   avatarUrl          String?
-  role               Role     @default(USER)
+  role               Role      @default(USER)
   hashedRefreshToken String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  addresses          Address[]
+  wallet             Wallet?
+}
+
+model Address {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label         String
+  receiverName  String
+  receiverPhone String
+  province      String
+  district      String
+  ward          String
+  detailAddress String
+  note          String?
+  latitude      Float?
+  longitude     Float?
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Driver {
@@ -38,4 +61,88 @@ model Driver {
   hashedRefreshToken String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+enum Currency {
+  VND
+}
+
+enum WalletStatus {
+  ACTIVE
+  LOCKED
+  SUSPENDED
+  CLOSED
+}
+
+model Wallet {
+  id             String       @id @default(uuid())
+  userId         String       @unique
+  walletNumber   String       @unique
+  balance        Decimal      @default(0)
+  pendingBalance Decimal      @default(0)
+  rewardPoints   Int          @default(0)
+  currency       Currency     @default(VND)
+  status         WalletStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+enum TransactionDirection {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionType {
+  TOP_UP
+  WITHDRAW
+  TRANSFER
+  PAYMENT
+  REFUND
+  REWARD
+  PENALTY
+  RIDE_PAYMENT
+  FOOD_PAYMENT
+  SHOP_PAYMENT
+  DELIVERY_PAYMENT
+  SYSTEM_ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+model Transaction {
+  id             String            @id @default(uuid())
+  walletId       String
+  amount         Decimal
+  balanceBefore  Decimal
+  balanceAfter   Decimal
+  type           TransactionType
+  direction      TransactionDirection
+  status         TransactionStatus @default(PENDING)
+  currency       Currency          @default(VND)
+  description    String?
+  referenceId    String?
+  referenceType  String?
+  idempotencyKey String?           @unique
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([idempotencyKey])
 }

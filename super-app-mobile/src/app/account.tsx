@@ -65,7 +65,8 @@ export default function AccountScreen() {
   const { theme } = useTheme();
   const { 
     userName, avatarUrl, setAvatarUrl, bio, setBio, accentHex, accentRgb, bgUrl, setUserName,
-    addresses, addAddress, deleteAddress, setDefaultAddress, coins, rewardPoints, vipTier, logout
+    addresses, coins, rewardPoints, vipTier, logout,
+    changePassword
   } = useUser();
   const { width, height } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
@@ -76,18 +77,16 @@ export default function AccountScreen() {
   const [showEdit, setShowEdit] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showMore, setShowMore] = useState(false);
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [showAddAddressModal, setShowAddAddressModal] = useState(false);
 
-  // New Address form states
-  const [newReceiverName, setNewReceiverName] = useState('');
-  const [newReceiverPhone, setNewReceiverPhone] = useState('');
-  const [newProvince, setNewProvince] = useState('');
-  const [newDistrict, setNewDistrict] = useState('');
-  const [newWard, setNewWard] = useState('');
-  const [newDetailAddress, setNewDetailAddress] = useState('');
-  const [newNote, setNewNote] = useState('');
-  const [newIsDefault, setNewIsDefault] = useState(false);
+  // Change password states
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [secureCurrent, setSecureCurrent] = useState(true);
+  const [secureNew, setSecureNew] = useState(true);
+  const [secureConfirm, setSecureConfirm] = useState(true);
 
   // Edit states
   const [editName, setEditName] = useState(userName);
@@ -99,6 +98,49 @@ export default function AccountScreen() {
   const showToast = (msg: string) => {
     setToast({ visible: true, message: msg });
     setTimeout(() => setToast({ visible: false, message: '' }), 2500);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      showToast('Vui lòng điền đầy đủ các thông tin!');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showToast('Mật khẩu mới và xác nhận không khớp!');
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      showToast('Mật khẩu mới phải khác mật khẩu hiện tại!');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const result = await changePassword(
+        currentPassword.trim(),
+        newPassword.trim(),
+        confirmPassword.trim()
+      );
+
+      if (result.success) {
+        showToast('Đổi mật khẩu thành công! Đang đăng xuất...');
+        setTimeout(() => {
+          setShowChangePassword(false);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+          router.replace('/');
+        }, 1500);
+      } else {
+        showToast(result.message || 'Đổi mật khẩu thất bại!');
+      }
+    } catch (err) {
+      showToast('Đã xảy ra lỗi khi kết nối server!');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const pickImage = async () => {
@@ -243,6 +285,10 @@ export default function AccountScreen() {
                   <Ionicons name="qr-code-outline" size={18} color="#FFF" />
                 </TouchableOpacity>
 
+                <TouchableOpacity style={styles.actionIconBtn} onPress={() => setShowChangePassword(true)}>
+                  <Ionicons name="key-outline" size={18} color="#FFF" />
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.actionIconBtn} onPress={() => router.push('/settings')}>
                   <Ionicons name="settings-outline" size={18} color="#FFF" />
                 </TouchableOpacity>
@@ -297,7 +343,7 @@ export default function AccountScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity style={[styles.addressBtn, { backgroundColor: accentHex }]} onPress={() => setShowAddressModal(true)}>
+              <TouchableOpacity style={[styles.addressBtn, { backgroundColor: accentHex }]} onPress={() => router.push('/address-list' as any)}>
                 <Ionicons name="location-outline" size={16} color="#000" style={{ marginRight: 6 }} />
                 <Text style={styles.addressBtnText}>Quản lý địa chỉ giao hàng ({addresses.length})</Text>
               </TouchableOpacity>
@@ -478,6 +524,99 @@ export default function AccountScreen() {
             </View>
           </Modal>
 
+          {/* ══════════ CHANGE PASSWORD MODAL ══════════ */}
+          <Modal visible={showChangePassword} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+              <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => !isChangingPassword && setShowChangePassword(false)} />
+              <BlurView intensity={90} tint="dark" style={styles.sheetContent}>
+                <View style={styles.sheetHandle} />
+                <View style={styles.sheetHead}>
+                  <TouchableOpacity onPress={() => setShowChangePassword(false)} disabled={isChangingPassword}>
+                    <Text style={{ color: '#888', fontSize: 15 }}>Huỷ</Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.sheetTitle, { fontFamily: theme.fontFamily }]}>Đổi mật khẩu</Text>
+                  <TouchableOpacity onPress={handleChangePassword} disabled={isChangingPassword}>
+                    {isChangingPassword ? (
+                      <ActivityIndicator color={accentHex} size="small" />
+                    ) : (
+                      <Text style={{ color: accentHex, fontSize: 15, fontWeight: '800' }}>Cập nhật</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={{ padding: 20 }}>
+                  <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      style={[styles.textInput, { fontFamily: theme.fontFamily, flex: 1, marginBottom: 0, borderWidth: 0, backgroundColor: 'transparent' }]}
+                      value={currentPassword}
+                      onChangeText={setCurrentPassword}
+                      placeholder="Nhập mật khẩu hiện tại..."
+                      placeholderTextColor="#555"
+                      secureTextEntry={secureCurrent}
+                    />
+                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setSecureCurrent(!secureCurrent)}>
+                      <Ionicons name={secureCurrent ? "eye-off-outline" : "eye-outline"} size={20} color="#888" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.inputLabel, { marginTop: 20 }]}>Mật khẩu mới</Text>
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      style={[styles.textInput, { fontFamily: theme.fontFamily, flex: 1, marginBottom: 0, borderWidth: 0, backgroundColor: 'transparent' }]}
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      placeholder="Nhập mật khẩu mới..."
+                      placeholderTextColor="#555"
+                      secureTextEntry={secureNew}
+                    />
+                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setSecureNew(!secureNew)}>
+                      <Ionicons name={secureNew ? "eye-off-outline" : "eye-outline"} size={20} color="#888" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.inputLabel, { marginTop: 20 }]}>Xác nhận mật khẩu mới</Text>
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      style={[styles.textInput, { fontFamily: theme.fontFamily, flex: 1, marginBottom: 0, borderWidth: 0, backgroundColor: 'transparent' }]}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      placeholder="Xác nhận mật khẩu mới..."
+                      placeholderTextColor="#555"
+                      secureTextEntry={secureConfirm}
+                    />
+                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setSecureConfirm(!secureConfirm)}>
+                      <Ionicons name={secureConfirm ? "eye-off-outline" : "eye-outline"} size={20} color="#888" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={[styles.warningBox, { borderColor: `${accentHex}30` }]}>
+                    <Ionicons name="information-circle-outline" size={20} color={accentHex} style={{ marginRight: 8, marginTop: 2 }} />
+                    <Text style={[styles.warningText, { fontFamily: theme.fontFamily }]}>
+                      Sau khi đổi mật khẩu thành công, bạn sẽ tự động đăng xuất khỏi tất cả các thiết bị và cần sử dụng mật khẩu mới để đăng nhập lại.
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.submitPasswordBtn, { backgroundColor: accentHex }]}
+                    onPress={handleChangePassword}
+                    disabled={isChangingPassword}
+                  >
+                    {isChangingPassword ? (
+                      <ActivityIndicator color="#000" />
+                    ) : (
+                      <Text style={[styles.submitPasswordBtnText, { fontFamily: theme.fontFamily }]}>
+                        ĐỔI MẬT KHẨU
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <View style={{ height: 40 }} />
+                </ScrollView>
+              </BlurView>
+            </View>
+          </Modal>
+
           {/* ══════════ QR MODAL ══════════ */}
           <Modal visible={showQR} transparent animationType="fade">
             <TouchableOpacity style={styles.qrOverlay} activeOpacity={1} onPress={() => setShowQR(false)}>
@@ -531,6 +670,7 @@ export default function AccountScreen() {
                 <View style={styles.sheetHandle} />
                 <Text style={[styles.moreTitle, { fontFamily: theme.fontFamily }]}>Tùy chọn</Text>
                 {[
+                  { icon: 'wallet-outline', label: 'Ví của tôi', color: '#10B981', fn: () => router.push('/wallet' as any) },
                   { icon: 'briefcase-outline', label: 'Kênh Đối tác (Partner)', color: accentHex, fn: () => router.push('/partner') },
                   { icon: 'restaurant-outline', label: 'Quản lý Cửa hàng (Food Merchant)', color: '#F97316', fn: () => router.push('/food-merchant') },
                   { icon: 'shield-checkmark-outline', label: 'Cài đặt quyền riêng tư', color: '#FFF', fn: () => router.push('/settings') },
@@ -552,131 +692,7 @@ export default function AccountScreen() {
             </View>
           </Modal>
 
-          {/* ══════════ ADDRESS LIST MODAL ══════════ */}
-          <Modal visible={showAddressModal} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-              <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowAddressModal(false)} />
-              <BlurView intensity={95} tint="dark" style={styles.sheetContent}>
-                <View style={styles.sheetHandle} />
-                <View style={styles.sheetHead}>
-                  <TouchableOpacity onPress={() => setShowAddressModal(false)}>
-                    <Text style={{ color: '#888', fontSize: 15 }}>Đóng</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.sheetTitle, { fontFamily: theme.fontFamily }]}>Sổ địa chỉ</Text>
-                  <TouchableOpacity onPress={() => setShowAddAddressModal(true)}>
-                    <Text style={{ color: accentHex, fontSize: 15, fontWeight: '800' }}>+ Thêm</Text>
-                  </TouchableOpacity>
-                </View>
 
-                <ScrollView style={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-                  {addresses.length === 0 ? (
-                    <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>Chưa có địa chỉ nào.</Text>
-                  ) : (
-                    addresses.map(addr => (
-                      <View key={addr.id} style={styles.addressCard}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={styles.addressCardName}>{addr.receiverName}</Text>
-                          {addr.isDefault && (
-                            <View style={[styles.defaultBadge, { backgroundColor: `${accentHex}20`, borderColor: accentHex }]}>
-                              <Text style={{ color: accentHex, fontSize: 10, fontWeight: '800' }}>Mặc định</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.addressCardText}>SĐT: {addr.receiverPhone}</Text>
-                        <Text style={styles.addressCardText}>{addr.detailAddress}, {addr.ward}, {addr.district}, {addr.province}</Text>
-                        {addr.note ? <Text style={[styles.addressCardText, { fontStyle: 'italic', opacity: 0.8 }]}>Ghi chú: {addr.note}</Text> : null}
-                        
-                        <View style={styles.addressCardActions}>
-                          {!addr.isDefault && (
-                            <TouchableOpacity onPress={() => setDefaultAddress(addr.id)} style={{ marginRight: 15 }}>
-                              <Text style={{ color: accentHex, fontSize: 12, fontWeight: '600' }}>Đặt mặc định</Text>
-                            </TouchableOpacity>
-                          )}
-                          <TouchableOpacity onPress={() => deleteAddress(addr.id)}>
-                            <Text style={{ color: '#FF4D4D', fontSize: 12, fontWeight: '600' }}>Xoá</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))
-                  )}
-                </ScrollView>
-              </BlurView>
-            </View>
-          </Modal>
-
-          {/* ══════════ ADD ADDRESS MODAL ══════════ */}
-          <Modal visible={showAddAddressModal} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-              <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowAddAddressModal(false)} />
-              <BlurView intensity={95} tint="dark" style={styles.sheetContent}>
-                <View style={styles.sheetHandle} />
-                <View style={styles.sheetHead}>
-                  <TouchableOpacity onPress={() => setShowAddAddressModal(false)}>
-                    <Text style={{ color: '#888', fontSize: 15 }}>Huỷ</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.sheetTitle, { fontFamily: theme.fontFamily }]}>Địa chỉ mới</Text>
-                  <TouchableOpacity onPress={() => {
-                    if (!newReceiverName || !newReceiverPhone || !newDetailAddress) {
-                      Alert.alert('Lỗi', 'Vui lòng điền đủ Tên, SĐT và Địa chỉ cụ thể');
-                      return;
-                    }
-                    addAddress({
-                      receiverName: newReceiverName,
-                      receiverPhone: newReceiverPhone,
-                      province: newProvince || 'Hà Nội',
-                      district: newDistrict || 'Cầu Giấy',
-                      ward: newWard || 'Dịch Vọng',
-                      detailAddress: newDetailAddress,
-                      note: newNote,
-                      isDefault: newIsDefault
-                    });
-                    // Reset
-                    setNewReceiverName('');
-                    setNewReceiverPhone('');
-                    setNewProvince('');
-                    setNewDistrict('');
-                    setNewWard('');
-                    setNewDetailAddress('');
-                    setNewNote('');
-                    setNewIsDefault(false);
-                    setShowAddAddressModal(false);
-                    showToast('Đã thêm địa chỉ giao hàng mới!');
-                  }}>
-                    <Text style={{ color: accentHex, fontSize: 15, fontWeight: '800' }}>Lưu</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView style={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.inputLabel}>Tên người nhận *</Text>
-                  <TextInput style={styles.textInput} value={newReceiverName} onChangeText={setNewReceiverName} placeholder="Ví dụ: Nguyễn Văn A" placeholderTextColor="#555" />
-                  
-                  <Text style={styles.inputLabel}>Số điện thoại *</Text>
-                  <TextInput style={styles.textInput} value={newReceiverPhone} onChangeText={setNewReceiverPhone} placeholder="Ví dụ: 0912345678" placeholderTextColor="#555" keyboardType="phone-pad" />
-                  
-                  <Text style={styles.inputLabel}>Tỉnh / Thành phố</Text>
-                  <TextInput style={styles.textInput} value={newProvince} onChangeText={setNewProvince} placeholder="Ví dụ: Hà Nội" placeholderTextColor="#555" />
-                  
-                  <Text style={styles.inputLabel}>Quận / Huyện</Text>
-                  <TextInput style={styles.textInput} value={newDistrict} onChangeText={setNewDistrict} placeholder="Ví dụ: Cầu Giấy" placeholderTextColor="#555" />
-                  
-                  <Text style={styles.inputLabel}>Phường / Xã</Text>
-                  <TextInput style={styles.textInput} value={newWard} onChangeText={setNewWard} placeholder="Ví dụ: Dịch Vọng Hậu" placeholderTextColor="#555" />
-                  
-                  <Text style={styles.inputLabel}>Địa chỉ chi tiết (Số nhà, đường) *</Text>
-                  <TextInput style={styles.textInput} value={newDetailAddress} onChangeText={setNewDetailAddress} placeholder="Ví dụ: Số 123 Duy Tân" placeholderTextColor="#555" />
-                  
-                  <Text style={styles.inputLabel}>Ghi chú</Text>
-                  <TextInput style={styles.textInput} value={newNote} onChangeText={setNewNote} placeholder="Ví dụ: Giao giờ hành chính..." placeholderTextColor="#555" />
-                  
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 20 }}>
-                    <Text style={{ color: '#FFF', fontSize: 14 }}>Đặt làm địa chỉ mặc định</Text>
-                    <Switch value={newIsDefault} onValueChange={setNewIsDefault} trackColor={{ false: '#444', true: accentHex }} thumbColor="#FFF" />
-                  </View>
-                  <View style={{ height: 60 }} />
-                </ScrollView>
-              </BlurView>
-            </View>
-          </Modal>
 
           {isLoggingOut && (
             <View style={{
@@ -717,7 +733,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 20,
   },
   backgroundImage: { flex: 1, width: '100%', height: '100%' },
-  darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,12,20,0.85)' },
+  darkOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,12,20,0.85)' },
 
   // Top Nav
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 6 : 28, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
@@ -793,7 +809,7 @@ const styles = StyleSheet.create({
   editAvatarWrap: { alignItems: 'center', marginVertical: 20 },
   editAvatarRing: { width: 90, height: 90, borderRadius: 45, overflow: 'hidden', position: 'relative' },
   editAvatarImg: { width: 90, height: 90 },
-  cameraOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  cameraOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
   photoTip: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 8 },
   inputLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700', marginLeft: 4, marginBottom: 8 },
   textInput: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: '#FFF', fontSize: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 20 },
@@ -858,5 +874,51 @@ const styles = StyleSheet.create({
   defaultBadge: {
     paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
     borderWidth: 1
+  },
+
+  // Password Input Styles
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 20,
+    paddingRight: 10,
+  },
+  eyeIcon: {
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 10,
+    marginBottom: 24,
+  },
+  warningText: {
+    color: '#EF4444',
+    fontSize: 12,
+    lineHeight: 18,
+    flex: 1,
+  },
+  submitPasswordBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitPasswordBtnText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

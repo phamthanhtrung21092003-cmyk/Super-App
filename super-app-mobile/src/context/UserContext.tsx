@@ -4,6 +4,11 @@ import { setSessionExpiredHandler, getBaseURL } from '../services/apiClient';
 import { authRepository } from '../modules/auth/repository/authRepository';
 import { paymentRepository } from '../modules/payment/repository/paymentRepository';
 import { userRepository } from '../modules/user/repository/userRepository';
+import { addressRepository } from '../modules/address/repository/addressRepository';
+import { walletRepository } from '../modules/wallet/repository/walletRepository';
+import { Wallet } from '../modules/wallet/types';
+import { transactionRepository } from '../modules/transaction/repository/transactionRepository';
+import { Transaction } from '../modules/transaction/types';
 import { authService } from '../services/authService';
 
 
@@ -25,6 +30,7 @@ export type Account = {
 
 export type Address = {
   id: string;
+  label: string;
   receiverName: string;
   receiverPhone: string;
   province: string;
@@ -32,6 +38,8 @@ export type Address = {
   ward: string;
   detailAddress: string;
   note?: string;
+  latitude?: number;
+  longitude?: number;
   isDefault: boolean;
 };
 
@@ -48,9 +56,8 @@ type UserContextType = {
   setThemeColor: (hex: string, rgb: string) => void;
   bgUrl: string;
   setBgUrl: (url: string) => void;
-  // Wallet Properties
   walletBalance: number;
-  transactions: any[];
+  paymentTransactions: any[];
   addTransaction: (amount: number, type: 'in' | 'out', title: string, desc?: string, icon?: string, bg?: string, color?: string) => void;
   // Bank Properties
   linkedBanks: any[];
@@ -63,6 +70,7 @@ type UserContextType = {
   registerAccount: (phone: string, password: string, fullName: string) => Promise<{ success: boolean; message: string }>;
   loginCheck: (phone: string, password: string) => Promise<{ success: boolean; fullName?: string; message: string }>;
   updateAvatar: (file: { uri: string; name: string; type: string }) => Promise<any>;
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => Promise<{ success: boolean; message: string }>;
   isLoggedIn: boolean;
   currentUser: any;
   restoreSession: () => Promise<void>;
@@ -70,14 +78,26 @@ type UserContextType = {
 
   // Marketplace Additions
   addresses: Address[];
-  addAddress: (address: Omit<Address, 'id'>) => void;
-  deleteAddress: (id: string) => void;
-  setDefaultAddress: (id: string) => void;
+  addAddress: (address: Omit<Address, 'id'>) => Promise<void>;
+  deleteAddress: (id: string) => Promise<void>;
+  setDefaultAddress: (id: string) => Promise<void>;
+  refreshAddresses: () => Promise<void>;
   coins: number;
   setCoins: (coins: number) => void;
   rewardPoints: number;
   setRewardPoints: (points: number) => void;
   vipTier: 'Đồng' | 'Bạc' | 'Vàng' | 'Kim cương';
+
+  // Wallet Additions
+  wallet: Wallet | null;
+  walletLoading: boolean;
+  walletError: string | null;
+  refreshWallet: () => Promise<void>;
+
+  // Transaction Additions
+  transactions: Transaction[];
+  transactionsLoading: boolean;
+  refreshTransactions: () => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -108,7 +128,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Wallet State
   const [walletBalance, setWalletBalance] = useState(1000000000); // 1 tỷ VND để test
-  const [transactions, setTransactions] = useState<any[]>([
+  const [paymentTransactions, setPaymentTransactions] = useState<any[]>([
     { id: '1', title: 'Highlands Coffee', amount: '-45.000đ', type: 'out', date: 'Hôm nay, 08:30', icon: 'cafe-outline', bg: '#FEE2E2', color: '#EF4444' },
     { id: '2', title: 'Nguyễn Văn A', desc: 'Chuyển tiền ăn trưa', amount: '+250.000đ', type: 'in', date: 'Hôm qua, 15:45', icon: 'person-outline', bg: '#D1FAE5', color: '#10B981' },
   ]);
@@ -118,53 +138,86 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [savingsBooks, setSavingsBooks] = useState<SavingsBook[]>([]);
 
   // Marketplace Additions
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: 'addr_1',
-      receiverName: 'Phạm Thành Trung',
-      receiverPhone: '0987654321',
-      province: 'TP. Hồ Chí Minh',
-      district: 'Quận 1',
-      ward: 'Phường Bến Nghé',
-      detailAddress: '45 Lê Lợi',
-      note: 'Giao giờ hành chính',
-      isDefault: true
-    }
-  ]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [coins, setCoins] = useState(15000); 
   const [rewardPoints, setRewardPoints] = useState(1850); 
   const [vipTier, setVipTier] = useState<'Đồng' | 'Bạc' | 'Vàng' | 'Kim cương'>('Vàng');
 
-  const addAddress = async (addr: Omit<Address, 'id'>) => {
+  // Wallet States
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+
+  // Transaction States
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+
+  const refreshAddresses = async () => {
     if (!currentUser) return;
     try {
-      await userRepository.addAddress(currentUser.id, addr);
-      const list = await userRepository.getAddresses(currentUser.id);
+      const list = await addressRepository.getAddresses();
       setAddresses(list);
     } catch (e) {
+      console.error('Failed to get addresses:', e);
+    }
+  };
+
+  const refreshWallet = async () => {
+    if (!currentUser) return;
+    setWalletLoading(true);
+    setWalletError(null);
+    try {
+      const w = await walletRepository.refreshMyWallet();
+      setWallet(w);
+      refreshTransactions();
+    } catch (e: any) {
+      console.error('Failed to refresh wallet:', e);
+      setWalletError(e.message || 'Không thể làm mới ví');
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
+  const refreshTransactions = async () => {
+    if (!currentUser) return;
+    setTransactionsLoading(true);
+    try {
+      const list = await transactionRepository.refreshMyTransactions();
+      setTransactions(list);
+    } catch (e) {
+      console.error('Failed to refresh transactions:', e);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
+
+  const addAddress = async (addr: Omit<Address, 'id'>) => {
+    try {
+      await addressRepository.createAddress(addr);
+      await refreshAddresses();
+    } catch (e) {
       console.error('Failed to add address:', e);
+      throw e;
     }
   };
 
   const deleteAddress = async (id: string) => {
-    if (!currentUser) return;
     try {
-      await userRepository.deleteAddress(currentUser.id, id);
-      const list = await userRepository.getAddresses(currentUser.id);
-      setAddresses(list);
+      await addressRepository.deleteAddress(id);
+      await refreshAddresses();
     } catch (e) {
       console.error('Failed to delete address:', e);
+      throw e;
     }
   };
 
   const setDefaultAddress = async (id: string) => {
-    if (!currentUser) return;
     try {
-      await userRepository.setDefaultAddress(currentUser.id, id);
-      const list = await userRepository.getAddresses(currentUser.id);
-      setAddresses(list);
+      await addressRepository.setDefaultAddress(id);
+      await refreshAddresses();
     } catch (e) {
       console.error('Failed to set default address:', e);
+      throw e;
     }
   };
 
@@ -191,7 +244,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Load thông tin người dùng từ userRepository
       try {
         const profile = await userRepository.getUserProfile(result.user.id);
-        const addrs = await userRepository.getAddresses(result.user.id);
         
         setUserNameState(profile.fullName);
         setAvatarUrlState(getFullAvatarUrl(profile.avatarUrl));
@@ -199,6 +251,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setCoins(profile.coins);
         setRewardPoints(profile.rewardPoints);
         setVipTier(profile.vipTier);
+
+        // Load địa chỉ qua addressRepository
+        const addrs = await addressRepository.getAddresses();
         setAddresses(addrs);
       } catch (profileError) {
         console.warn('Failed to load user profile on login:', profileError);
@@ -207,15 +262,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       // Load ví từ repository sau khi đăng nhập thành công
       try {
-        const balance = await paymentRepository.getWalletBalance();
-        const txs = await paymentRepository.getTransactions();
-        const banks = await paymentRepository.getLinkedBanks();
-        setWalletBalance(balance);
-        setTransactions(txs);
-        setLinkedBanks(banks);
+        const cachedWallet = await walletRepository.getMyWallet();
+        setWallet(cachedWallet);
+        const cachedTxs = await transactionRepository.getMyTransactions();
+        setTransactions(cachedTxs);
       } catch (e) {
-        console.warn('Failed to load wallet data on login:', e);
+        console.warn('Failed to load wallet data from cache on login:', e);
       }
+      refreshWallet();
     }
     return result;
   };
@@ -229,7 +283,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Load thông tin người dùng từ userRepository
       try {
         const profile = await userRepository.getUserProfile(result.user.id);
-        const addrs = await userRepository.getAddresses(result.user.id);
         
         setUserNameState(profile.fullName);
         setAvatarUrlState(getFullAvatarUrl(profile.avatarUrl));
@@ -237,6 +290,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setCoins(profile.coins);
         setRewardPoints(profile.rewardPoints);
         setVipTier(profile.vipTier);
+
+        // Load địa chỉ qua addressRepository
+        const addrs = await addressRepository.getAddresses();
         setAddresses(addrs);
       } catch (profileError) {
         console.warn('Failed to load user profile on restore session:', profileError);
@@ -245,15 +301,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       // Load ví từ repository sau khi khôi phục phiên
       try {
-        const balance = await paymentRepository.getWalletBalance();
-        const txs = await paymentRepository.getTransactions();
-        const banks = await paymentRepository.getLinkedBanks();
-        setWalletBalance(balance);
-        setTransactions(txs);
-        setLinkedBanks(banks);
+        const cachedWallet = await walletRepository.getMyWallet();
+        setWallet(cachedWallet);
+        const cachedTxs = await transactionRepository.getMyTransactions();
+        setTransactions(cachedTxs);
       } catch (e) {
-        console.warn('Failed to load wallet data on restore session:', e);
+        console.warn('Failed to load wallet data from cache on restore session:', e);
       }
+      refreshWallet();
     } else {
       setIsLoggedIn(false);
       setCurrentUser(null);
@@ -273,6 +328,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.removeItem('linked_banks');
       await AsyncStorage.removeItem('user_profile');
       await AsyncStorage.removeItem('user_addresses');
+      await AsyncStorage.removeItem('user_wallet');
+      await AsyncStorage.removeItem('user_transactions');
       await AsyncStorage.removeItem('avatarUrl');
       await AsyncStorage.removeItem('bio');
       await AsyncStorage.removeItem('savingsBooks');
@@ -289,24 +346,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setBioState('Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨');
       setWalletBalance(1000000000);
       setTransactions([]);
+      setPaymentTransactions([]);
       setLinkedBanks([]);
       setSavingsBooks([]);
-      setAddresses([
-        {
-          id: 'addr_1',
-          receiverName: 'Phạm Thành Trung',
-          receiverPhone: '0987654321',
-          province: 'TP. Hồ Chí Minh',
-          district: 'Quận 1',
-          ward: 'Phường Bến Nghé',
-          detailAddress: '45 Lê Lợi',
-          note: 'Giao giờ hành chính',
-          isDefault: true
-        }
-      ]);
+      setAddresses([]);
       setCoins(15000);
       setRewardPoints(1850);
       setVipTier('Vàng');
+      setWallet(null);
+      setWalletError(null);
 
       console.log('Session and all personal data cleared.');
     }
@@ -424,7 +472,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const updatedTxs = await paymentRepository.getTransactions();
       
       setWalletBalance(updatedBalance);
-      setTransactions(updatedTxs);
+      setPaymentTransactions(updatedTxs);
     } catch (e) {
       console.error('Failed to add transaction:', e);
     }
@@ -467,6 +515,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem('savingsBooks', JSON.stringify(newBooks));
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string, confirmPassword: string) => {
+    try {
+      const result = await authRepository.changePassword(currentPassword, newPassword, confirmPassword);
+      if (result.success) {
+        await logout();
+      }
+      return result;
+    } catch (e) {
+      console.error('Failed to change password in context:', e);
+      return { success: false, message: 'Đã xảy ra lỗi hệ thống khi đổi mật khẩu.' };
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       userName, setUserName, 
@@ -474,13 +535,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       bio, setBio,
       accentHex, accentRgb, setThemeColor,
       bgUrl, setBgUrl,
-      walletBalance, transactions, addTransaction,
+      walletBalance, paymentTransactions, addTransaction,
       linkedBanks, addLinkedBank,
       savingsBooks, openSavingsBook, topUpSavingsBook,
-      registerAccount, loginCheck, updateAvatar,
+      registerAccount, loginCheck, updateAvatar, changePassword,
       isLoggedIn, currentUser, restoreSession, logout,
-      addresses, addAddress, deleteAddress, setDefaultAddress,
+      addresses, addAddress, deleteAddress, setDefaultAddress, refreshAddresses,
       coins, setCoins, rewardPoints, setRewardPoints, vipTier,
+      wallet, walletLoading, walletError, refreshWallet,
+      transactions, transactionsLoading, refreshTransactions,
     }}>
       {children}
     </UserContext.Provider>
