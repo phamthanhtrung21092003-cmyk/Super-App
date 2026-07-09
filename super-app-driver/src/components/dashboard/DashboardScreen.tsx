@@ -1,13 +1,13 @@
 import React from 'react';
 import { StyleSheet, SafeAreaView } from 'react-native';
-import DashboardHeader from './DashboardHeader';
+import HeaderContainer from './HeaderContainer';
 import BodyContainer from './BodyContainer';
 import BottomNavigationContainer from './BottomNavigationContainer';
 
 export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <DashboardHeader />
+      <HeaderContainer />
       <BodyContainer />
       <BottomNavigationContainer />
     </SafeAreaView>

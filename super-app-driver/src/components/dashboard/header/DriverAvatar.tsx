@@ -1,35 +1,23 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Image } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Image, ImageSourcePropType } from 'react-native';
 import { ImageAssets } from '../../../constants/images';
 
 interface DriverAvatarProps {
-  uri?: string;
+  imageSource?: ImageSourcePropType;
 }
 
-export default function DriverAvatar({ uri }: DriverAvatarProps) {
-  const [isLoading, setIsLoading] = useState(!!uri);
+export default function DriverAvatar({ imageSource }: DriverAvatarProps) {
+  const source = imageSource || ImageAssets.avatarPlaceholder;
 
   return (
-    <View style={styles.container}>
-      {uri ? (
-        <>
-          <Image
-            source={{ uri }}
-            style={styles.image}
-            onLoadEnd={() => setIsLoading(false)}
-            accessibilityLabel="Ảnh đại diện tài xế"
-            accessibilityRole="image"
-          />
-          {isLoading && <View style={styles.skeleton} />}
-        </>
-      ) : (
-        <Image
-          source={ImageAssets.avatarPlaceholder}
-          style={styles.image}
-          accessibilityLabel="Ảnh đại diện tài xế"
-          accessibilityRole="image"
-        />
-      )}
+    <View style={styles.container} accessible={false}>
+      <Image
+        source={source}
+        style={styles.image}
+        resizeMode="cover"
+        accessibilityRole="image"
+        accessibilityLabel="Ảnh đại diện tài xế"
+      />
     </View>
   );
 }
@@ -40,20 +28,11 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    position: 'relative',
+    backgroundColor: 'transparent',
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: 48,
+    height: 48,
     borderRadius: 24,
-    resizeMode: 'cover',
-  },
-  skeleton: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: '#E2E8F0',
   },
 });
