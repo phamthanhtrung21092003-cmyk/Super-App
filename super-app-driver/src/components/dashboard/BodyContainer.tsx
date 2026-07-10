@@ -1,8 +1,15 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import IncomingOrderCard from './incoming/IncomingOrderCard';
 
 export default function BodyContainer() {
-  return <View style={styles.container} />;
+  const showIncomingOrder = false;
+
+  return (
+    <View style={styles.container}>
+      {showIncomingOrder && <IncomingOrderCard />}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
