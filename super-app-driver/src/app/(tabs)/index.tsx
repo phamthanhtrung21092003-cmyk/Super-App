@@ -62,7 +62,11 @@ export default function DriverHome() {
           <TouchableOpacity style={styles.iconBtn}>
             <Ionicons name="menu" size={28} color="#0F172A" />
           </TouchableOpacity>
-          <View style={[styles.statusPill, isOnline ? styles.statusOnline : styles.statusOffline]}>
+          <TouchableOpacity
+            style={[styles.statusPill, isOnline ? styles.statusOnline : styles.statusOffline]}
+            onPress={() => setIsOnline(!isOnline)}
+            activeOpacity={0.8}
+          >
             <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
             <Text style={[styles.statusText, isOnline ? { color: '#059669' } : { color: '#475569' }]}>
               {isOnline ? 'Trực tuyến' : 'Ngoại tuyến'}
@@ -70,11 +74,12 @@ export default function DriverHome() {
             <Switch
               value={isOnline}
               onValueChange={setIsOnline}
+              pointerEvents="none"
               trackColor={{ false: '#CBD5E1', true: '#34D399' }}
               thumbColor={isOnline ? '#ffffff' : '#f4f3f4'}
               style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }], marginLeft: 8 }}
             />
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn}>
             <Ionicons name="notifications" size={24} color="#0F172A" />
           </TouchableOpacity>
@@ -125,7 +130,7 @@ export default function DriverHome() {
               <Ionicons name="car" size={24} color="#3B82F6" />
             </View>
             <Text style={styles.serviceName}>Chở khách</Text>
-            <Switch value={services.ride} onValueChange={() => toggleService('ride')} trackColor={{ true: '#3B82F6' }} />
+            <Switch value={services.ride} pointerEvents="none" onValueChange={() => toggleService('ride')} trackColor={{ true: '#3B82F6' }} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.serviceRow} onPress={() => toggleService('delivery')} activeOpacity={0.8}>
@@ -133,7 +138,7 @@ export default function DriverHome() {
               <Ionicons name="cube" size={24} color="#F97316" />
             </View>
             <Text style={styles.serviceName}>Giao hàng</Text>
-            <Switch value={services.delivery} onValueChange={() => toggleService('delivery')} trackColor={{ true: '#F97316' }} />
+            <Switch value={services.delivery} pointerEvents="none" onValueChange={() => toggleService('delivery')} trackColor={{ true: '#F97316' }} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.serviceRow} onPress={() => toggleService('food')} activeOpacity={0.8}>
@@ -141,7 +146,7 @@ export default function DriverHome() {
               <Ionicons name="fast-food" size={24} color="#EF4444" />
             </View>
             <Text style={styles.serviceName}>Giao đồ ăn</Text>
-            <Switch value={services.food} onValueChange={() => toggleService('food')} trackColor={{ true: '#EF4444' }} />
+            <Switch value={services.food} pointerEvents="none" onValueChange={() => toggleService('food')} trackColor={{ true: '#EF4444' }} />
           </TouchableOpacity>
         </View>
 

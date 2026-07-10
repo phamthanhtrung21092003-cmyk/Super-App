@@ -12,4 +12,5 @@ export default function MapView(props) {
 
 export const Marker = ({ children }) => <>{children}</>;
 export const Polyline = () => null;
+export const Circle = () => null;
 export const PROVIDER_GOOGLE = 'google';

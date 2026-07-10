@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, Platform, TouchableOpacity, Modal, TextInput } from 'react-native';
+import {
+  StyleSheet, Text, View, SafeAreaView, ScrollView, Platform, TouchableOpacity,
+  Modal, TextInput, FlatList, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 
@@ -30,7 +33,92 @@ export default function WalletScreen() {
     } else {
       alert('Mã PIN không đúng!');
     }
-  }
+  };
+
+  const filteredTransactions = transactions.filter(tx => {
+    if (filter === 'Tất cả') return true;
+    if (filter === 'Thu nhập') return tx.type === 'ride' || tx.type === 'delivery';
+    if (filter === 'Rút tiền') return tx.price.includes('-');
+    if (filter === 'Thưởng') return tx.type === 'bonus';
+    if (filter === 'Tip') return tx.type === 'tip';
+    if (filter === 'Deal giá') return tx.type === 'deal';
+    if (filter === 'Chiết khấu') return tx.type === 'discount';
+    return true;
+  });
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      {/* Wallet Balance Card */}
+      <View style={styles.walletCard}>
+        <Text style={styles.walletLabel}>Số dư khả dụng</Text>
+        <Text style={styles.walletBalance}>2.560.000đ</Text>
+        
+        <View style={styles.walletRow}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Ionicons name="time" size={16} color="#FCD34D" />
+            <Text style={styles.walletSubText}> Đang chờ đối soát</Text>
+          </View>
+          <Text style={styles.walletSubVal}>350.000đ</Text>
+        </View>
+
+        <View style={styles.walletRow}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Ionicons name="checkmark-circle" size={16} color="#34D399" />
+            <Text style={styles.walletSubText}> Đã rút tháng này</Text>
+          </View>
+          <Text style={styles.walletSubVal}>15.800.000đ</Text>
+        </View>
+
+        <View style={styles.walletActions}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setShowWithdraw(true)}>
+            <Ionicons name="card" size={20} color="#0F172A" />
+            <Text style={styles.actionText}>Rút tiền</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: 'transparent', borderWidth: 1, borderColor: '#334155'}]}>
+            <Ionicons name="receipt" size={20} color="#FFFFFF" />
+            <Text style={[styles.actionText, {color: '#FFFFFF'}]}>Báo cáo</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* AI Analytics */}
+      <TouchableOpacity style={styles.aiBtn} onPress={() => setShowAi(!showAi)} activeOpacity={0.8}>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+          <Text style={styles.aiBtnText}>AI Phân tích Giao dịch</Text>
+        </View>
+        <Ionicons name={showAi ? "chevron-up" : "chevron-down"} size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+      
+      {showAi && (
+        <Animated.View entering={FadeInUp} layout={Layout} style={styles.aiContent}>
+          <Text style={styles.aiTitle}>Tuần này bạn kiếm được <Text style={{color:'#10B981'}}>6.200.000đ</Text> (↑ 12% so với tuần trước).</Text>
+          <View style={styles.aiTipRow}>
+            <View style={styles.aiDot} />
+            <Text style={styles.aiTip}>Thu nhập cao nhất lúc <Text style={{fontWeight: 'bold'}}>11h-13h</Text> và <Text style={{fontWeight: 'bold'}}>17h-20h</Text>.</Text>
+          </View>
+          <View style={styles.aiTipRow}>
+            <View style={styles.aiDot} />
+            <Text style={styles.aiTip}>Nếu online thêm 2 giờ vào tối thứ 7, ước tính <Text style={{color:'#10B981', fontWeight: 'bold'}}>+350.000đ</Text>.</Text>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Filters */}
+      <Text style={styles.sectionTitle}>Lịch sử giao dịch</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={{gap: 10, paddingRight: 20}}>
+        {filters.map(f => (
+          <TouchableOpacity 
+            key={f} 
+            style={[styles.filterChip, filter === f && styles.filterChipActive]}
+            onPress={() => setFilter(f)}
+          >
+            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -41,98 +129,33 @@ export default function WalletScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        
-        {/* Wallet Balance Card */}
-        <View style={styles.walletCard}>
-          <Text style={styles.walletLabel}>Số dư khả dụng</Text>
-          <Text style={styles.walletBalance}>2.560.000đ</Text>
-          
-          <View style={styles.walletRow}>
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-              <Ionicons name="time" size={16} color="#FCD34D" />
-              <Text style={styles.walletSubText}> Đang chờ đối soát</Text>
-            </View>
-            <Text style={styles.walletSubVal}>350.000đ</Text>
+      <FlatList
+        data={filteredTransactions}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Không tìm thấy giao dịch nào</Text>
           </View>
-
-          <View style={styles.walletRow}>
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-              <Ionicons name="checkmark-circle" size={16} color="#34D399" />
-              <Text style={styles.walletSubText}> Đã rút tháng này</Text>
+        }
+        renderItem={({ item: tx }) => (
+          <TouchableOpacity style={styles.txItem} onPress={() => setSelectedTx(tx)}>
+            <View style={[styles.txIcon, { backgroundColor: tx.color + '20' }]}>
+              <Ionicons name={tx.icon as any} size={20} color={tx.color} />
             </View>
-            <Text style={styles.walletSubVal}>15.800.000đ</Text>
-          </View>
-
-          <View style={styles.walletActions}>
-            <TouchableOpacity style={styles.actionBtn} onPress={() => setShowWithdraw(true)}>
-              <Ionicons name="card" size={20} color="#0F172A" />
-              <Text style={styles.actionText}>Rút tiền</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, {backgroundColor: 'transparent', borderWidth: 1, borderColor: '#334155'}]}>
-              <Ionicons name="receipt" size={20} color="#FFFFFF" />
-              <Text style={[styles.actionText, {color: '#FFFFFF'}]}>Báo cáo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* AI Analytics */}
-        <TouchableOpacity style={styles.aiBtn} onPress={() => setShowAi(!showAi)} activeOpacity={0.8}>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-            <Text style={styles.aiBtnText}>AI Phân tích Giao dịch</Text>
-          </View>
-          <Ionicons name={showAi ? "chevron-up" : "chevron-down"} size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-        
-        {showAi && (
-          <Animated.View entering={FadeInUp} layout={Layout} style={styles.aiContent}>
-            <Text style={styles.aiTitle}>Tuần này bạn kiếm được <Text style={{color:'#10B981'}}>6.200.000đ</Text> (↑ 12% so với tuần trước).</Text>
-            <View style={styles.aiTipRow}>
-              <View style={styles.aiDot} />
-              <Text style={styles.aiTip}>Thu nhập cao nhất lúc <Text style={{fontWeight: 'bold'}}>11h-13h</Text> và <Text style={{fontWeight: 'bold'}}>17h-20h</Text>.</Text>
+            <View style={styles.txInfo}>
+              <Text style={styles.txName}>{tx.name}</Text>
+              <Text style={styles.txTime}>{tx.time}</Text>
             </View>
-            <View style={styles.aiTipRow}>
-              <View style={styles.aiDot} />
-              <Text style={styles.aiTip}>Nếu online thêm 2 giờ vào tối thứ 7, ước tính <Text style={{color:'#10B981', fontWeight: 'bold'}}>+350.000đ</Text>.</Text>
-            </View>
-          </Animated.View>
+            <Text style={[styles.txPrice, { color: tx.price.includes('-') ? '#0F172A' : '#10B981' }]}>{tx.price}</Text>
+          </TouchableOpacity>
         )}
-
-        {/* Filters */}
-        <Text style={styles.sectionTitle}>Lịch sử giao dịch</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={{gap: 10, paddingRight: 20}}>
-          {filters.map(f => (
-            <TouchableOpacity 
-              key={f} 
-              style={[styles.filterChip, filter === f && styles.filterChipActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Transaction List */}
-        <View style={styles.txList}>
-          {transactions.map(tx => (
-            <TouchableOpacity key={tx.id} style={styles.txItem} onPress={() => setSelectedTx(tx)}>
-              <View style={[styles.txIcon, { backgroundColor: tx.color + '20' }]}>
-                <Ionicons name={tx.icon as any} size={20} color={tx.color} />
-              </View>
-              <View style={styles.txInfo}>
-                <Text style={styles.txName}>{tx.name}</Text>
-                <Text style={styles.txTime}>{tx.time}</Text>
-              </View>
-              <Text style={[styles.txPrice, { color: tx.price.includes('-') ? '#0F172A' : '#10B981' }]}>{tx.price}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-      </ScrollView>
+      />
 
       {/* Transaction Detail Modal */}
-      <Modal visible={!!selectedTx} animationType="slide" transparent={true}>
+      <Modal visible={!!selectedTx} animationType="slide" transparent={true} onRequestClose={() => setSelectedTx(null)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -173,33 +196,40 @@ export default function WalletScreen() {
       </Modal>
 
       {/* Withdraw Modal */}
-      <Modal visible={showWithdraw} animationType="fade" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, {padding: 24}]}>
-            <Text style={styles.modalTitle}>Rút tiền về Ngân hàng</Text>
-            <Text style={{color: '#64748B', marginBottom: 20}}>Nhập mã PIN (6 số) để xác thực giao dịch rút 2.500.000đ về Vietcombank (****8899).</Text>
-            
-            <TextInput 
-              style={styles.pinInput}
-              keyboardType="number-pad"
-              secureTextEntry={true}
-              maxLength={6}
-              placeholder="Nhập PIN (123456)"
-              value={pin}
-              onChangeText={setPin}
-              autoFocus
-            />
+      <Modal visible={showWithdraw} animationType="fade" transparent={true} onRequestClose={() => {setShowWithdraw(false); setPin('');}}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ width: '100%' }}
+            >
+              <View style={[styles.modalContent, {padding: 24}]}>
+                <Text style={styles.modalTitle}>Rút tiền về Ngân hàng</Text>
+                <Text style={{color: '#64748B', marginBottom: 20}}>Nhập mã PIN (6 số) để xác thực giao dịch rút 2.500.000đ về Vietcombank (****8899).</Text>
+                
+                <TextInput 
+                  style={styles.pinInput}
+                  keyboardType="number-pad"
+                  secureTextEntry={true}
+                  maxLength={6}
+                  placeholder="Nhập PIN (123456)"
+                  value={pin}
+                  onChangeText={setPin}
+                  autoFocus
+                />
 
-            <View style={{flexDirection: 'row', gap: 12, marginTop: 20}}>
-              <TouchableOpacity style={[styles.btn, styles.btnCancel]} onPress={() => {setShowWithdraw(false); setPin('');}}>
-                <Text style={styles.btnCancelText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={handleWithdraw}>
-                <Text style={styles.btnPrimaryText}>Xác nhận</Text>
-              </TouchableOpacity>
-            </View>
+                <View style={{flexDirection: 'row', gap: 12, marginTop: 20}}>
+                  <TouchableOpacity style={[styles.btn, styles.btnCancel]} onPress={() => {setShowWithdraw(false); setPin('');}}>
+                    <Text style={styles.btnCancelText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={handleWithdraw}>
+                    <Text style={styles.btnPrimaryText}>Xác nhận</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
     </SafeAreaView>
@@ -211,6 +241,7 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingTop: Platform.OS === 'android' ? 40 : 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#0F172A' },
   content: { padding: 20 },
+  headerContainer: { width: '100%' },
   
   walletCard: { backgroundColor: '#0F172A', padding: 24, borderRadius: 20, elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, marginBottom: 16 },
   walletLabel: { color: '#94A3B8', fontSize: 15, marginBottom: 4 },
@@ -265,4 +296,6 @@ const styles = StyleSheet.create({
   btnCancelText: { color: '#0F172A', fontWeight: 'bold', fontSize: 16 },
   btnPrimary: { backgroundColor: '#0F172A' },
   btnPrimaryText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  emptyContainer: { padding: 40, alignItems: 'center' },
+  emptyText: { color: '#64748B', fontSize: 15 },
 });
