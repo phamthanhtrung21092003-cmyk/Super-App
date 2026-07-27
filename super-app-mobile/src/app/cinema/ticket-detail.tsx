@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   ScrollView,
   Image,
+  Modal,
   useWindowDimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -21,11 +22,12 @@ export default function TicketDetailScreen() {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
+  const [showZoomModal, setShowZoomModal] = useState(false);
 
   const { booking, resetBooking, getGrandTotal } = useCinema();
 
   const movie = booking.movie || {
-    title: 'Conan Movie 29 (2026): Thiên Thần Sa Ngã Trên Xa Lộ',
+    title: 'Conan Movie 29: Thiên Thần Sa Ngã Trên Xa Lộ',
     poster: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80',
   };
 
@@ -35,6 +37,9 @@ export default function TicketDetailScreen() {
     : 'E5, E6';
 
   const grandTotal = getGrandTotal() > 0 ? getGrandTotal() : 105000;
+
+  const barcodeUrl = `https://barcode.tec-it.com/barcode.ashx?data=${bookingCode}&code=Code128&translate-esc=true`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${bookingCode}`;
 
   const handleGoHome = () => {
     resetBooking();
@@ -62,7 +67,7 @@ export default function TicketDetailScreen() {
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={44} color="#22C55E" />
             <Text style={[styles.successTitle, { fontFamily: theme.fontFamily }]}>Đặt vé thành công!</Text>
-            <Text style={styles.successSubText}>Vé điện tử đã sẵn sàng để check-in tại rạp</Text>
+            <Text style={styles.successSubText}>Mã vạch đã sẵn sàng để quét in vé tại rạp</Text>
           </View>
 
           {/* Ticket Stub Card Component */}
@@ -128,24 +133,50 @@ export default function TicketDetailScreen() {
               <View style={styles.notchRight} />
             </View>
 
-            {/* QR Code & Check-in Section */}
-            <View style={styles.qrSection}>
-              <Image
-                source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${bookingCode}` }}
-                style={styles.qrCodeImage}
-              />
-              <Text style={styles.barcodeText}>* {bookingCode} *</Text>
-              <Text style={styles.qrInstruction}>
-                Đưa mã QR này cho nhân viên rạp hoặc quét tại kiosk để in vé
-              </Text>
+            {/* Barcode & QR Code Check-in Section */}
+            <View style={styles.barcodeSection}>
+              {/* Scan Ready Badge */}
+              <View style={styles.scanReadyBadge}>
+                <Ionicons name="scan-outline" size={16} color="#DC2626" style={{ marginRight: 6 }} />
+                <Text style={styles.scanReadyText}>ĐƯA MÃ NÀY CHO NHÂN VIÊN RẠP QUÉT / IN VÉ</Text>
+              </View>
+
+              {/* Code128 1D Barcode Graphic */}
+              <TouchableOpacity
+                style={styles.barcodeBoxContainer}
+                onPress={() => setShowZoomModal(true)}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={{ uri: barcodeUrl }}
+                  style={styles.barcode1DImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.barcodeNumberText}>{bookingCode}</Text>
+                <View style={styles.zoomHintBadge}>
+                  <Ionicons name="expand" size={12} color="#0284C7" style={{ marginRight: 4 }} />
+                  <Text style={styles.zoomHintText}>Chạm để phóng to mã vạch quét vé</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* QR Code Section */}
+              <View style={styles.qrRowBox}>
+                <Image source={{ uri: qrUrl }} style={styles.qrCodeSquare} />
+                <View style={styles.qrInstructionCol}>
+                  <Text style={styles.qrInstructionTitle}>Quét tại Máy In Vé Tự Động (Kiosk)</Text>
+                  <Text style={styles.qrInstructionBody}>
+                    Đặt màn hình có mã vạch / mã QR trước đầu đọc Laser của máy in vé tại sảnh rạp để lấy vé cứng vào phòng chiếu.
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsCol}>
-            <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => alert('Đã chỉ đường tới Beta Xuân Thủy trên Google Maps!')}>
-              <Ionicons name="navigate-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.secondaryActionText}>Chỉ đường đến rạp</Text>
+            <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => setShowZoomModal(true)}>
+              <Ionicons name="barcode-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.secondaryActionText}>Mở mã vạch độ sáng cao</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.primaryHomeBtn} onPress={handleGoHome}>
@@ -157,6 +188,38 @@ export default function TicketDetailScreen() {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* Zoomed High-Brightness Barcode Modal for Staff Scanning */}
+        <Modal visible={showZoomModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.zoomedBarcodeCard}>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>Mã Vạch Quét Vé Vào Phim</Text>
+                <TouchableOpacity onPress={() => setShowZoomModal(false)} style={styles.modalCloseBtn}>
+                  <Ionicons name="close" size={24} color="#1E293B" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>Đưa mã vạch này cho nhân viên rạp soát vé hoặc quét tại kiosk</Text>
+
+              {/* Large Code128 Barcode */}
+              <View style={styles.largeBarcodeContainer}>
+                <Image source={{ uri: barcodeUrl }} style={styles.largeBarcodeImage} resizeMode="contain" />
+                <Text style={styles.largeBarcodeCodeText}>{bookingCode}</Text>
+              </View>
+
+              {/* Large QR Code */}
+              <View style={styles.largeQrContainer}>
+                <Image source={{ uri: qrUrl }} style={styles.largeQrImage} />
+                <Text style={styles.largeQrNote}>Mã xác thực vé tự động</Text>
+              </View>
+
+              <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowZoomModal(false)}>
+                <Text style={styles.closeModalText}>Đóng</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -201,11 +264,22 @@ const styles = StyleSheet.create({
   notchLeft: { position: 'absolute', left: -12, top: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: '#0F172A' },
   notchRight: { position: 'absolute', right: -12, top: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: '#0F172A' },
 
-  /* QR Section */
-  qrSection: { alignItems: 'center', padding: 20, backgroundColor: '#FFF' },
-  qrCodeImage: { width: 160, height: 160, borderRadius: 12 },
-  barcodeText: { fontSize: 14, fontWeight: '800', color: '#0F172A', letterSpacing: 2, marginTop: 8 },
-  qrInstruction: { fontSize: 12, color: '#64748B', textAlign: 'center', marginTop: 8, paddingHorizontal: 20, lineHeight: 16 },
+  /* Barcode Section */
+  barcodeSection: { alignItems: 'center', padding: 16, backgroundColor: '#FFF' },
+  scanReadyBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 12 },
+  scanReadyText: { fontSize: 11, fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
+
+  barcodeBoxContainer: { width: '100%', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 16, padding: 14, alignItems: 'center', marginBottom: 16 },
+  barcode1DImage: { width: '100%', height: 65 },
+  barcodeNumberText: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: 3, marginTop: 6 },
+  zoomHintBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2FE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginTop: 8 },
+  zoomHintText: { fontSize: 11, fontWeight: '700', color: '#0284C7' },
+
+  qrRowBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, padding: 12, width: '100%' },
+  qrCodeSquare: { width: 90, height: 90, borderRadius: 8 },
+  qrInstructionCol: { flex: 1, marginLeft: 12 },
+  qrInstructionTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  qrInstructionBody: { fontSize: 11, color: '#64748B', marginTop: 4, lineHeight: 16 },
 
   /* Action Buttons */
   actionButtonsCol: { marginTop: 4 },
@@ -214,4 +288,23 @@ const styles = StyleSheet.create({
 
   primaryHomeBtn: { backgroundColor: '#E11D48', paddingVertical: 14, borderRadius: 24, alignItems: 'center' },
   primaryHomeText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+  /* Modal */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  zoomedBarcodeCard: { width: '100%', maxWidth: 360, backgroundColor: '#FFF', borderRadius: 24, padding: 20, alignItems: 'center' },
+  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  modalCloseBtn: { padding: 4 },
+  modalSubtitle: { fontSize: 12, color: '#64748B', width: '100%', marginBottom: 16 },
+
+  largeBarcodeContainer: { width: '100%', backgroundColor: '#FFF', borderWidth: 2, borderColor: '#000', borderRadius: 16, padding: 14, alignItems: 'center', marginBottom: 16 },
+  largeBarcodeImage: { width: '100%', height: 90 },
+  largeBarcodeCodeText: { fontSize: 18, fontWeight: '900', color: '#000', letterSpacing: 4, marginTop: 8 },
+
+  largeQrContainer: { alignItems: 'center', marginBottom: 16 },
+  largeQrImage: { width: 140, height: 140, borderRadius: 12 },
+  largeQrNote: { fontSize: 11, color: '#64748B', marginTop: 6 },
+
+  closeModalBtn: { width: '100%', backgroundColor: '#0F172A', paddingVertical: 12, borderRadius: 16, alignItems: 'center' },
+  closeModalText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });

@@ -16,82 +16,45 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useCinema, SelectedSeat } from '../../context/CinemaContext';
 
-// Ma trận ghế mock rạp Beta Xuân Thủy - Phòng chiếu P7
-const INITIAL_SEAT_MATRIX: SelectedSeat[] = [
-  // Row A - Standard
-  { id: 'A1', row: 'A', number: 1, type: 'standard', price: 50000 },
-  { id: 'A2', row: 'A', number: 2, type: 'standard', price: 50000 },
-  { id: 'A3', row: 'A', number: 3, type: 'standard', price: 50000 },
-  { id: 'A4', row: 'A', number: 4, type: 'standard', price: 50000 },
-  { id: 'A5', row: 'A', number: 5, type: 'standard', price: 50000 },
-  { id: 'A6', row: 'A', number: 6, type: 'standard', price: 50000 },
-  { id: 'A7', row: 'A', number: 7, type: 'standard', price: 50000 },
-  { id: 'A8', row: 'A', number: 8, type: 'standard', price: 50000 },
-  { id: 'A9', row: 'A', number: 9, type: 'standard', price: 50000 },
-  { id: 'A10', row: 'A', number: 10, type: 'standard', price: 50000 },
+// Helper to generate seat matrix based on movie base price
+const getSeatMatrix = (basePrice: number = 50000): SelectedSeat[] => {
+  const stdPrice = basePrice;
+  const vipPrice = basePrice + 10000;
+  const couplePrice = basePrice * 2; // 100,000đ cho 1 ghế đôi (2 chỗ)
 
-  // Row B - Standard
-  { id: 'B1', row: 'B', number: 1, type: 'standard', price: 50000 },
-  { id: 'B2', row: 'B', number: 2, type: 'standard', price: 50000 },
-  { id: 'B3', row: 'B', number: 3, type: 'standard', price: 50000 },
-  { id: 'B4', row: 'B', number: 4, type: 'standard', price: 50000 },
-  { id: 'B5', row: 'B', number: 5, type: 'standard', price: 50000 },
-  { id: 'B6', row: 'B', number: 6, type: 'standard', price: 50000 },
-  { id: 'B7', row: 'B', number: 7, type: 'standard', price: 50000 },
-  { id: 'B8', row: 'B', number: 8, type: 'standard', price: 50000 },
-  { id: 'B9', row: 'B', number: 9, type: 'standard', price: 50000 },
-  { id: 'B10', row: 'B', number: 10, type: 'standard', price: 50000 },
+  const rows: SelectedSeat[] = [];
 
-  // Row C - Standard
-  { id: 'C1', row: 'C', number: 1, type: 'standard', price: 50000 },
-  { id: 'C2', row: 'C', number: 2, type: 'standard', price: 50000 },
-  { id: 'C3', row: 'C', number: 3, type: 'standard', price: 50000 },
-  { id: 'C4', row: 'C', number: 4, type: 'standard', price: 50000 },
-  { id: 'C5', row: 'C', number: 5, type: 'standard', price: 50000 },
-  { id: 'C6', row: 'C', number: 6, type: 'standard', price: 50000 },
-  { id: 'C7', row: 'C', number: 7, type: 'standard', price: 50000 },
-  { id: 'C8', row: 'C', number: 8, type: 'standard', price: 50000 },
-  { id: 'C9', row: 'C', number: 9, type: 'standard', price: 50000 },
-  { id: 'C10', row: 'C', number: 10, type: 'standard', price: 50000 },
+  // Rows A, B, C - Standard
+  ['A', 'B', 'C'].forEach(r => {
+    for (let i = 1; i <= 10; i++) {
+      rows.push({ id: `${r}${i}`, row: r, number: i, type: 'standard', price: stdPrice });
+    }
+  });
 
-  // Row D - VIP (Gold)
-  { id: 'D1', row: 'D', number: 1, type: 'vip', price: 50000 },
-  { id: 'D2', row: 'D', number: 2, type: 'vip', price: 50000 },
-  { id: 'D3', row: 'D', number: 3, type: 'vip', price: 50000 },
-  { id: 'D4', row: 'D', number: 4, type: 'vip', price: 50000 },
-  { id: 'D5', row: 'D', number: 5, type: 'vip', price: 50000 },
-  { id: 'D6', row: 'D', number: 6, type: 'vip', price: 50000 },
-  { id: 'D7', row: 'D', number: 7, type: 'vip', price: 50000 },
-  { id: 'D8', row: 'D', number: 8, type: 'vip', price: 50000 },
-  { id: 'D9', row: 'D', number: 9, type: 'vip', price: 50000 },
-  { id: 'D10', row: 'D', number: 10, type: 'vip', price: 50000 },
+  // Rows D, E - VIP
+  ['D', 'E'].forEach(r => {
+    for (let i = 1; i <= 10; i++) {
+      rows.push({ id: `${r}${i}`, row: r, number: i, type: 'vip', price: vipPrice });
+    }
+  });
 
-  // Row E - VIP (Has E4, E5 booked/selected)
-  { id: 'E1', row: 'E', number: 1, type: 'vip', price: 50000 },
-  { id: 'E2', row: 'E', number: 2, type: 'vip', price: 50000 },
-  { id: 'E3', row: 'E', number: 3, type: 'vip', price: 50000 },
-  { id: 'E4', row: 'E', number: 4, type: 'vip', price: 50000 }, // Will set booked or selected
-  { id: 'E5', row: 'E', number: 5, type: 'vip', price: 50000 },
-  { id: 'E6', row: 'E', number: 6, type: 'vip', price: 50000 },
-  { id: 'E7', row: 'E', number: 7, type: 'vip', price: 50000 },
-  { id: 'E8', row: 'E', number: 8, type: 'vip', price: 50000 },
-  { id: 'E9', row: 'E', number: 9, type: 'vip', price: 50000 },
-  { id: 'E10', row: 'E', number: 10, type: 'vip', price: 50000 },
+  // Row F - Couple (5 đôi ghế rộng gấp đôi, mỗi ghế 100.000đ chiếm 2 vị trí)
+  const couplePairs = [
+    { id: 'F1-F2', num: 1 },
+    { id: 'F3-F4', num: 3 },
+    { id: 'F5-F6', num: 5 },
+    { id: 'F7-F8', num: 7 },
+    { id: 'F9-F10', num: 9 },
+  ];
 
-  // Row F - Couple (Blue)
-  { id: 'F1', row: 'F', number: 1, type: 'couple', price: 50000 },
-  { id: 'F2', row: 'F', number: 2, type: 'couple', price: 50000 },
-  { id: 'F3', row: 'F', number: 3, type: 'couple', price: 50000 },
-  { id: 'F4', row: 'F', number: 4, type: 'couple', price: 50000 },
-  { id: 'F5', row: 'F', number: 5, type: 'couple', price: 50000 },
-  { id: 'F6', row: 'F', number: 6, type: 'couple', price: 50000 },
-  { id: 'F7', row: 'F', number: 7, type: 'couple', price: 50000 },
-  { id: 'F8', row: 'F', number: 8, type: 'couple', price: 50000 },
-  { id: 'F9', row: 'F', number: 9, type: 'couple', price: 50000 },
-  { id: 'F10', row: 'F', number: 10, type: 'couple', price: 50000 },
-];
+  couplePairs.forEach(p => {
+    rows.push({ id: p.id, row: 'F', number: p.num, type: 'couple', price: couplePrice });
+  });
 
-const BOOKED_SEAT_IDS = ['E4', 'F3', 'F4']; // Ghế đã bán
+  return rows;
+};
+
+const BOOKED_SEAT_IDS = ['E4', 'F3-F4']; // Ghế đã bán
 
 export default function SeatSelectionScreen() {
   const router = useRouter();
@@ -101,16 +64,23 @@ export default function SeatSelectionScreen() {
 
   const { booking, toggleSeat, getSeatsTotalPrice } = useCinema();
 
+  const basePrice = booking.basePrice || 50000;
+  const stdPrice = basePrice;
+  const vipPrice = basePrice + 10000;
+  const couplePrice = basePrice * 2;
+
+  const seatMatrix = getSeatMatrix(basePrice);
+
   // Selected seats from Context
   const selectedSeats = booking.selectedSeats;
   const seatsCount = selectedSeats.length;
   const totalPrice = getSeatsTotalPrice();
 
-  // If initial load and no seats selected, preset E5 & E6 to match user screenshot!
+  // If initial load and no seats selected, preset E5 & E6
   React.useEffect(() => {
     if (booking.selectedSeats.length === 0) {
-      toggleSeat({ id: 'E5', row: 'E', number: 5, type: 'vip', price: 50000 });
-      toggleSeat({ id: 'E6', row: 'E', number: 6, type: 'vip', price: 50000 });
+      toggleSeat({ id: 'E5', row: 'E', number: 5, type: 'vip', price: vipPrice });
+      toggleSeat({ id: 'E6', row: 'E', number: 6, type: 'vip', price: vipPrice });
     }
   }, []);
 
@@ -193,7 +163,7 @@ export default function SeatSelectionScreen() {
           {/* Seat Legend Indicator Bar */}
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendBox, { backgroundColor: '#DC2626' }]}>
+              <View style={[styles.legendBox, { backgroundColor: '#E11D48' }]}>
                 <Ionicons name="checkmark" size={10} color="#FFF" />
               </View>
               <Text style={styles.legendText}>Đang chọn</Text>
@@ -206,17 +176,17 @@ export default function SeatSelectionScreen() {
 
             <View style={styles.legendItem}>
               <View style={[styles.legendBox, { backgroundColor: '#E2E8F0' }]} />
-              <Text style={styles.legendText}>Standard <Text style={styles.legendPrice}>50.000đ</Text></Text>
+              <Text style={styles.legendText}>Thường <Text style={styles.legendPrice}>{stdPrice.toLocaleString('vi-VN')}đ</Text></Text>
             </View>
 
             <View style={styles.legendItem}>
               <View style={[styles.legendBox, { backgroundColor: '#D97706' }]} />
-              <Text style={styles.legendText}>VIP <Text style={styles.legendPrice}>50.000đ</Text></Text>
+              <Text style={styles.legendText}>VIP <Text style={styles.legendPrice}>{vipPrice.toLocaleString('vi-VN')}đ</Text></Text>
             </View>
 
             <View style={styles.legendItem}>
-              <View style={[styles.legendBox, { backgroundColor: '#2563EB' }]} />
-              <Text style={styles.legendText}>Couple <Text style={styles.legendPrice}>50.000đ</Text></Text>
+              <View style={[styles.legendBox, { backgroundColor: '#2563EB', width: 26 }]} />
+              <Text style={styles.legendText}>Ghế Đôi <Text style={styles.legendPrice}>{couplePrice.toLocaleString('vi-VN')}đ (2 chỗ)</Text></Text>
             </View>
           </View>
 
@@ -235,9 +205,10 @@ export default function SeatSelectionScreen() {
           <View style={styles.seatGridContainer}>
             {['A', 'B', 'C', 'D', 'E', 'F'].map(rowLabel => (
               <View key={rowLabel} style={styles.seatRow}>
-                {INITIAL_SEAT_MATRIX.filter(seat => seat.row === rowLabel).map(seat => {
+                {seatMatrix.filter(seat => seat.row === rowLabel).map(seat => {
                   const isBooked = BOOKED_SEAT_IDS.includes(seat.id);
                   const isSelected = selectedSeats.some(s => s.id === seat.id);
+                  const isCouple = seat.type === 'couple';
 
                   let bgStyle = styles.seatStandard;
                   if (seat.type === 'vip') bgStyle = styles.seatVip;
@@ -249,16 +220,19 @@ export default function SeatSelectionScreen() {
                     <TouchableOpacity
                       key={seat.id}
                       disabled={isBooked}
-                      style={[styles.seatBox, bgStyle]}
+                      style={[styles.seatBox, isCouple && styles.seatBoxCouple, bgStyle]}
                       onPress={() => toggleSeat(seat)}
                     >
                       {isSelected ? (
-                        <Ionicons name="checkmark" size={14} color="#FFF" />
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Ionicons name="checkmark" size={14} color="#FFF" />
+                          {isCouple && <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '800', marginLeft: 2 }}>{seat.id}</Text>}
+                        </View>
                       ) : isBooked ? (
                         <View style={styles.bookedHatchPattern} />
                       ) : (
                         <Text style={[styles.seatText, isSelected && styles.seatTextSelected]}>
-                          50
+                          {isCouple ? `${seat.id}` : `${seat.number}`}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -278,7 +252,7 @@ export default function SeatSelectionScreen() {
                   onPress={() => toggleSeat(seat)}
                 >
                   <View style={styles.chipDot} />
-                  <Text style={styles.chipText}>{seat.id}</Text>
+                  <Text style={styles.chipText}>{seat.id} ({seat.price.toLocaleString('vi-VN')}đ)</Text>
                   <Ionicons name="close" size={14} color="#DC2626" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
               ))}
@@ -291,7 +265,7 @@ export default function SeatSelectionScreen() {
         {/* Sticky Bottom Action Bar */}
         <View style={styles.bottomBar}>
           <View style={styles.bottomInfoColumn}>
-            <Text style={styles.bottomSeatsCountText}>{seatsCount} GHẾ</Text>
+            <Text style={styles.bottomSeatsCountText}>{seatsCount} GHẾ ĐÃ CHỌN</Text>
             <Text style={styles.bottomTotalPriceText}>
               {totalPrice.toLocaleString('vi-VN')}đ
             </Text>
@@ -299,7 +273,7 @@ export default function SeatSelectionScreen() {
 
           <TouchableOpacity style={styles.primaryNextBtn} onPress={handleNextStep}>
             <Text style={[styles.primaryNextBtnText, { fontFamily: theme.fontFamily }]}>
-              Tiếp tục ➔
+              Tiếp tục
             </Text>
           </TouchableOpacity>
         </View>
@@ -351,6 +325,7 @@ const styles = StyleSheet.create({
   seatGridContainer: { marginTop: 20, alignItems: 'center' },
   seatRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 8 },
   seatBox: { width: 28, height: 28, borderRadius: 6, marginHorizontal: 2, alignItems: 'center', justifyContent: 'center' },
+  seatBoxCouple: { width: 58, borderRadius: 8 },
   seatStandard: { backgroundColor: '#E2E8F0' },
   seatVip: { backgroundColor: '#D97706' },
   seatCouple: { backgroundColor: '#2563EB' },

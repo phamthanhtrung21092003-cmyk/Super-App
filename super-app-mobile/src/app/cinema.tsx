@@ -97,7 +97,7 @@ const ALL_63_PROVINCES = [
 ];
 
 const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
-  // ==================== HÀ NỘI ====================
+  // ==================== HÀ NỘI (24 RẠP) ====================
   {
     id: 'national-cinema-center-hn',
     brand: 'Rạp Quốc Gia',
@@ -138,6 +138,19 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 8,
   },
   {
+    id: 'cgv-times-city',
+    brand: 'CGV',
+    name: 'CGV Vincom Mega Mall Times City',
+    area: 'Minh Khai',
+    city: 'TP. Hà Nội',
+    address: 'Tầng B1, TTTM Vincom Mega Mall Times City, 458 Minh Khai, Q. Hai Bà Trưng, Hà Nội',
+    phone: '1900 6017',
+    hours: '08:00 - 24:00',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Hầm B2 Times City', '🎟️ Kiosk in vé', '🔊 Dolby Sound'],
+    distance: '5.8 km',
+    moviesCount: 8,
+  },
+  {
     id: 'cgv-aeon-long-bien',
     brand: 'CGV',
     name: 'CGV AEON Long Biên',
@@ -148,6 +161,19 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     hours: '08:30 - 24:00',
     facilities: ['🍿 Combo Popcorn', '🅿️ Free bãi xe AEON Mall', '🎟️ QR Scan', '✨ IMAX & Sweetbox'],
     distance: '6.2 km',
+    moviesCount: 8,
+  },
+  {
+    id: 'cgv-aeon-ha-dong',
+    brand: 'CGV',
+    name: 'CGV AEON Mall Hà Đông',
+    area: 'Hà Đông',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 4, TTTM AEON Mall Hà Đông, P. Dương Nội, Q. Hà Đông, Hà Nội',
+    phone: '1900 6017',
+    hours: '08:00 - 24:00',
+    facilities: ['🍿 Popcorn Gourmet', '🅿️ Bãi xe AEON rộng rãi', '🎟️ Scan Kiosk', '✨ IMAX Screen'],
+    distance: '7.5 km',
     moviesCount: 8,
   },
   {
@@ -164,6 +190,71 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 7,
   },
   {
+    id: 'cgv-tran-duy-hung',
+    brand: 'CGV',
+    name: 'CGV Vincom Trần Duy Hưng',
+    area: 'Trần Duy Hưng',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 5, TTTM Vincom Center Trần Duy Hưng, Q. Cầu Giấy, Hà Nội',
+    phone: '1900 6017',
+    hours: '08:00 - 24:00',
+    facilities: ['🍿 Cine Cafe Bar', '🅿️ Hầm B3 Vincom', '🎟️ QR Kiosk', '🌟 Starium & Cine & Foret'],
+    distance: '2.5 km',
+    moviesCount: 8,
+  },
+  {
+    id: 'cgv-metropolis-lieu-giai',
+    brand: 'CGV',
+    name: 'CGV Vincom Metropolis Liễu Giai',
+    area: 'Liễu Giai',
+    city: 'TP. Hà Nội',
+    address: 'Tầng B1, TTTM Vincom Center Metropolis, 29 Liễu Giai, Q. Ba Đình, Hà Nội',
+    phone: '1900 6017',
+    hours: '08:30 - 24:00',
+    facilities: ['🍿 Popcorn Gourmet', '🅿️ Hầm Vincom', '🎟️ Scan QR', '🎬 IMAX Cinema'],
+    distance: '2.8 km',
+    moviesCount: 8,
+  },
+  {
+    id: 'cgv-pham-ngoc-thach',
+    brand: 'CGV',
+    name: 'CGV Vincom Center Phạm Ngọc Thạch',
+    area: 'Phạm Ngọc Thạch',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 8, TTTM Vincom Center, 02 Phạm Ngọc Thạch, Q. Đống Đa, Hà Nội',
+    phone: '1900 6017',
+    hours: '08:30 - 24:00',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm giữ xe Vincom', '🎟️ Check-in QR', '✨ Gold Class VIP'],
+    distance: '3.6 km',
+    moviesCount: 8,
+  },
+  {
+    id: 'cgv-rice-city-linh-dam',
+    brand: 'CGV',
+    name: 'CGV Rice City Linh Đàm',
+    area: 'Linh Đàm',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 2, Tòa nhà Trung, Rice City Linh Đàm, Q. Hoàng Mai, Hà Nội',
+    phone: '1900 6017',
+    hours: '08:00 - 23:30',
+    facilities: ['🍿 Bắp ngọt & phô mai', '🅿️ Bãi xe Linh Đàm', '🎟️ Scan Kiosk', '🎬 Phòng 2D/3D giá tốt'],
+    distance: '7.8 km',
+    moviesCount: 7,
+  },
+  {
+    id: 'cgv-trang-tien-plaza',
+    brand: 'CGV',
+    name: 'CGV Tràng Tiền Plaza',
+    area: 'Hoàn Kiếm',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 5, TTTM Tràng Tiền Plaza, 24 Tràng Tiền, Q. Hoàn Kiếm, Hà Nội',
+    phone: '1900 6017',
+    hours: '09:00 - 23:30',
+    facilities: ['🍿 Premium Snack', '🅿️ Bãi đỗ xe Phố Cổ', '🎟️ Check-in nhanh', '✨ Premium Lounge'],
+    distance: '5.5 km',
+    moviesCount: 7,
+  },
+  {
     id: 'beta-xuan-thuy',
     brand: 'Beta',
     name: 'Beta Cinema Xuân Thủy',
@@ -175,6 +266,45 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     facilities: ['🍿 Bắp phô mai & caramel giá tốt', '🅿️ Bãi giữ xe Pico', '🎟️ Kiosk in vé', '🔊 Sound 7.1'],
     distance: '0.4 km',
     moviesCount: 7,
+  },
+  {
+    id: 'beta-thanh-xuan',
+    brand: 'Beta',
+    name: 'Beta Cinema Thanh Xuân',
+    area: 'Nguyễn Trãi',
+    city: 'TP. Hà Nội',
+    address: 'Tầng B2, Tòa nhà Golden Land, 275 Nguyễn Trãi, Q. Thanh Xuân, Hà Nội',
+    phone: '1900 636807',
+    hours: '08:00 - 23:30',
+    facilities: ['🍿 Popcorn Bar giá sinh viên', '🅿️ Hầm Golden Land', '🎟️ In vé Kiosk', '🔊 Dolby Atmos'],
+    distance: '4.8 km',
+    moviesCount: 7,
+  },
+  {
+    id: 'beta-giai-phong',
+    brand: 'Beta',
+    name: 'Beta Cinema Giải Phóng',
+    area: 'Giải Phóng',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 3, Imperial Plaza, 360 Giải Phóng, Q. Thanh Xuân, Hà Nội',
+    phone: '1900 636807',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Bắp caramel & phô mai', '🅿️ Hầm Imperial Plaza', '🎟️ QR Scan Kiosk', '🎬 2D/3D giá ưu đãi'],
+    distance: '6.5 km',
+    moviesCount: 7,
+  },
+  {
+    id: 'beta-dan-phuong',
+    brand: 'Beta',
+    name: 'Beta Cinema Đan Phượng',
+    area: 'Đan Phượng',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 2, TTTM Tuấn Thủy, TT. Phùng, H. Đan Phượng, Hà Nội',
+    phone: '1900 636807',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Combo Snack', '🅿️ Bãi giữ xe rộng rãi', '🎟️ Kiosk in vé', '🔊 Sound 7.1'],
+    distance: '12.0 km',
+    moviesCount: 6,
   },
   {
     id: 'lotte-discovery-cau-giay',
@@ -190,6 +320,45 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 6,
   },
   {
+    id: 'lotte-landmark-keangnam',
+    brand: 'Lotte',
+    name: 'Lotte Cinema Landmark Keangnam',
+    area: 'Mễ Trì',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 5, Keangnam Landmark Tower, Phạm Hùng, Q. Nam Từ Liêm, Hà Nội',
+    phone: '024 3837 8032',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Combo Popcorn', '🅿️ Hầm Keangnam', '🎟️ Check-in Kiosk', '✨ Cine Comfort Lounge'],
+    distance: '3.1 km',
+    moviesCount: 7,
+  },
+  {
+    id: 'lotte-ha-dong',
+    brand: 'Lotte',
+    name: 'Lotte Cinema Hà Đông',
+    area: 'Hà Đông',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 4, Melinh Plaza Hà Đông, Tô Hiệu, Q. Hà Đông, Hà Nội',
+    phone: '024 3355 8000',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Bắp bơ & phô mai', '🅿️ Bãi xe Melinh Plaza', '🎟️ Scan QR', '🎬 2D/3D Digital'],
+    distance: '8.2 km',
+    moviesCount: 6,
+  },
+  {
+    id: 'lotte-long-bien',
+    brand: 'Lotte',
+    name: 'Lotte Cinema Long Biên',
+    area: 'Long Biên',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 3, Mipec Riverside, 2 Long Biên II, Q. Long Biên, Hà Nội',
+    phone: '024 3698 1111',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm Mipec Riverside', '🎟️ In vé nhanh', '🔊 Super Sound'],
+    distance: '6.9 km',
+    moviesCount: 7,
+  },
+  {
     id: 'bhd-discovery-cau-giay',
     brand: 'BHD',
     name: 'BHD Star Discovery Cầu Giấy',
@@ -200,6 +369,32 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     hours: '08:30 - 23:30',
     facilities: ['🍿 Popcorn Bar', '🅿️ Hầm đỗ xe Discovery', '🎟️ QR Code', '🛋️ First Class Lounge'],
     distance: '1.2 km',
+    moviesCount: 7,
+  },
+  {
+    id: 'bhd-the-garden',
+    brand: 'BHD',
+    name: 'BHD Star The Garden Mễ Trì',
+    area: 'Mễ Trì',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 4, TTTM The Garden, Đường Mễ Trì, Q. Nam Từ Liêm, Hà Nội',
+    phone: '1900 2099',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Combo Popcorn Gourmet', '🅿️ Hầm The Garden', '🎟️ Check-in QR', '🔊 7.1 Surround'],
+    distance: '3.5 km',
+    moviesCount: 7,
+  },
+  {
+    id: 'bhd-pham-ngoc-thach',
+    brand: 'BHD',
+    name: 'BHD Star Phạm Ngọc Thạch',
+    area: 'Phạm Ngọc Thạch',
+    city: 'TP. Hà Nội',
+    address: 'Tầng 8, Vincom Center, 02 Phạm Ngọc Thạch, Q. Đống Đa, Hà Nội',
+    phone: '1900 2099',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Bắp Caramel & Phô mai', '🅿️ Hầm Vincom', '🎟️ Quét mã QR', '✨ Gold ClassVIP'],
+    distance: '3.6 km',
     moviesCount: 7,
   },
   {
@@ -917,130 +1112,619 @@ const CINEMA_BRANDS = [
   { id: 'Starlight', name: 'Starlight', color: '#0284C7' },
 ];
 
-const FULL_MOVIES_LIST: MovieItem[] = [
-  {
-    id: 'conan-29',
-    title: 'Conan Movie 29 (2026): Thiên Thần Sa Ngã Trên Xa Lộ',
-    originalTitle: 'Conan Movie 29 (2026): Fallen Angel of the Highway',
-    poster: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80',
-    ageRating: 'T13',
-    duration: "1h49'",
-    hasTrailer: true,
-    genres: 'Hành Động, Trinh Thám, Hoạt Hình',
-    showtimes: [
+export function getMoviesForDateAndBranch(dateId: string, branch: CinemaBranch): MovieItem[] {
+  // Brand multiplier
+  let priceMult = 1.0;
+  if (branch.brand === 'CGV') priceMult = 1.25;
+  else if (branch.brand === 'Lotte') priceMult = 1.15;
+  else if (branch.brand === 'BHD') priceMult = 1.1;
+  else if (branch.brand === 'Beta') priceMult = 0.85;
+  else if (branch.brand === 'Rạp Quốc Gia') priceMult = 0.9;
+  else if (branch.brand === 'Galaxy') priceMult = 1.0;
+
+  // Day 2 (Thứ 3 · 28/07) is Happy Tuesday discount!
+  if (dateId === '2') {
+    priceMult *= 0.8;
+  }
+
+  const makePrice = (base: number) => {
+    const raw = Math.round((base * priceMult) / 5000) * 5000;
+    const finalPrice = Math.max(45000, raw);
+    return {
+      price: finalPrice,
+      priceText: `${finalPrice / 1000}K`
+    };
+  };
+
+  // Base movie templates
+  const MOVIE_TEMPLATES = {
+    conan: {
+      id: 'conan-29',
+      title: 'Conan Movie 29: Thiên Thần Sa Ngã Trên Xa Lộ',
+      originalTitle: 'Detective Conan: Fallen Angel of the Highway',
+      poster: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80',
+      ageRating: 'T13',
+      duration: "1h49'",
+      hasTrailer: true,
+      genres: 'Hành Động, Trinh Thám, Hoạt Hình',
+    },
+    latmat: {
+      id: 'lat-mat-7',
+      title: 'Lật Mặt 7: Một Điều Ước (Đạo diễn Lý Hải)',
+      originalTitle: 'Face Off 7: One Wish',
+      poster: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=500&q=80',
+      ageRating: 'K',
+      duration: "2h18'",
+      hasTrailer: true,
+      genres: 'Gia Đình, Tâm Lý, Tình Cảm',
+    },
+    deadpool: {
+      id: 'deadpool-wolverine',
+      title: 'Deadpool & Wolverine',
+      originalTitle: 'Deadpool & Wolverine (Marvel Studios)',
+      poster: 'https://images.unsplash.com/photo-1568876694728-451bbf694b83?w=500&q=80',
+      ageRating: 'T18',
+      duration: "2h07'",
+      hasTrailer: true,
+      genres: 'Hành Động, Hài Hước, Sci-Fi',
+    },
+    insideout: {
+      id: 'inside-out-2',
+      title: 'Những Mảnh Ghép Cảm Xúc 2',
+      originalTitle: 'Inside Out 2 (Disney Pixar)',
+      poster: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&q=80',
+      ageRating: 'P',
+      duration: "1h36'",
+      hasTrailer: true,
+      genres: 'Hoạt Hình, Gia Đình, Hài Hước',
+    },
+    minions: {
+      id: 'despicable-me-4',
+      title: 'Kẻ Trộm Mặt Trăng 4',
+      originalTitle: 'Despicable Me 4 (Illumination)',
+      poster: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=500&q=80',
+      ageRating: 'P',
+      duration: "1h34'",
+      hasTrailer: true,
+      genres: 'Hoạt Hình, Hài, Phiêu Lưu',
+    },
+    exhuma: {
+      id: 'exhuma',
+      title: 'Quật Mộ Trùng Ma (Exhuma)',
+      originalTitle: 'Exhuma (Pamyo)',
+      poster: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500&q=80',
+      ageRating: 'T18',
+      duration: "2h14'",
+      hasTrailer: true,
+      genres: 'Kinh Dị, Giật Gân, Bí Ẩn',
+    },
+    godzilla: {
+      id: 'godzilla-x-kong',
+      title: 'Godzilla x Kong: Đế Chế Mới',
+      originalTitle: 'Godzilla x Kong: The New Empire',
+      poster: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80',
+      ageRating: 'T13',
+      duration: "1h55'",
+      hasTrailer: true,
+      genres: 'Hành Động, Viễn Tưởng, Quái Vật',
+    },
+    fantasticfour: {
+      id: 'fantastic-four-sneak',
+      title: dateId === '4' ? '[SUẤT CHIẾU SỚM] Bộ Tứ Thần Thánh: Bước Khởi Đầu' : 'Bộ Tứ Thần Thánh: Bước Khởi Đầu',
+      originalTitle: 'The Fantastic Four: First Steps (Marvel Studios)',
+      poster: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=500&q=80',
+      ageRating: 'T13',
+      duration: "2h05'",
+      hasTrailer: true,
+      genres: 'Hành Động, Siêu Anh Hùng, Viễn Tưởng',
+    },
+    alien: {
+      id: 'alien-romulus',
+      title: 'Alien: Romulus (Quái Vật Không Gian)',
+      originalTitle: 'Alien: Romulus (20th Century Studios)',
+      poster: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500&q=80',
+      ageRating: 'T18',
+      duration: "1h59'",
+      hasTrailer: true,
+      genres: 'Kinh Dị, Viễn Tưởng, Giật Gân',
+    },
+    mai: {
+      id: 'mai-tran-thanh',
+      title: 'Mai (Đạo diễn Trấn Thành)',
+      originalTitle: 'MAI (Film by Tran Thanh)',
+      poster: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80',
+      ageRating: 'T18',
+      duration: "2h11'",
+      hasTrailer: true,
+      genres: 'Tâm Lý, Tình Cảm, Hài',
+    }
+  };
+
+  // Build daily movie schedules
+  if (dateId === '1') { // 27/07 Thứ 2
+    return [
       {
-        format: '2D Lồng Tiếng',
-        times: [
-          { time: '08:30', price: 50000, priceText: '50K', available: false },
-          { time: '11:00', price: 50000, priceText: '50K', available: false },
-          { time: '17:00', price: 50000, priceText: '50K', available: true },
-          { time: '17:30', price: 50000, priceText: '50K', available: true },
-          { time: '18:30', price: 55000, priceText: '55K', available: true },
-          { time: '19:00', price: 55000, priceText: '55K', available: true },
-          { time: '19:30', price: 55000, priceText: '55K', available: true },
-          { time: '20:30', price: 55000, priceText: '55K', available: true },
-          { time: '21:45', price: 55000, priceText: '55K', available: true },
+        ...MOVIE_TEMPLATES.conan,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng',
+            times: [
+              { time: '08:30', available: false, ...makePrice(50000) },
+              { time: '11:00', available: false, ...makePrice(50000) },
+              { time: '14:15', available: true, ...makePrice(55000) },
+              { time: '17:00', available: true, ...makePrice(55000) },
+              { time: '19:30', available: true, ...makePrice(60000) },
+              { time: '21:45', available: true, ...makePrice(60000) },
+            ]
+          },
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '10:00', available: false, ...makePrice(55000) },
+              { time: '16:00', available: true, ...makePrice(55000) },
+              { time: '18:15', available: true, ...makePrice(60000) },
+              { time: '20:45', available: true, ...makePrice(60000) },
+              { time: '23:00', available: true, ...makePrice(55000) },
+            ]
+          }
         ]
       },
       {
-        format: '2D Phụ Đề Việt',
-        times: [
-          { time: '10:00', price: 50000, priceText: '50K', available: false },
-          { time: '16:00', price: 50000, priceText: '50K', available: true },
-          { time: '16:45', price: 50000, priceText: '50K', available: true },
-          { time: '18:15', price: 55000, priceText: '55K', available: true },
-          { time: '20:45', price: 55000, priceText: '55K', available: true },
-          { time: '23:00', price: 50000, priceText: '50K', available: true },
+        ...MOVIE_TEMPLATES.latmat,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '08:45', available: false, ...makePrice(50000) },
+              { time: '11:30', available: true, ...makePrice(55000) },
+              { time: '14:00', available: true, ...makePrice(55000) },
+              { time: '16:30', available: true, ...makePrice(60000) },
+              { time: '19:00', available: true, ...makePrice(65000) },
+              { time: '21:30', available: true, ...makePrice(65000) },
+            ]
+          }
         ]
-      }
-    ]
-  },
-  {
-    id: 'lat-mat-7',
-    title: 'Lật Mặt 7: Một Điều Ước (Đạo diễn Lý Hải)',
-    originalTitle: 'Face Off 7: One Wish',
-    poster: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=500&q=80',
-    ageRating: 'K',
-    duration: "2h18'",
-    hasTrailer: true,
-    genres: 'Gia Đình, Tâm Lý, Tình Cảm',
-    showtimes: [
+      },
       {
-        format: '2D Phụ Đề Việt',
-        times: [
-          { time: '08:45', price: 50000, priceText: '50K', available: false },
-          { time: '14:00', price: 55000, priceText: '55K', available: true },
-          { time: '16:30', price: 55000, priceText: '55K', available: true },
-          { time: '19:00', price: 60000, priceText: '60K', available: true },
-          { time: '21:30', price: 60000, priceText: '60K', available: true },
+        ...MOVIE_TEMPLATES.deadpool,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '09:30', available: false, ...makePrice(60000) },
+              { time: '13:00', available: true, ...makePrice(65000) },
+              { time: '15:45', available: true, ...makePrice(65000) },
+              { time: '18:30', available: true, ...makePrice(70000) },
+              { time: '21:15', available: true, ...makePrice(70000) },
+              { time: '23:45', available: true, ...makePrice(60000) },
+            ]
+          },
+          ...(branch.brand === 'CGV' ? [{
+            format: 'IMAX 2D Phụ Đề',
+            times: [
+              { time: '14:30', available: true, ...makePrice(120000) },
+              { time: '19:45', available: true, ...makePrice(140000) },
+            ]
+          }] : [])
         ]
-      }
-    ]
-  },
-  {
-    id: 'mai-tran-thanh',
-    title: 'Mai (Đạo diễn Trấn Thành)',
-    originalTitle: 'MAI',
-    poster: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80',
-    ageRating: 'T18',
-    duration: "2h11'",
-    hasTrailer: true,
-    genres: 'Tâm Lý, Tình Cảm, Hài',
-    showtimes: [
+      },
       {
-        format: '2D Phụ Đề Việt',
-        times: [
-          { time: '09:15', price: 50000, priceText: '50K', available: false },
-          { time: '14:30', price: 55000, priceText: '55K', available: true },
-          { time: '17:15', price: 55000, priceText: '55K', available: true },
-          { time: '19:45', price: 60000, priceText: '60K', available: true },
-          { time: '22:15', price: 60000, priceText: '60K', available: true },
+        ...MOVIE_TEMPLATES.insideout,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng',
+            times: [
+              { time: '09:15', available: true, ...makePrice(50000) },
+              { time: '11:15', available: true, ...makePrice(55000) },
+              { time: '15:00', available: true, ...makePrice(55000) },
+              { time: '17:15', available: true, ...makePrice(60000) },
+            ]
+          }
         ]
-      }
-    ]
-  },
-  {
-    id: 'kung-fu-panda-4',
-    title: 'Kung Fu Panda 4',
-    originalTitle: 'Kung Fu Panda 4',
-    poster: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=500&q=80',
-    ageRating: 'P',
-    duration: "1h34'",
-    hasTrailer: true,
-    genres: 'Hoạt Hình, Hành Động, Hài',
-    showtimes: [
+      },
       {
-        format: '2D Lồng Tiếng',
-        times: [
-          { time: '09:00', price: 50000, priceText: '50K', available: false },
-          { time: '13:15', price: 55000, priceText: '55K', available: true },
-          { time: '15:30', price: 55000, priceText: '55K', available: true },
-          { time: '17:45', price: 55000, priceText: '55K', available: true },
+        ...MOVIE_TEMPLATES.minions,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng',
+            times: [
+              { time: '08:15', available: true, ...makePrice(50000) },
+              { time: '10:15', available: true, ...makePrice(50000) },
+              { time: '14:00', available: true, ...makePrice(55000) },
+              { time: '16:00', available: true, ...makePrice(55000) },
+              { time: '18:00', available: true, ...makePrice(60000) },
+            ]
+          }
         ]
-      }
-    ]
-  },
-  {
-    id: 'dune-2',
-    title: 'Dune: Hành Tinh Cát - Phần Hai',
-    originalTitle: 'Dune: Part Two',
-    poster: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80',
-    ageRating: 'T16',
-    duration: "2h46'",
-    hasTrailer: true,
-    genres: 'Khoa Học Viễn Tưởng, Hành Động',
-    showtimes: [
+      },
       {
-        format: '2D Phụ Đề Việt',
-        times: [
-          { time: '14:15', price: 65000, priceText: '65K', available: true },
-          { time: '18:00', price: 70000, priceText: '70K', available: true },
-          { time: '21:15', price: 70000, priceText: '70K', available: true },
+        ...MOVIE_TEMPLATES.exhuma,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '18:00', available: true, ...makePrice(65000) },
+              { time: '20:30', available: true, ...makePrice(70000) },
+              { time: '22:45', available: true, ...makePrice(65000) },
+            ]
+          }
         ]
       }
-    ]
+    ];
+  } else if (dateId === '2') { // 28/07 Thứ 3 (Happy Tuesday - Giá đồng giá ưu đãi)
+    return [
+      {
+        ...MOVIE_TEMPLATES.conan,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng [ƯU ĐÃI THỨ 3 - 45K]',
+            times: [
+              { time: '09:00', available: true, ...makePrice(45000) },
+              { time: '11:30', available: true, ...makePrice(45000) },
+              { time: '15:00', available: true, ...makePrice(45000) },
+              { time: '17:45', available: true, ...makePrice(50000) },
+              { time: '20:00', available: true, ...makePrice(50000) },
+              { time: '22:15', available: true, ...makePrice(45000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.latmat,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt [ƯU ĐÃI THỨ 3]',
+            times: [
+              { time: '09:15', available: true, ...makePrice(45000) },
+              { time: '12:00', available: true, ...makePrice(45000) },
+              { time: '14:45', available: true, ...makePrice(45000) },
+              { time: '17:30', available: true, ...makePrice(50000) },
+              { time: '20:15', available: true, ...makePrice(50000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.mai,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt [ƯU ĐÃI THỨ 3]',
+            times: [
+              { time: '10:00', available: true, ...makePrice(45000) },
+              { time: '13:15', available: true, ...makePrice(45000) },
+              { time: '16:30', available: true, ...makePrice(50000) },
+              { time: '19:45', available: true, ...makePrice(50000) },
+              { time: '22:30', available: true, ...makePrice(45000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.godzilla,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '11:00', available: true, ...makePrice(45000) },
+              { time: '14:30', available: true, ...makePrice(50000) },
+              { time: '18:00', available: true, ...makePrice(50000) },
+              { time: '21:00', available: true, ...makePrice(50000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.exhuma,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '17:00', available: true, ...makePrice(50000) },
+              { time: '19:30', available: true, ...makePrice(50000) },
+              { time: '22:00', available: true, ...makePrice(50000) },
+            ]
+          }
+        ]
+      }
+    ];
+  } else if (dateId === '3') { // 29/07 Thứ 4 (Mid-week Student Special)
+    return [
+      {
+        ...MOVIE_TEMPLATES.conan,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '10:15', available: true, ...makePrice(50000) },
+              { time: '13:30', available: true, ...makePrice(55000) },
+              { time: '16:45', available: true, ...makePrice(55000) },
+              { time: '19:15', available: true, ...makePrice(60000) },
+              { time: '21:30', available: true, ...makePrice(60000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.deadpool,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '11:00', available: true, ...makePrice(60000) },
+              { time: '14:00', available: true, ...makePrice(65000) },
+              { time: '17:00', available: true, ...makePrice(65000) },
+              { time: '20:00', available: true, ...makePrice(70000) },
+              { time: '22:45', available: true, ...makePrice(65000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.insideout,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng',
+            times: [
+              { time: '08:45', available: true, ...makePrice(50000) },
+              { time: '10:45', available: true, ...makePrice(50000) },
+              { time: '14:15', available: true, ...makePrice(55000) },
+              { time: '16:30', available: true, ...makePrice(55000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.minions,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng',
+            times: [
+              { time: '09:30', available: true, ...makePrice(50000) },
+              { time: '13:15', available: true, ...makePrice(55000) },
+              { time: '15:30', available: true, ...makePrice(55000) },
+              { time: '17:30', available: true, ...makePrice(55000) },
+            ]
+          }
+        ]
+      }
+    ];
+  } else if (dateId === '4') { // 30/07 Thứ 5 (Sneak Previews Day)
+    return [
+      {
+        ...MOVIE_TEMPLATES.fantasticfour,
+        showtimes: [
+          {
+            format: '2D Phụ Đề [SUẤT CHIẾU SỚM ĐẶC BIỆT]',
+            times: [
+              { time: '18:30', available: true, ...makePrice(75000) },
+              { time: '20:45', available: true, ...makePrice(80000) },
+              { time: '23:00', available: true, ...makePrice(75000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.conan,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng',
+            times: [
+              { time: '09:00', available: true, ...makePrice(50000) },
+              { time: '11:45', available: true, ...makePrice(55000) },
+              { time: '14:30', available: true, ...makePrice(55000) },
+              { time: '17:15', available: true, ...makePrice(60000) },
+              { time: '20:00', available: true, ...makePrice(60000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.latmat,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '10:00', available: true, ...makePrice(50000) },
+              { time: '13:00', available: true, ...makePrice(55000) },
+              { time: '16:00', available: true, ...makePrice(60000) },
+              { time: '19:00', available: true, ...makePrice(65000) },
+              { time: '21:45', available: true, ...makePrice(60000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.deadpool,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '12:15', available: true, ...makePrice(65000) },
+              { time: '15:15', available: true, ...makePrice(65000) },
+              { time: '18:15', available: true, ...makePrice(70000) },
+              { time: '21:15', available: true, ...makePrice(70000) },
+            ]
+          }
+        ]
+      }
+    ];
+  } else if (dateId === '5') { // 31/07 Thứ 6 (New Release Friday + Midnights)
+    return [
+      {
+        ...MOVIE_TEMPLATES.fantasticfour,
+        showtimes: [
+          {
+            format: '2D Phụ Đề [MỚI CÔNG CHIẾU]',
+            times: [
+              { time: '09:30', available: true, ...makePrice(65000) },
+              { time: '12:15', available: true, ...makePrice(70000) },
+              { time: '15:00', available: true, ...makePrice(70000) },
+              { time: '17:45', available: true, ...makePrice(75000) },
+              { time: '20:30', available: true, ...makePrice(80000) },
+              { time: '23:15', available: true, ...makePrice(75000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.alien,
+        showtimes: [
+          {
+            format: '2D Phụ Đề [MỚI CÔNG CHIẾU]',
+            times: [
+              { time: '10:30', available: true, ...makePrice(65000) },
+              { time: '13:45', available: true, ...makePrice(70000) },
+              { time: '16:45', available: true, ...makePrice(70000) },
+              { time: '19:45', available: true, ...makePrice(75000) },
+              { time: '22:30', available: true, ...makePrice(75000) },
+              { time: '00:15', available: true, ...makePrice(70000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.conan,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '08:30', available: true, ...makePrice(50000) },
+              { time: '11:15', available: true, ...makePrice(55000) },
+              { time: '14:00', available: true, ...makePrice(55000) },
+              { time: '16:45', available: true, ...makePrice(60000) },
+              { time: '19:30', available: true, ...makePrice(60000) },
+              { time: '22:15', available: true, ...makePrice(60000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.deadpool,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '10:00', available: true, ...makePrice(65000) },
+              { time: '13:00', available: true, ...makePrice(70000) },
+              { time: '16:00', available: true, ...makePrice(70000) },
+              { time: '19:00', available: true, ...makePrice(75000) },
+              { time: '22:00', available: true, ...makePrice(75000) },
+              { time: '00:30', available: true, ...makePrice(70000) },
+            ]
+          }
+        ]
+      }
+    ];
+  } else { // 01/08 Thứ 7 (Weekend Prime-Time Blockbusters)
+    return [
+      {
+        ...MOVIE_TEMPLATES.conan,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng [CUỐI TUẦN SÔI ĐỘNG]',
+            times: [
+              { time: '08:00', available: true, ...makePrice(55000) },
+              { time: '09:15', available: true, ...makePrice(60000) },
+              { time: '10:30', available: true, ...makePrice(60000) },
+              { time: '11:45', available: true, ...makePrice(60000) },
+              { time: '13:00', available: true, ...makePrice(65000) },
+              { time: '14:15', available: true, ...makePrice(65000) },
+              { time: '15:30', available: true, ...makePrice(65000) },
+              { time: '16:45', available: true, ...makePrice(70000) },
+              { time: '18:00', available: true, ...makePrice(70000) },
+              { time: '19:15', available: true, ...makePrice(70000) },
+              { time: '20:30', available: true, ...makePrice(70000) },
+              { time: '21:45', available: true, ...makePrice(65000) },
+              { time: '23:00', available: true, ...makePrice(60000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.fantasticfour,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '08:30', available: true, ...makePrice(65000) },
+              { time: '11:00', available: true, ...makePrice(70000) },
+              { time: '13:30', available: true, ...makePrice(75000) },
+              { time: '16:00', available: true, ...makePrice(75000) },
+              { time: '18:30', available: true, ...makePrice(80000) },
+              { time: '21:00', available: true, ...makePrice(80000) },
+              { time: '23:30', available: true, ...makePrice(75000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.alien,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '09:45', available: true, ...makePrice(65000) },
+              { time: '12:30', available: true, ...makePrice(70000) },
+              { time: '15:15', available: true, ...makePrice(75000) },
+              { time: '18:00', available: true, ...makePrice(80000) },
+              { time: '20:45', available: true, ...makePrice(80000) },
+              { time: '23:15', available: true, ...makePrice(75000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.deadpool,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '09:00', available: true, ...makePrice(70000) },
+              { time: '11:45', available: true, ...makePrice(75000) },
+              { time: '14:30', available: true, ...makePrice(75000) },
+              { time: '17:15', available: true, ...makePrice(80000) },
+              { time: '20:00', available: true, ...makePrice(85000) },
+              { time: '22:45', available: true, ...makePrice(80000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.latmat,
+        showtimes: [
+          {
+            format: '2D Phụ Đề Việt',
+            times: [
+              { time: '08:15', available: true, ...makePrice(60000) },
+              { time: '10:45', available: true, ...makePrice(65000) },
+              { time: '13:15', available: true, ...makePrice(70000) },
+              { time: '15:45', available: true, ...makePrice(70000) },
+              { time: '18:15', available: true, ...makePrice(75000) },
+              { time: '20:45', available: true, ...makePrice(75000) },
+              { time: '23:15', available: true, ...makePrice(70000) },
+            ]
+          }
+        ]
+      },
+      {
+        ...MOVIE_TEMPLATES.insideout,
+        showtimes: [
+          {
+            format: '2D Lồng Tiếng',
+            times: [
+              { time: '08:00', available: true, ...makePrice(60000) },
+              { time: '10:00', available: true, ...makePrice(65000) },
+              { time: '12:00', available: true, ...makePrice(65000) },
+              { time: '14:00', available: true, ...makePrice(70000) },
+              { time: '16:00', available: true, ...makePrice(70000) },
+              { time: '18:00', available: true, ...makePrice(70000) },
+            ]
+          }
+        ]
+      }
+    ];
   }
-];
+}
 
 export default function CinemaShowtimesScreen() {
   const router = useRouter();
@@ -1069,6 +1753,8 @@ export default function CinemaShowtimesScreen() {
   if (selectedBrandId !== 'all') {
     displayCinemas = displayCinemas.filter(b => b.brand === selectedBrandId);
   }
+
+  const activeMovies = getMoviesForDateAndBranch(selectedDateId, currentBranch);
 
   const handleSelectBranch = (branch: CinemaBranch) => {
     setCurrentBranch(branch);
@@ -1181,12 +1867,12 @@ export default function CinemaShowtimesScreen() {
           <View style={styles.instructionBanner}>
             <Ionicons name="information-circle" size={20} color="#CA8A04" style={{ marginRight: 8 }} />
             <Text style={[styles.instructionText, { fontFamily: theme.fontFamily }]}>
-              Suất chiếu tại <Text style={{ fontWeight: '800' }}>{currentBranch.name}</Text> ({currentBranch.city})
+              Suất chiếu tại <Text style={{ fontWeight: '800' }}>{currentBranch.name}</Text> ({currentBranch.city}) · <Text style={{ fontWeight: '700', color: '#DC2626' }}>{selectedDateObj.label}</Text>
             </Text>
           </View>
 
           {/* Movies & Showtimes Grid List */}
-          {FULL_MOVIES_LIST.map(movie => (
+          {activeMovies.map(movie => (
             <View key={movie.id} style={styles.movieCard}>
               {/* Movie Header Info */}
               <View style={styles.movieHeaderRow}>

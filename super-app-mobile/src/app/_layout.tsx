@@ -5,11 +5,19 @@ import { ShoppingProvider } from '../context/ShoppingContext';
 import { EducationProvider } from '../context/EducationContext';
 import { CinemaProvider } from '../context/CinemaContext';
 import React, { useEffect, useRef } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Tự động ẩn Splash Screen ngay khi ứng dụng đã sẵn sàng
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppNavigation() {
   const { isLoggedIn } = useUser();
   const router = useRouter();
   const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isFirstRender.current) {
