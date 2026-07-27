@@ -3,6 +3,7 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { UserProvider, useUser } from '../context/UserContext';
 import { ShoppingProvider } from '../context/ShoppingContext';
 import { EducationProvider } from '../context/EducationContext';
+import { CinemaProvider } from '../context/CinemaContext';
 import React, { useEffect, useRef } from 'react';
 
 function AppNavigation() {
@@ -37,7 +38,9 @@ export default function RootLayout() {
       <UserProvider>
         <ShoppingProvider>
           <EducationProvider>
-            <AppNavigation />
+            <CinemaProvider>
+              <AppNavigation />
+            </CinemaProvider>
           </EducationProvider>
         </ShoppingProvider>
       </UserProvider>

@@ -5,8 +5,8 @@ export const simulateLatency = async (min = 300, max = 1500) => {
   await delay(ms);
 };
 
-export const simulateNetworkError = (probability = 0.05) => {
-  if (Math.random() < probability) {
+export const simulateNetworkError = (probability = 0) => {
+  if (probability > 0 && Math.random() < probability) {
     const errType = Math.random();
     if (errType < 0.33) {
       throw new Error('Network Error: Không thể kết nối máy chủ.');

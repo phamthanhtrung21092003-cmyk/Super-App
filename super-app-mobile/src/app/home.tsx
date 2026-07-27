@@ -14,178 +14,474 @@ import {
   Modal,
   TextInput
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
 
+const DEFAULT_LIGHT_BACKGROUND = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=0EA5E9&color=fff&size=512';
+const APP_ICON = require('../../assets/images/icon.png');
+const TRAVEL_ICON = require('../../assets/images/travel-icon.png');
+
 export default function HomeScreen() {
   const router = useRouter();
-  const { userName, avatarUrl, accentHex, accentRgb, bgUrl } = useUser();
+  const { userName, avatarUrl, vipTier, accentHex, accentRgb, bgUrl } = useUser();
   const { theme } = useTheme();
-  
-  const [showBalance, setShowBalance] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(5); // Thay bằng số lượng thực tế
+
+  const displayAvatar = avatarUrl || DEFAULT_AVATAR;
+  const [notificationCount, setNotificationCount] = useState(3);
+  const [showNotifModal, setShowNotifModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [selectedServiceNotif, setSelectedServiceNotif] = useState<{
+    serviceName: string;
+    icon: string;
+    color: string;
+    items: Array<{ id: string; title: string; message: string; time: string }>;
+    badge: string;
+    route: string;
+  } | null>(null);
+
+  const SERVICE_NOTIFICATIONS: Record<string, Array<{ id: string; title: string; message: string; time: string }>> = {
+    wallet: [
+      {
+        id: 'w1',
+        title: 'Biến Động Số Dư (+50.000đ)',
+        message: 'Tài khoản Ví V-Life vừa được cộng +50.000đ từ sự kiện liên kết ngân hàng thành công.',
+        time: '10 phút trước',
+      },
+      {
+        id: 'w2',
+        title: 'Hoàn Tiền Giao Dịch (20%)',
+        message: 'Hoàn tiền +12.000đ cho đơn hàng mua sắm thành công bằng Ví V-Life Cash.',
+        time: '1 giờ trước',
+      },
+      {
+        id: 'w3',
+        title: 'Cảnh Báo Bảo Mật',
+        message: 'Tài khoản Ví V-Life của bạn vừa phát sinh giao dịch nạp tiền thành công.',
+        time: '2 giờ trước',
+      },
+    ],
+    shopping: [
+      {
+        id: 's1',
+        title: 'Đơn Hàng Đang Giao (#VK9482)',
+        message: 'Đơn hàng mua sắm #VK9482 đã được bàn giao cho đơn vị vận chuyển.',
+        time: '25 phút trước',
+      },
+      {
+        id: 's2',
+        title: 'Voucher Siêu Sale 50%',
+        message: 'Bạn vừa nhận được Voucher giảm 50% cho ngành hàng điện tử.',
+        time: '2 giờ trước',
+      },
+    ],
+    video: [
+      {
+        id: 'v1',
+        title: 'Tương Tác Video Mới',
+        message: 'Nguyễn Văn B và 4 người khác đã thích video mới nhất của bạn.',
+        time: '15 phút trước',
+      },
+      {
+        id: 'v2',
+        title: 'Bình Luận Mới',
+        message: 'Trần Thị C đã bình luận: "Video tuyệt vời quá anh ơi!"',
+        time: '30 phút trước',
+      },
+      {
+        id: 'v3',
+        title: 'Video Đạt Top Xu Hướng',
+        message: 'Chúc mừng! Video của bạn đã đạt 10.000 lượt xem trong hôm nay.',
+        time: '1 giờ trước',
+      },
+      {
+        id: 'v4',
+        title: 'Theo Dõi Mới',
+        message: 'Lê Hoàng D đã bắt đầu theo dõi kênh của bạn.',
+        time: '3 giờ trước',
+      },
+      {
+        id: 'v5',
+        title: 'Thử Thách V-Shorts',
+        message: 'Tham gia thử thách làm video nhận quà tặng 500.000đ.',
+        time: '5 giờ trước',
+      },
+    ],
+    social: [
+      {
+        id: 'sc1',
+        title: 'Tin Nhắn Mới Từ V-Club',
+        message: 'Nhóm V-Club: "Tối nay 8h họp nhóm mọi người nhé!"',
+        time: '5 phút trước',
+      },
+      {
+        id: 'sc2',
+        title: 'Lời Mời Kết Bạn',
+        message: 'Phạm Minh E đã gửi cho bạn một lời mời kết bạn.',
+        time: '1 giờ trước',
+      },
+      {
+        id: 'sc3',
+        title: 'Nhắc Đến Bạn',
+        message: 'Hoàng Anh F đã nhắc đến bạn trong một bài viết mới.',
+        time: '3 giờ trước',
+      },
+    ],
+    transport: [
+      {
+        id: 't1',
+        title: 'Tài Xế Đang Đến',
+        message: 'Tài xế Nguyễn Văn A đang di chuyển đến điểm đón (dự kiến 3 phút).',
+        time: '3 phút trước',
+      },
+    ],
+    food: [
+      {
+        id: 'f1',
+        title: 'Quán Nhận Đơn (#FD8821)',
+        message: 'Quán Bún Chả Hà Nội đã nhận đơn và đang chuẩn bị món ăn.',
+        time: '10 phút trước',
+      },
+      {
+        id: 'f2',
+        title: 'Voucher Đồ Ăn 0Đ',
+        message: 'Mã Freeship 0đ cho đơn hàng ăn uống tối nay đã có trong ví voucher.',
+        time: '1 giờ trước',
+      },
+    ],
+  };
+
+  const handleBadgePress = (item: any, event: any) => {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
+    const notifList = SERVICE_NOTIFICATIONS[item.id] || [
+      {
+        id: 'def1',
+        title: `Thông Báo ${item.title}`,
+        message: `Bạn có ${item.badge} thông báo mới chưa đọc từ dịch vụ ${item.title}.`,
+        time: 'Vừa xong',
+      }
+    ];
+
+    setSelectedServiceNotif({
+      serviceName: item.title,
+      icon: item.icon,
+      color: item.color,
+      items: notifList,
+      badge: item.badge,
+      route: item.route,
+    });
+  };
+  
   const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width > 768;
+  const isMobileUA = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isDesktop = Platform.OS === 'web' && width > 1024 && !isMobileUA;
+  const currentBg = theme.backgroundImage || bgUrl || DEFAULT_LIGHT_BACKGROUND;
 
+  // Promo Banners
   const BANNERS = [
-    { id: '1', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80', title: 'Siêu Sale 50%' },
-    { id: '2', image: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=800&q=80', title: 'Du lịch trọn gói' },
-    { id: '3', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80', title: 'Hoàn tiền 20%' },
+    { 
+      id: '1', 
+      image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80', 
+      tag: 'DEAL HOT 50%', 
+      title: 'Siêu Hội Mua Sắm V-Life',
+      desc: 'Giảm tới 50% cho tất cả đơn hàng đầu tiên',
+      route: '/shopping'
+    },
+    { 
+      id: '2', 
+      image: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=800&q=80', 
+      tag: 'V-TRAVEL', 
+      title: 'Khám Phá Thiên Đường Du Lịch',
+      desc: 'Săn vé máy bay & phòng khách sạn ưu đãi',
+      route: '/travel'
+    },
+    { 
+      id: '3', 
+      image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80', 
+      tag: 'HOÀN TIỀN 20%', 
+      title: 'Thanh Toán Ví V-Life Cash',
+      desc: 'Hoàn tiền 20% khi gọi xe & đặt đồ ăn',
+      route: '/wallet'
+    },
   ];
 
-  const menuItems = [
-    { id: 'wallet', title: 'Ví VN Pay', icon: '💳', route: '/wallet' },
-    { id: 'video', title: 'Video', icon: '🎬', route: '/video' },
-    { id: 'jobs', title: 'Việc làm', icon: '💼', route: '/jobs' },
-    { id: 'shop', title: 'Mua sắm', icon: '🛒', route: '/shopping' },
-    { id: 'business', title: 'Doanh nghiệp', icon: '🏢', route: '/business' },
-    { id: 'appearance', title: 'Giao diện', icon: '🎨', route: '/settings' },
+  // Core Feature Grid
+  const MAIN_FEATURES = [
+    { id: 'wallet', title: 'Ví V-Life', icon: 'wallet', color: '#0EA5E9', gradient: ['#38BDF8', '#0EA5E9', '#0284C7'], route: '/wallet', badge: '3', badgeColor: '#EF4444' },
+    { id: 'shopping', title: 'Mua Sắm', icon: 'cart', color: '#F59E0B', gradient: ['#FBBF24', '#F59E0B', '#D97706'], route: '/shopping', badge: '2', badgeColor: '#EF4444' },
+    { id: 'video', title: 'Short Video', icon: 'film', color: '#EC4899', gradient: ['#F472B6', '#EC4899', '#DB2777'], route: '/video', badge: '5', badgeColor: '#EF4444' },
+    { id: 'social', title: 'Mạng Xã Hội', icon: 'globe', color: '#2563EB', gradient: ['#60A5FA', '#3B82F6', '#1D4ED8'], route: '/social', badge: '3', badgeColor: '#EF4444' },
+    { id: 'jobs', title: 'Việc Làm', icon: 'briefcase', color: '#10B981', gradient: ['#34D399', '#10B981', '#059669'], route: '/jobs' },
+    { id: 'business', title: 'Doanh Nghiệp', icon: 'business', color: '#8B5CF6', gradient: ['#A78BFA', '#8B5CF6', '#6D28D9'], route: '/business' },
   ];
 
+  // Categorized Super-App Services
   const UTILITY_GROUPS = [
     {
       id: 'transport',
-      title: 'Dịch vụ Đa dụng (Siêu App)',
+      title: '🚀 Dịch Vụ Di Chuyển & Giao Vận',
       items: [
-        { id: 'transport', title: 'Vận chuyển', icon: '🛵', route: '/transport' },
-        { id: 'food', title: 'Đặt đồ ăn', icon: '🍔', route: '/food' },
-        { id: 'health', title: 'Sức khỏe', icon: '⚕️', route: '/health' },
-        { id: 'cleaning', title: 'Dọn dẹp', icon: '🧹', route: '/cleaning' },
+        { id: 'transport', title: 'Gọi Xe V-Ride', icon: 'car-sport', color: '#0EA5E9', gradient: ['#38BDF8', '#0EA5E9', '#0284C7'], route: '/transport', badge: '1', badgeColor: '#EF4444' },
+        { id: 'food', title: 'Đặt Đồ Ăn', icon: 'fast-food', color: '#F59E0B', gradient: ['#F87171', '#EF4444', '#DC2626'], route: '/food', badge: '2', badgeColor: '#EF4444' },
+        { id: 'health', title: 'Sức Khỏe', icon: 'medkit', color: '#EF4444', gradient: ['#FB7185', '#F43F5E', '#BE123C'], route: '/health' },
+        { id: 'cleaning', title: 'Dọn Dẹp Nhà', icon: 'sparkles', color: '#10B981', gradient: ['#2DD4BF', '#14B8A6', '#0F766E'], route: '/cleaning' },
       ]
     },
     {
       id: 'entertainment',
-      title: 'Giải trí & Du lịch',
+      title: '🏖️ Du Lịch & Giải Trí Kỷ Nguyên Mới',
       items: [
-        { id: 'travel', title: 'Du lịch', icon: '🏖️', route: '/travel' },
-        { id: 'cinema', title: 'Xem phim', icon: '🎬', route: '/cinema' },
-        { id: 'flights', title: 'Vé máy bay', icon: '✈️', route: '/flights' },
-        { id: 'hotels', title: 'Khách sạn', icon: '🏨', route: '/hotels' },
-        { id: 'events', title: 'Sự kiện', icon: '🎟️', route: '/events' },
+        { id: 'travel', title: 'Du Lịch AI', icon: 'compass', color: '#2563EB', gradient: ['#818CF8', '#6366F1', '#4338CA'], image: TRAVEL_ICON, route: '/travel' },
+        { id: 'cinema', title: 'Vé Xem Phim', icon: 'ticket', color: '#EC4899', gradient: ['#F472B6', '#E11D48', '#BE123C'], route: '/cinema' },
+        { id: 'flights', title: 'Vé Máy Bay', icon: 'airplane', color: '#0EA5E9', gradient: ['#38BDF8', '#0284C7', '#075985'], route: '/flights' },
+        { id: 'hotels', title: 'Đặt Khách Sạn', icon: 'bed', color: '#8B5CF6', gradient: ['#C084FC', '#A855F7', '#7E22CE'], route: '/hotels' },
+        { id: 'events', title: 'Vé Sự Kiện', icon: 'calendar', color: '#F59E0B', gradient: ['#FBBF24', '#F59E0B', '#B45309'], route: '/events' },
       ]
     },
     {
-      id: 'education',
-      title: 'Học tập & Giáo dục',
+      id: 'finance_education',
+      title: '🎓 Tài Chính & Học Tập',
       items: [
-        { id: 'edu_dashboard', title: 'Giáo dục', icon: '🎓', route: '/education' },
+        { id: 'education', title: 'Giáo Dục', icon: 'school', color: '#10B981', gradient: ['#34D399', '#10B981', '#047857'], route: '/education' },
+        { id: 'savings', title: 'Gửi Tiết Kiệm', icon: 'trending-up', color: '#F59E0B', gradient: ['#FBBF24', '#D97706', '#92400E'], route: '/savings' },
+        { id: 'appearance', title: 'Giao Diện', icon: 'color-palette', color: '#0EA5E9', gradient: ['#38BDF8', '#3B82F6', '#1D4ED8'], route: '/appearance' },
+        { id: 'settings', title: 'Cấu Hình', icon: 'settings', color: '#64748B', gradient: ['#94A3B8', '#64748B', '#334155'], route: '/settings' },
       ]
     }
   ];
 
-  const currentBg = theme.backgroundImage || bgUrl;
+  const NOTIFICATIONS = [
+    { id: '1', title: 'Ví V-Life', msg: 'Tài khoản được cộng +50.000đ từ sự kiện liên kết ngân hàng.', time: '10 phút trước' },
+    { id: '2', title: 'V-Ride', msg: 'Mã giảm giá 30% chuyến xe V-Ride đã sẵn sàng trong kho voucher.', time: '1 giờ trước' },
+    { id: '3', title: 'Mua sắm', msg: 'Đơn hàng mua sắm #VK9482 đã được đóng gói và bàn giao vận chuyển.', time: '3 giờ trước' },
+  ];
 
   return (
-    <View style={styles.webWrapper}>
-      <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
+    <View style={[styles.webWrapper, !isDesktop && styles.mobileFullWrapper]}>
+      {Platform.OS === 'web' && (
+        <style>{`
+          html, body, #root, #root > div {
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+            background-color: #F8FAFC !important;
+          }
+        `}</style>
+      )}
+      <SafeAreaView style={[styles.safeArea, isDesktop ? styles.desktopFrame : styles.mobileSafeArea]}>
         <ImageBackground 
           source={{ uri: currentBg }} 
           style={styles.backgroundImage}
           resizeMode="cover"
         >
-          <View style={styles.overlay} />
-          <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+          {/* Glassmorphic Liquid Aurora Overlay */}
+          <LinearGradient 
+            colors={['rgba(248,250,252,0.62)', 'rgba(241,245,249,0.78)', 'rgba(238,242,255,0.88)']} 
+            style={styles.overlay} 
+          />
 
-          {/* ===== HEADER: Avatar & Themes ===== */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.accountSection} onPress={() => router.push('/account')}>
-              <Image 
-                source={{ uri: avatarUrl }} 
-                style={[styles.avatar, { borderColor: accentHex }]} 
-                resizeMode="cover"
-              />
-              <View>
-                <Text style={[styles.greeting, { fontFamily: theme.fontFamily, fontSize: 13 * theme.fontSizeScale }]}>Chào buổi sáng,</Text>
-                <Text style={[styles.userName, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 18 * theme.fontSizeScale }]}>{userName}</Text>
+          {/* Ambient Floating Glow Orbs (Aurora Light Mesh) */}
+          <View style={styles.ambientOrbTopLeft}>
+            <LinearGradient
+              colors={['rgba(56, 189, 248, 0.45)', 'rgba(14, 165, 233, 0.12)', 'transparent']}
+              style={styles.orbGradient}
+              start={{ x: 0.3, y: 0.3 }}
+              end={{ x: 1, y: 1 }}
+            />
+          </View>
+          <View style={styles.ambientOrbTopRight}>
+            <LinearGradient
+              colors={['rgba(232, 121, 249, 0.35)', 'rgba(192, 132, 252, 0.1)', 'transparent']}
+              style={styles.orbGradient}
+              start={{ x: 0.5, y: 0.2 }}
+              end={{ x: 1, y: 1 }}
+            />
+          </View>
+          <View style={styles.ambientOrbCenter}>
+            <LinearGradient
+              colors={['rgba(253, 224, 71, 0.3)', 'rgba(251, 146, 60, 0.08)', 'transparent']}
+              style={styles.orbGradient}
+              start={{ x: 0.5, y: 0.5 }}
+              end={{ x: 1, y: 1 }}
+            />
+          </View>
+
+          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
+          {/* ══════════ OFFICIAL VIET SUPER APP HEADER ══════════ */}
+          <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
+            <TouchableOpacity 
+              style={styles.brandSection} 
+              onPress={() => router.push('/home')} 
+              activeOpacity={0.8}
+            >
+              <View style={styles.appLogoWrap}>
+                <Image source={APP_ICON} style={styles.originalLogoImg} resizeMode="cover" />
+              </View>
+              <View style={styles.brandTitleWrap}>
+                <Text style={[styles.brandTitle, { fontFamily: theme.fontFamily }]}>VIET SUPER</Text>
+                <Text style={styles.brandSubtitle}>Super App Kỷ Nguyên Mới</Text>
               </View>
             </TouchableOpacity>
 
-          </View>
+            <View style={styles.headerRight}>
+              {/* User Profile Avatar Shortcut */}
+              <TouchableOpacity 
+                style={styles.userAvatarBtn} 
+                onPress={() => router.push('/account')} 
+                activeOpacity={0.8}
+              >
+                <Image source={{ uri: displayAvatar }} style={[styles.userAvatarImg, { borderColor: accentHex || '#0EA5E9' }]} resizeMode="cover" />
+                <View style={[styles.onlineDot, { backgroundColor: '#10B981' }]} />
+              </TouchableOpacity>
+
+              {/* Settings Shortcut Button */}
+              <TouchableOpacity 
+                style={styles.iconButton} 
+                onPress={() => router.push('/settings')} 
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBoxLight}>
+                  <Ionicons name="options-outline" size={20} color="#0F172A" />
+                </View>
+              </TouchableOpacity>
+
+              {/* Notification Button (Always at far top-right corner) */}
+              <TouchableOpacity 
+                style={styles.iconButton} 
+                onPress={() => setShowNotifModal(true)} 
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBoxLight}>
+                  <Ionicons name="notifications-outline" size={20} color="#0F172A" />
+                  {notificationCount > 0 && (
+                    <View style={styles.notifBadge}>
+                      <Text style={styles.notifBadgeText}>{notificationCount}</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
 
           <ScrollView 
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* Thanh tìm kiếm */}
-            <View style={styles.searchContainer}>
-              <View style={[styles.searchBox, { borderColor: `rgba(${accentRgb}, 0.3)` }]}>
-                <Text style={styles.searchIcon}>🔍</Text>
+            {/* ══════════ SEARCH BAR ══════════ */}
+            <Animated.View entering={FadeInDown.delay(100).duration(700)} style={styles.searchContainer}>
+              <View style={styles.searchBoxLight}>
+                <Ionicons name="search" size={20} color="#0EA5E9" style={{ marginRight: 10 }} />
                 <TextInput 
-                  placeholder="Bạn đang tìm dịch vụ gì?" 
+                  placeholder="Tìm dịch vụ, món ăn, chuyến xe..." 
                   placeholderTextColor="#94A3B8"
-                  style={styles.searchInput}
+                  style={[styles.searchInput, { fontFamily: theme.fontFamily }]}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                 />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.qrSearchBtn} onPress={() => router.push('/wallet')}>
+                  <Ionicons name="qr-code" size={18} color="#0EA5E9" />
+                </TouchableOpacity>
               </View>
-            </View>
 
-            {/* ===== PROMO CAROUSEL ===== */}
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 18 * theme.fontSizeScale }]}>Chương trình nổi bật</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
-              {BANNERS.map((banner) => (
-                <TouchableOpacity key={banner.id} style={styles.bannerCard} activeOpacity={0.9}>
-                  <Image source={{ uri: banner.image }} style={styles.bannerImage} />
-                  <View style={styles.bannerOverlay}>
-                    <Text style={[styles.bannerTitle, { fontFamily: theme.fontFamily, fontSize: 16 * theme.fontSizeScale }]}>{banner.title}</Text>
-                  </View>
+              {/* Quick Tags */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagScrollView}>
+                {['🚕 Xe ôm V-Ride', '🍔 Gà rán KFC', '✈️ Vé máy bay 0đ', '💰 Gửi tiết kiệm 8.5%'].map((tag, idx) => (
+                  <TouchableOpacity key={idx} style={styles.tagPillLight} onPress={() => setSearchQuery(tag.split(' ')[1])}>
+                    <Text style={styles.tagTextLight}>{tag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Animated.View>
+
+            {/* ══════════ PROMO CAROUSEL ══════════ */}
+            <Animated.View entering={FadeInDown.delay(200).duration(700)}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitleLight, { fontFamily: theme.fontFamily }]}>🔥 Ưu Đãi Đặc Quyền</Text>
+                <TouchableOpacity onPress={() => router.push('/shopping')}>
+                  <Text style={styles.seeAllTextLight}>Tất cả</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
 
-            {/* ===== GRID MENU ===== */}
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 18 * theme.fontSizeScale }]}>Khám phá</Text>
-            </View>
-            <View style={styles.gridContainer}>
-              {menuItems.map((item) => (
-                <TouchableOpacity 
-                  key={item.id} 
-                  style={styles.gridItemContainer}
-                  onPress={() => {
-                    if (item.route) {
-                      router.push(item.route as any);
-                    } else {
-                      window.alert(`Đang phát triển tính năng: ${item.title}`);
-                    }
-                  }}
-                >
-                  <View 
-                    style={[styles.gridItem, { borderColor: `rgba(${accentRgb}, 0.2)` }]}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
+                {BANNERS.map((banner) => (
+                  <TouchableOpacity 
+                    key={banner.id} 
+                    style={styles.bannerCard} 
+                    activeOpacity={0.9}
+                    onPress={() => router.push(banner.route as any)}
                   >
-                    <View style={[styles.gridIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.1)`, borderColor: `rgba(${accentRgb}, 0.3)` }]}>
-                      <Text style={styles.gridIcon}>{item.icon}</Text>
-                      {item.id === 'utilities' && notificationCount > 0 && (
-                        <View style={[styles.badge, { 
-                          backgroundColor: '#EF4444', 
-                          top: -6, 
-                          right: -6, 
-                          width: 20, 
-                          height: 20, 
-                          borderRadius: 10,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          borderWidth: 2,
-                          borderColor: '#111827'
-                        }]}>
-                          <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>
-                            {notificationCount > 99 ? '99+' : notificationCount}
-                          </Text>
-                        </View>
-                      )}
+                    <Image source={{ uri: banner.image }} style={styles.bannerImage} />
+                    <LinearGradient colors={['transparent', 'rgba(15, 23, 42, 0.85)']} style={styles.bannerOverlay}>
+                      <View style={styles.bannerTagLight}>
+                        <Text style={styles.bannerTagTextLight}>{banner.tag}</Text>
+                      </View>
+                      <Text style={[styles.bannerTitle, { fontFamily: theme.fontFamily }]}>{banner.title}</Text>
+                      <Text style={styles.bannerDesc}>{banner.desc}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Animated.View>
+
+            {/* ══════════ MAIN CORE DISCOVER ══════════ */}
+            <Animated.View entering={FadeInDown.delay(300).duration(700)}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitleLight, { fontFamily: theme.fontFamily }]}>✨ Khám Phá Tính Năng</Text>
+              </View>
+
+              <View style={styles.gridContainer}>
+                {MAIN_FEATURES.map((item) => (
+                  <TouchableOpacity 
+                    key={item.id} 
+                    style={styles.gridItemContainer}
+                    activeOpacity={0.8}
+                    onPress={() => router.push(item.route as any)}
+                  >
+                    <View style={styles.gridItemLight}>
+                      <View style={styles.gridIconWrapperLight}>
+                        <LinearGradient
+                          colors={item.gradient || ['#0EA5E9', '#0284C7']}
+                          style={styles.iconGradientBadge}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        >
+                          <Ionicons name={item.icon as any} size={22} color="#FFFFFF" />
+                        </LinearGradient>
+                        {item.badge && (
+                          <TouchableOpacity 
+                            style={[styles.gridIconBadge, { backgroundColor: item.badgeColor || '#EF4444' }]}
+                            onPress={(e) => handleBadgePress(item, e)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.gridIconBadgeText}>{item.badge}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <Text style={[styles.gridTitleLight, { fontFamily: theme.fontFamily }]} numberOfLines={1}>{item.title}</Text>
                     </View>
-                    <Text style={[styles.gridTitle, { fontFamily: theme.fontFamily, color: theme.textColor, fontSize: 13 * theme.fontSizeScale }]}>{item.title}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-            
-            {/* ===== UTILITY GROUPS ===== */}
-            {UTILITY_GROUPS.map((group) => {
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Animated.View>
+
+            {/* ══════════ UTILITY GROUPS ══════════ */}
+            {UTILITY_GROUPS.map((group, groupIdx) => {
               const filteredItems = group.items.filter(item => 
                 item.title.toLowerCase().includes(searchQuery.toLowerCase())
               );
@@ -193,48 +489,176 @@ export default function HomeScreen() {
               if (filteredItems.length === 0) return null;
 
               return (
-                <View key={group.id} style={styles.groupContainer}>
-                  <Text style={[styles.groupTitle, { fontFamily: theme.fontFamily }]}>{group.title}</Text>
+                <Animated.View key={group.id} entering={FadeInDown.delay(400 + groupIdx * 100).duration(700)} style={styles.groupContainer}>
+                  <Text style={[styles.groupTitleLight, { fontFamily: theme.fontFamily }]}>{group.title}</Text>
                   <View style={styles.utilityGridContainer}>
                     {filteredItems.map((item) => (
                       <TouchableOpacity 
                         key={item.id} 
-                        style={[styles.utilityGridItem, { borderColor: `rgba(${accentRgb}, 0.2)` }]}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          if (item.route) router.push(item.route as any);
-                          else window.alert(`Đang mở dịch vụ: ${item.title}`);
-                        }}
+                        style={styles.utilityGridItem}
+                        activeOpacity={0.8}
+                        onPress={() => router.push(item.route as any)}
                       >
-                        <View style={[styles.utilityIconWrapper, { backgroundColor: `rgba(${accentRgb}, 0.15)` }]}>
-                          <Text style={styles.utilityItemIcon}>{item.icon}</Text>
+                        <View style={styles.utilityItemLightInner}>
+                          <View style={styles.utilityIconWrapperLight}>
+                            {item.image ? (
+                              <Image source={item.image} style={styles.utilityCustomIconImg} resizeMode="cover" />
+                            ) : (
+                              <LinearGradient
+                                colors={item.gradient || ['#0EA5E9', '#0284C7']}
+                                style={styles.utilityIconGradientBadge}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                              >
+                                <Ionicons name={item.icon as any} size={18} color="#FFFFFF" />
+                              </LinearGradient>
+                            )}
+                            {item.badge && (
+                              <TouchableOpacity 
+                                style={[styles.gridIconBadge, { backgroundColor: item.badgeColor || '#EF4444' }]}
+                                onPress={(e) => handleBadgePress(item, e)}
+                                activeOpacity={0.8}
+                              >
+                                <Text style={styles.gridIconBadgeText}>{item.badge}</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                          <Text style={[styles.utilityItemTitleLight, { fontFamily: theme.fontFamily }]}>{item.title}</Text>
                         </View>
-                        <Text style={[styles.utilityItemTitle, { fontFamily: theme.fontFamily }]}>{item.title}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                </View>
+                </Animated.View>
               );
             })}
-            
-            <View style={{height: 100}} />
+
+            <View style={{ height: 110 }} />
           </ScrollView>
 
-          {/* ===== FLOATING BOTTOM TAB BAR ===== */}
-          <View style={[styles.bottomTabBar, { borderColor: `rgba(${accentRgb}, 0.3)` }]}>
-            <TouchableOpacity style={styles.tabItem}>
-              <Text style={styles.tabIconActive}>🏠</Text>
-              <Text style={[styles.tabTextActive, { color: accentHex, fontFamily: theme.fontFamily, fontSize: 12 * theme.fontSizeScale }]}>Trang chủ</Text>
+          {/* ══════════ FLOATING LIGHT GLASS BOTTOM TAB BAR ══════════ */}
+          <View style={styles.bottomTabBarLight}>
+            <TouchableOpacity style={styles.tabItem} activeOpacity={0.8}>
+              <View style={styles.activeTabGlowLight}>
+                <Ionicons name="home" size={22} color="#0EA5E9" />
+              </View>
+              <Text style={[styles.tabTextActiveLight, { fontFamily: theme.fontFamily }]}>Trang chủ</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/social')}>
-              <Text style={styles.tabIcon}>🌐</Text>
-              <Text style={[styles.tabText, { fontFamily: theme.fontFamily, fontSize: 12 * theme.fontSizeScale }]}>Mạng xã hội</Text>
+
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/social')} activeOpacity={0.8}>
+              <Ionicons name="planet-outline" size={22} color="#64748B" />
+              <Text style={[styles.tabTextLight, { fontFamily: theme.fontFamily }]}>Mạng xã hội</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/account')}>
-              <Text style={styles.tabIcon}>👤</Text>
-              <Text style={[styles.tabText, { fontFamily: theme.fontFamily, fontSize: 12 * theme.fontSizeScale }]}>Tài khoản</Text>
+
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/wallet')} activeOpacity={0.8}>
+              <Ionicons name="wallet-outline" size={22} color="#64748B" />
+              <Text style={[styles.tabTextLight, { fontFamily: theme.fontFamily }]}>Ví V-Life</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/account')} activeOpacity={0.8}>
+              <Ionicons name="person-outline" size={22} color="#64748B" />
+              <Text style={[styles.tabTextLight, { fontFamily: theme.fontFamily }]}>Tài khoản</Text>
             </TouchableOpacity>
           </View>
+
+          {/* ══════════ NOTIFICATION MODAL ══════════ */}
+          <Modal visible={showNotifModal} transparent animationType="fade" onRequestClose={() => setShowNotifModal(false)}>
+            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowNotifModal(false)}>
+              <View style={styles.notifCardContainer} onStartShouldSetResponder={() => true}>
+                <View style={styles.notifCardInnerLight}>
+                  <View style={styles.notifHeaderLight}>
+                    <Text style={styles.notifHeaderTitleLight}>Thông báo mới ({notificationCount})</Text>
+                    <TouchableOpacity onPress={() => setShowNotifModal(false)}>
+                      <Ionicons name="close" size={22} color="#0F172A" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {NOTIFICATIONS.map((n) => (
+                    <View key={n.id} style={styles.notifItem}>
+                      <View style={styles.notifIconWrapLight}>
+                        <Ionicons name="notifications" size={18} color="#0EA5E9" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.notifTitleLight}>{n.title}</Text>
+                        <Text style={styles.notifMsgLight}>{n.msg}</Text>
+                        <Text style={styles.notifTimeLight}>{n.time}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          {/* ══════════ DEDICATED SERVICE NOTIFICATION DETAIL MODAL ══════════ */}
+          <Modal 
+            visible={selectedServiceNotif !== null} 
+            transparent 
+            animationType="fade" 
+            onRequestClose={() => setSelectedServiceNotif(null)}
+          >
+            <TouchableOpacity 
+              style={styles.modalOverlay} 
+              activeOpacity={1} 
+              onPress={() => setSelectedServiceNotif(null)}
+            >
+              <View style={styles.serviceNotifModalContainer} onStartShouldSetResponder={() => true}>
+                {selectedServiceNotif && (
+                  <View style={styles.serviceNotifCardInner}>
+                    {/* Header */}
+                    <View style={styles.serviceNotifHeader}>
+                      <View style={[styles.serviceNotifBadgeIconWrap, { backgroundColor: `rgba(${hexToRgb(selectedServiceNotif.color)}, 0.15)` }]}>
+                        <Ionicons name={selectedServiceNotif.icon as any} size={22} color={selectedServiceNotif.color} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.serviceNotifServiceName}>{selectedServiceNotif.serviceName}</Text>
+                        <Text style={styles.serviceNotifHeaderTitle}>Danh Sách Thông Báo ({selectedServiceNotif.items.length})</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => setSelectedServiceNotif(null)} style={styles.closeNotifBtn}>
+                        <Ionicons name="close" size={20} color="#64748B" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Scrollable Notification List */}
+                    <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+                      {selectedServiceNotif.items.map((n, idx) => (
+                        <View key={n.id || idx} style={styles.serviceNotifListItem}>
+                          <View style={[styles.notifItemDot, { backgroundColor: selectedServiceNotif.color }]} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.serviceNotifItemTitle}>{n.title}</Text>
+                            <Text style={styles.serviceNotifItemMessage}>{n.message}</Text>
+                            <Text style={styles.serviceNotifItemTime}>🕒 {n.time}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </ScrollView>
+
+                    {/* Actions */}
+                    <View style={styles.serviceNotifActions}>
+                      <TouchableOpacity 
+                        style={styles.understandBtn} 
+                        onPress={() => setSelectedServiceNotif(null)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.understandBtnText}>Đã hiểu ({selectedServiceNotif.items.length})</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.openServiceBtn, { backgroundColor: selectedServiceNotif.color }]} 
+                        onPress={() => {
+                          const targetRoute = selectedServiceNotif.route;
+                          setSelectedServiceNotif(null);
+                          router.push(targetRoute as any);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.openServiceBtnText}>Mở {selectedServiceNotif.serviceName}</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          </Modal>
 
         </ImageBackground>
       </SafeAreaView>
@@ -242,28 +666,55 @@ export default function HomeScreen() {
   );
 }
 
+// Helper to convert hex to rgb string
+function hexToRgb(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length === 6) {
+    return `${parseInt(h.substring(0,2), 16)}, ${parseInt(h.substring(2,4), 16)}, ${parseInt(h.substring(4,6), 16)}`;
+  }
+  return '14, 165, 233';
+}
+
 const styles = StyleSheet.create({
   webWrapper: {
     flex: 1,
-    backgroundColor: '#111827',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...(Platform.OS === 'web' && { paddingVertical: 20 }),
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F8FAFC',
+  },
+  mobileFullWrapper: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    width: '100%',
+    height: '100%',
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#F8FAFC',
     width: '100%',
+    height: '100%',
+  },
+  mobileSafeArea: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
   },
   desktopFrame: {
-    maxWidth: 390,       
-    maxHeight: 844,
-    aspectRatio: 390 / 844, 
-    borderWidth: 12,     
-    borderColor: '#000000',
-    borderRadius: 44,    
+    maxWidth: 414,
+    maxHeight: 896,
+    aspectRatio: 414 / 896,
+    borderWidth: 10,
+    borderColor: '#0F172A',
+    borderRadius: 55,
     overflow: 'hidden',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+    boxShadow: '0 30px 60px -15px rgba(15, 23, 42, 0.3), 0 0 0 1px rgba(255,255,255,0.8)',
+    ...(Platform.OS === 'web' && { marginVertical: 20 }),
   },
   backgroundImage: {
     flex: 1,
@@ -272,223 +723,212 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  ambientOrbTopLeft: {
+    position: 'absolute',
+    top: -80,
+    left: -60,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    overflow: 'hidden',
+  },
+  ambientOrbTopRight: {
+    position: 'absolute',
+    top: 40,
+    right: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    overflow: 'hidden',
+  },
+  ambientOrbCenter: {
+    position: 'absolute',
+    top: 360,
+    left: -30,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    overflow: 'hidden',
+  },
+  orbGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 160,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 50 : 40,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === 'ios' ? 20 : 40,
+    paddingBottom: 16,
     zIndex: 10,
   },
-  accountSection: {
+  brandSection: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#00D8FF',
-    marginRight: 12,
-  },
-  greeting: {
-    fontSize: 13,
-    color: '#CBD5E1',
-  },
-  tabTextActive: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  sidebar: {
-    width: '75%',
-    maxWidth: 320,
-    backgroundColor: 'rgba(17, 24, 39, 0.85)',
-    borderLeftWidth: 1,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingHorizontal: 20,
-    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
-  },
-  sidebarTitle: {
-    color: '#FFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  sidebarSubtitle: {
-    color: '#94A3B8',
-    fontSize: 14,
-    marginBottom: 20,
-  },
-  sidebarContent: {
+    gap: 10,
     flex: 1,
   },
-  notifRowContainer: {
-    borderRadius: 16,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  notifRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  notifLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  notifIconWrapper: {
+  appLogoWrap: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
   },
-  notifIcon: {
-    fontSize: 20,
+  originalLogoImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    transform: [{ scale: 1.28 }],
   },
-  notifAppTitle: {
-    color: '#FFF',
+  brandTitleWrap: {
+    justifyContent: 'center',
+  },
+  brandTitle: {
     fontSize: 16,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: 1,
+  },
+  brandSubtitle: {
+    fontSize: 10,
+    color: '#64748B',
     fontWeight: '600',
   },
-  notifBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+  userAvatarBtn: {
+    position: 'relative',
+    marginLeft: 2,
   },
-  notifBadgeText: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '800',
+  userAvatarImg: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2,
+    borderColor: '#0EA5E9',
   },
-  userName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
+  onlineDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   iconButton: {
+    borderRadius: 14,
+  },
+  iconBoxLight: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
-    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
   },
-  iconText: {
-    fontSize: 18,
-  },
-  badge: {
+  notifBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF4D4D',
+    top: 6,
+    right: 6,
+    backgroundColor: '#EF4444',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notifBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  walletCard: {
-    backgroundColor: 'rgba(20, 25, 35, 0.4)', 
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 255, 255, 0.4)', 
-    marginBottom: 30,
-    ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(10px)',
-      boxShadow: '0 10px 30px rgba(0, 216, 255, 0.15)',
-    }),
-  },
-  walletHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  walletTitle: {
-    color: '#00D8FF',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  walletLogo: {
-    fontSize: 24,
-  },
-  walletBalance: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-  balanceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  eyeIcon: {
-    fontSize: 20,
-    marginLeft: 12,
-    opacity: 0.8,
-  },
-  walletActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  walletActionBtn: {
-    backgroundColor: 'rgba(0, 216, 255, 0.15)',
-    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    flex: 1,
-    marginHorizontal: 4,
+  },
+  searchContainer: {
+    marginBottom: 24,
+    marginTop: 6,
+  },
+  searchBoxLight: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
   },
-  walletActionIcon: {
-    fontSize: 20,
-    marginBottom: 6,
+  searchInput: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 14,
+    height: '100%',
+    ...(Platform.OS === 'web' && { outlineStyle: 'none' }),
   },
-  walletActionText: {
-    color: '#FFF',
-    fontSize: 12,
+  qrSearchBtn: {
+    padding: 6,
+    marginLeft: 6,
+  },
+  tagScrollView: {
+    marginTop: 10,
+  },
+  tagPillLight: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+  },
+  tagTextLight: {
+    color: '#475569',
+    fontSize: 11,
     fontWeight: '600',
   },
-  carouselContainer: {
+  sectionHeader: {
     flexDirection: 'row',
-    marginBottom: 30,
-    paddingRight: 20,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  sectionTitleLight: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  seeAllTextLight: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0EA5E9',
+  },
+  carouselContainer: {
+    marginBottom: 26,
   },
   bannerCard: {
-    width: 280,
-    height: 140,
-    marginRight: 15,
-    borderRadius: 16,
+    width: 260,
+    height: 135,
+    marginRight: 14,
+    borderRadius: 18,
     overflow: 'hidden',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
   },
   bannerImage: {
     width: '100%',
@@ -496,222 +936,361 @@ const styles = StyleSheet.create({
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-end',
-    padding: 16,
+    padding: 14,
+  },
+  bannerTagLight: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 6,
+    backgroundColor: '#38BDF8',
+  },
+  bannerTagTextLight: {
+    color: '#0F172A',
+    fontSize: 9,
+    fontWeight: '900',
   },
   bannerTitle: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
-  sectionHeader: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFF',
+  bannerDesc: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    marginTop: 2,
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingBottom: 20,
+    gap: 10,
+    marginBottom: 26,
   },
   gridItemContainer: {
     width: '31%',
-    marginBottom: 15,
-    borderRadius: 20,
-    overflow: 'hidden',
+    borderRadius: 18,
   },
-  gridItem: {
-    width: '100%',
+  gridItemLight: {
     aspectRatio: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 8,
+    backgroundColor: '#FFFFFF',
+    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.04)',
+  },
+  gridIconWrapperLight: {
+    position: 'relative',
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  iconGradientBadge: {
+    width: 48,
+    height: 48,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    padding: 10,
-    ...(Platform.OS === 'web' && { backdropFilter: 'blur(8px)' }),
+    boxShadow: '0 6px 14px rgba(14, 165, 233, 0.25)',
   },
-  gridIconWrapper: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  gridIcon: {
-    fontSize: 26,
-  },
-  gridTitle: {
-    color: '#E2E8F0',
-    fontSize: 13,
-    fontWeight: '500',
+  gridTitleLight: {
+    color: '#1E293B',
+    fontSize: 11,
+    fontWeight: '700',
     textAlign: 'center',
   },
-  premiumCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.5)',
-    marginBottom: 40,
-    ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(8px)',
-      backgroundImage: 'linear-gradient(45deg, rgba(255,215,0,0.1), rgba(255,165,0,0.2))',
-    }),
+  groupContainer: {
+    marginBottom: 24,
   },
-  premiumLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  premiumIcon: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  premiumTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFD700',
-    marginBottom: 2,
-  },
-  premiumDesc: {
-    fontSize: 12,
-    color: '#FFF',
-    opacity: 0.8,
-  },
-  premiumBtn: {
-    backgroundColor: '#FFD700',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-  },
-  premiumBtnText: {
-    color: '#000',
-    fontSize: 12,
+  groupTitleLight: {
+    color: '#0F172A',
+    fontSize: 14,
     fontWeight: '800',
+    marginBottom: 12,
   },
-  bottomTabBar: {
+  utilityGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  utilityGridItem: {
+    width: '48%',
+    borderRadius: 16,
+  },
+  utilityItemLightInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+  },
+  utilityIconWrapperLight: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  utilityIconGradientBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    boxShadow: '0 4px 10px rgba(14, 165, 233, 0.2)',
+  },
+  utilityCustomIconImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    overflow: 'hidden',
+    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.12)',
+  },
+  gridIconBadge: {
     position: 'absolute',
-    bottom: 24,
-    left: 20,
-    right: 20,
-    height: 70,
-    backgroundColor: 'rgba(20, 25, 35, 0.85)',
-    borderRadius: 35,
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)',
+    zIndex: 10,
+  },
+  gridIconBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  utilityItemTitleLight: {
+    color: '#1E293B',
+    fontSize: 12,
+    fontWeight: '700',
+    flex: 1,
+  },
+  bottomTabBarLight: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    height: 64,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderRadius: 32,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(15px)',
-      boxShadow: '0 15px 35px rgba(0, 0, 0, 0.5)',
-    }),
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
+    gap: 2,
   },
-  tabIcon: {
-    fontSize: 22,
-    marginBottom: 4,
-    opacity: 0.5,
+  activeTabGlowLight: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(14, 165, 233, 0.12)',
   },
-  tabIconActive: {
-    fontSize: 24,
-    marginBottom: 4,
-    opacity: 1,
-  },
-  tabText: {
+  tabTextLight: {
     fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '500',
+    color: '#64748B',
+    fontWeight: '600',
   },
-  tabTextActive: {
-    fontSize: 11,
-    color: '#00D8FF',
-    fontWeight: '700',
+  tabTextActiveLight: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0EA5E9',
   },
-  searchContainer: {
-    paddingBottom: 20,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 15,
-    height: 50,
-    borderWidth: 1,
-    ...(Platform.OS === 'web' && { backdropFilter: 'blur(10px)' }),
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 10,
-  },
-  searchInput: {
+  modalOverlay: {
     flex: 1,
-    color: '#FFF',
-    fontSize: 15,
-    height: '100%',
-    ...(Platform.OS === 'web' && { outlineStyle: 'none' }),
-  },
-  groupContainer: {
-    marginBottom: 25,
-  },
-  groupTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 15,
-    letterSpacing: 0.5,
-  },
-  utilityGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  utilityGridItem: {
-    width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    ...(Platform.OS === 'web' && { backdropFilter: 'blur(5px)' }),
-  },
-  utilityIconWrapper: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    padding: 20,
   },
-  utilityItemIcon: {
-    fontSize: 24,
+  notifCardContainer: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
   },
-  utilityItemTitle: {
-    color: '#E2E8F0',
+  notifCardInnerLight: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  notifHeaderLight: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  notifHeaderTitleLight: {
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  notifItem: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  notifIconWrapLight: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(14, 165, 233, 0.1)',
+  },
+  notifTitleLight: {
+    color: '#0F172A',
     fontSize: 13,
+    fontWeight: '700',
+  },
+  notifMsgLight: {
+    color: '#475569',
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  notifTimeLight: {
+    color: '#94A3B8',
+    fontSize: 9,
+    marginTop: 4,
+  },
+  serviceNotifModalContainer: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
+  },
+  serviceNotifCardInner: {
+    padding: 20,
+  },
+  serviceNotifHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  serviceNotifBadgeIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  serviceNotifServiceName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  serviceNotifHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  closeNotifBtn: {
+    padding: 4,
+  },
+  serviceNotifListItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  notifItemDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 5,
+  },
+  serviceNotifItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  serviceNotifItemMessage: {
+    fontSize: 11,
+    color: '#475569',
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  serviceNotifItemTime: {
+    fontSize: 10,
+    color: '#94A3B8',
     fontWeight: '600',
-    textAlign: 'center',
-  }
+  },
+  serviceNotifActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  understandBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  understandBtnText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  openServiceBtn: {
+    flex: 1.4,
+    height: 44,
+    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  openServiceBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });

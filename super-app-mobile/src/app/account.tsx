@@ -69,7 +69,8 @@ export default function AccountScreen() {
     changePassword
   } = useUser();
   const { width, height } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width > 768;
+  const isMobileUA = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isDesktop = Platform.OS === 'web' && width > 1024 && !isMobileUA;
   const COLS = 3;
   const CELL = (isDesktop ? 390 - 2 : width - 2) / COLS;
 
@@ -203,7 +204,7 @@ export default function AccountScreen() {
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <ImageBackground source={{ uri: bgUrl }} style={styles.backgroundImage} resizeMode="cover">
           <View style={styles.darkOverlay} />
-          <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+          <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
           {/* Toast */}
           <Toast message={toast.message} visible={toast.visible} />
@@ -211,11 +212,11 @@ export default function AccountScreen() {
           {/* ══════════ TOP BAR ══════════ */}
           <View style={styles.topBar}>
             <TouchableOpacity style={styles.topBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/home')}>
-              <Ionicons name="chevron-back" size={22} color="#FFF" />
+              <Ionicons name="chevron-back" size={22} color="#0F172A" />
             </TouchableOpacity>
             <Text style={[styles.topTitle, { fontFamily: theme.fontFamily }]}>Hồ sơ cá nhân</Text>
             <TouchableOpacity style={styles.topBtn} onPress={() => setShowMore(true)}>
-              <Ionicons name="ellipsis-horizontal" size={22} color="#FFF" />
+              <Ionicons name="ellipsis-horizontal" size={22} color="#0F172A" />
             </TouchableOpacity>
           </View>
 
@@ -223,16 +224,16 @@ export default function AccountScreen() {
             {/* ══════════ PROFILE HEADER CARD (Premium Layout) ══════════ */}
             <View style={styles.profileHeaderCard}>
               <LinearGradient
-                colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+                colors={['#FFFFFF', '#F8FAFC']}
                 style={StyleSheet.absoluteFill}
               />
               
               <View style={styles.avatarRow}>
                 <TouchableOpacity style={styles.avatarRing} onPress={pickImage}>
                   <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
-                  <View style={[styles.onlineDot, { backgroundColor: '#10B981', borderColor: '#000' }]} />
+                  <View style={[styles.onlineDot, { backgroundColor: '#10B981', borderColor: '#FFF' }]} />
                   <View style={[styles.editBadge, { backgroundColor: accentHex }]}>
-                    <Ionicons name="camera" size={12} color="#000" />
+                    <Ionicons name="camera" size={12} color="#FFF" />
                   </View>
                 </TouchableOpacity>
 
@@ -242,7 +243,7 @@ export default function AccountScreen() {
                       {userName}
                     </Text>
                     <View style={[styles.verifiedIcon, { backgroundColor: accentHex }]}>
-                      <Ionicons name="checkmark" size={10} color="#000" />
+                      <Ionicons name="checkmark" size={10} color="#FFF" />
                     </View>
                   </View>
                   <Text style={[styles.handleName, { color: accentHex }]}>
@@ -274,7 +275,7 @@ export default function AccountScreen() {
 
               {/* Action Buttons */}
               <View style={styles.btnRow}>
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: `rgba(${accentRgb}, 0.15)`, borderColor: accentHex }]} onPress={() => setShowEdit(true)}>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: `rgba(${accentRgb}, 0.12)`, borderColor: accentHex }]} onPress={() => setShowEdit(true)}>
                   <Ionicons name="create-outline" size={16} color={accentHex} style={{ marginRight: 6 }} />
                   <Text style={[styles.actionBtnText, { color: accentHex, fontFamily: theme.fontFamily }]}>
                     Sửa hồ sơ
@@ -282,15 +283,15 @@ export default function AccountScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionIconBtn} onPress={() => setShowQR(true)}>
-                  <Ionicons name="qr-code-outline" size={18} color="#FFF" />
+                  <Ionicons name="qr-code-outline" size={18} color="#0F172A" />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionIconBtn} onPress={() => setShowChangePassword(true)}>
-                  <Ionicons name="key-outline" size={18} color="#FFF" />
+                  <Ionicons name="key-outline" size={18} color="#0F172A" />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionIconBtn} onPress={() => router.push('/settings')}>
-                  <Ionicons name="settings-outline" size={18} color="#FFF" />
+                  <Ionicons name="settings-outline" size={18} color="#0F172A" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -722,115 +723,115 @@ export default function AccountScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   webWrapper: {
-    flex: 1, backgroundColor: '#0c0f17',
+    flex: 1, backgroundColor: '#E2E8F0',
     alignItems: 'center', justifyContent: 'center',
     ...(Platform.OS === 'web' && { paddingVertical: 10 } as any),
   },
-  safeArea: { flex: 1, backgroundColor: '#000', width: '100%' },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC', width: '100%' },
   desktopFrame: {
     maxWidth: 390, maxHeight: 844, aspectRatio: 390 / 844,
-    borderWidth: 10, borderColor: '#1c1c1e', borderRadius: 40,
-    overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 20,
+    borderWidth: 10, borderColor: '#0F172A', borderRadius: 40,
+    overflow: 'hidden', boxShadow: '0 30px 60px -15px rgba(15, 23, 42, 0.3), 0 0 0 1px rgba(255,255,255,0.8)',
   },
   backgroundImage: { flex: 1, width: '100%', height: '100%' },
-  darkOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,12,20,0.85)' },
+  darkOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(248, 250, 252, 0.88)' },
 
   // Top Nav
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 6 : 28, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  topBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  topTitle: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 6 : 28, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  topBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' },
+  topTitle: { color: '#0F172A', fontSize: 16, fontWeight: '800' },
 
   // Profile Card (Customized Premium Design)
   profileHeaderCard: {
     margin: 16, padding: 18, borderRadius: 24, overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10,
+    borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
   },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   avatarRing: { position: 'relative' },
-  avatarImg: { width: 78, height: 78, borderRadius: 39, borderWidth: 2, borderColor: '#FFF' },
+  avatarImg: { width: 78, height: 78, borderRadius: 39, borderWidth: 2, borderColor: '#0EA5E9' },
   onlineDot: { position: 'absolute', bottom: 2, right: 2, width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
-  editBadge: { position: 'absolute', bottom: -2, left: -2, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderContent: 1, borderColor: '#000' } as any,
+  editBadge: { position: 'absolute', bottom: -2, left: -2, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' } as any,
   nameDetails: { flex: 1, paddingTop: 2 },
-  displayName: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  displayName: { color: '#0F172A', fontSize: 18, fontWeight: '800' },
   verifiedIcon: { width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   handleName: { fontSize: 12, fontWeight: '700', marginTop: 3 },
-  bioText: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 8, lineHeight: 16 },
+  bioText: { color: '#475569', fontSize: 12, marginTop: 8, lineHeight: 16 },
 
   // Stats
-  statsCard: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, marginTop: 18, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  statsCard: { flexDirection: 'row', backgroundColor: '#F8FAFC', borderRadius: 16, marginTop: 18, paddingVertical: 12, borderWidth: 1, borderColor: '#E2E8F0' },
   statCell: { flex: 1, alignItems: 'center' },
   statNum: { fontSize: 16, fontWeight: '800' },
-  statLbl: { color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2, fontWeight: '600' },
-  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.08)', height: '70%', alignSelf: 'center' },
+  statLbl: { color: '#64748B', fontSize: 10, marginTop: 2, fontWeight: '600' },
+  statDivider: { width: 1, backgroundColor: '#E2E8F0', height: '70%', alignSelf: 'center' },
 
   // Action Buttons
   btnRow: { flexDirection: 'row', marginTop: 14, gap: 10 },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRadius: 14, borderWidth: 1 },
   actionBtnText: { fontSize: 13, fontWeight: '700' },
-  actionIconBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  actionIconBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
 
   // Highlights
   highlightSection: { marginVertical: 10 },
   highlightItem: { alignItems: 'center', width: 68 },
   highlightRing: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, padding: 2, marginBottom: 5 },
   highlightImg: { width: '100%', height: '100%', borderRadius: 26 },
-  highlightLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600', width: '100%', textAlign: 'center' },
+  highlightLabel: { color: '#475569', fontSize: 10, fontWeight: '600', width: '100%', textAlign: 'center' },
 
   // Tabs Switcher
-  tabsContainer: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(0,0,0,0.2)' },
+  tabsContainer: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: '#FFFFFF' },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 4, position: 'relative' },
   tabItemActive: {},
-  tabLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: '600' },
+  tabLabel: { color: '#64748B', fontSize: 12, fontWeight: '600' },
   activeIndicator: { position: 'absolute', bottom: 0, width: '40%', height: 2, borderRadius: 1 },
 
   // Grid
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1 },
   gridCell: { position: 'relative', overflow: 'hidden' },
-  gridThumb: { width: '100%', height: '100%', backgroundColor: '#111' },
+  gridThumb: { width: '100%', height: '100%', backgroundColor: '#F1F5F9' },
   gridOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%' },
   viewsRow: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
   viewsText: { color: '#FFF', fontSize: 11, fontWeight: '600' },
 
   // Services
   servicesList: { padding: 14, gap: 10 },
-  serviceItem: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  serviceIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center' },
-  serviceTitle: { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  serviceDate: { color: '#666', fontSize: 11, marginTop: 3 },
-  serviceCategory: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.06)' },
+  serviceItem: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
+  serviceIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(14,165,233,0.1)', justifyContent: 'center', alignItems: 'center' },
+  serviceTitle: { color: '#0F172A', fontSize: 13, fontWeight: '700' },
+  serviceDate: { color: '#64748B', fontSize: 11, marginTop: 3 },
+  serviceCategory: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#F1F5F9' },
 
   // Edit Sheet
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  sheetContent: { borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', maxHeight: '92%' },
-  sheetHandle: { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 2 },
-  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
-  sheetTitle: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,23,42,0.5)' },
+  sheetContent: { borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', maxHeight: '92%', backgroundColor: '#FFFFFF' },
+  sheetHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 2 },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  sheetTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700' },
   editAvatarWrap: { alignItems: 'center', marginVertical: 20 },
   editAvatarRing: { width: 90, height: 90, borderRadius: 45, overflow: 'hidden', position: 'relative' },
   editAvatarImg: { width: 90, height: 90 },
-  cameraOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  photoTip: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 8 },
-  inputLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700', marginLeft: 4, marginBottom: 8 },
-  textInput: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: '#FFF', fontSize: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 20 },
+  cameraOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+  photoTip: { color: '#64748B', fontSize: 12, marginTop: 8 },
+  inputLabel: { color: '#475569', fontSize: 12, fontWeight: '700', marginLeft: 4, marginBottom: 8 },
+  textInput: { backgroundColor: '#F8FAFC', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: '#0F172A', fontSize: 14, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
 
   // QR Modal
-  qrOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  qrCard: { width: '100%', borderRadius: 28, overflow: 'hidden', alignItems: 'center', padding: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  qrOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  qrCard: { width: '100%', borderRadius: 28, overflow: 'hidden', alignItems: 'center', padding: 28, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' },
   qrAvatar: { width: 68, height: 68, borderRadius: 34, marginBottom: 10 },
-  qrName: { color: '#FFF', fontSize: 18, fontWeight: '800' },
-  qrHandle: { color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 3, marginBottom: 20 },
-  qrBox: { width: 190, height: 190, borderRadius: 20, borderWidth: 2, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  qrName: { color: '#0F172A', fontSize: 18, fontWeight: '800' },
+  qrHandle: { color: '#64748B', fontSize: 12, marginTop: 3, marginBottom: 20 },
+  qrBox: { width: 190, height: 190, borderRadius: 20, borderWidth: 2, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', position: 'relative', borderColor: '#E2E8F0' },
   qrGrid: { flexDirection: 'row', flexWrap: 'wrap', width: 156, height: 156 },
   qrDot: { width: 22, height: 22, backgroundColor: 'transparent', borderRadius: 3 },
-  qrLogo: { position: 'absolute', width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#0a0c14' },
-  qrHint: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16, textAlign: 'center' },
+  qrLogo: { position: 'absolute', width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFF' },
+  qrHint: { color: '#64748B', fontSize: 12, marginTop: 16, textAlign: 'center' },
   qrBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 11, borderRadius: 14 },
 
   // More Sheet
-  moreSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingBottom: 40 },
-  moreTitle: { color: '#FFF', fontSize: 16, fontWeight: '700', textAlign: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
-  moreItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
+  moreSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingBottom: 40, backgroundColor: '#FFFFFF' },
+  moreTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700', textAlign: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  moreItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
   moreIconWrap: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   moreItemText: { fontSize: 14, fontWeight: '600' },
 
@@ -838,39 +839,40 @@ const styles = StyleSheet.create({
   bottomTabBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: 70,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
-    backgroundColor: 'rgba(10,12,20,0.92)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: '#E2E8F0',
     paddingBottom: Platform.OS === 'ios' ? 14 : 6,
     ...(Platform.OS === 'web' && { backdropFilter: 'blur(20px)' } as any),
   },
   tabItemBar: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
-  tabBarLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 3, fontWeight: '500' },
+  tabBarLabel: { color: '#64748B', fontSize: 10, marginTop: 3, fontWeight: '500' },
 
   // Marketplace Styles
   marketCard: {
     marginHorizontal: 16, marginBottom: 16, padding: 16, 
-    borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)'
+    borderRadius: 24, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#E2E8F0',
+    boxShadow: '0 6px 16px rgba(0,0,0,0.04)'
   },
   marketRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   marketItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   marketIcon: { fontSize: 24 },
-  marketVal: { color: '#FFF', fontSize: 14, fontWeight: '800' },
-  marketLbl: { color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2, fontWeight: '600' },
-  marketDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.08)', height: 30 },
+  marketVal: { color: '#0F172A', fontSize: 14, fontWeight: '800' },
+  marketLbl: { color: '#64748B', fontSize: 10, marginTop: 2, fontWeight: '600' },
+  marketDivider: { width: 1, backgroundColor: '#E2E8F0', height: 30 },
   addressBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, borderRadius: 14, marginTop: 4
   },
-  addressBtnText: { color: '#000', fontSize: 13, fontWeight: '700' },
+  addressBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
 
   // Addresses List Card inside Modal
   addressCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18,
-    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)'
+    backgroundColor: '#F8FAFC', borderRadius: 18,
+    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0'
   },
-  addressCardName: { color: '#FFF', fontSize: 14, fontWeight: '800' },
-  addressCardText: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 4, lineHeight: 18 },
-  addressCardActions: { flexDirection: 'row', marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 10 },
+  addressCardName: { color: '#0F172A', fontSize: 14, fontWeight: '800' },
+  addressCardText: { color: '#475569', fontSize: 12, marginTop: 4, lineHeight: 18 },
+  addressCardActions: { flexDirection: 'row', marginTop: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 10 },
   defaultBadge: {
     paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
     borderWidth: 1
@@ -880,10 +882,10 @@ const styles = StyleSheet.create({
   passwordInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#E2E8F0',
     marginBottom: 20,
     paddingRight: 10,
   },
@@ -916,7 +918,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitPasswordBtnText: {
-    color: '#000',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 1,

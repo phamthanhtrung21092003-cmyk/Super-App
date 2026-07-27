@@ -74,10 +74,10 @@ export const authRepository: IAuthRepository = {
       const userStr = await AsyncStorage.getItem('currentUser');
       const expiresAtStr = await AsyncStorage.getItem('tokenExpiresAt');
 
-      // Trong chế độ mock, nếu chưa đăng nhập trước đó, tự động giả lập đăng nhập để vào thẳng trang chủ
-      if (isMockMode && (!token || !rToken || !userStr || !expiresAtStr)) {
+      // Trong chế độ mock, luôn đảm bảo phiên đăng nhập mock hợp lệ
+      if (isMockMode) {
         console.log('[AuthRepository] Auto mock session login...');
-        const mockUser = {
+        let mockUser = {
           id: 'mock_user_trung',
           fullName: 'Phạm Thành Trung ✨',
           phone: '0987654321',
@@ -88,9 +88,17 @@ export const authRepository: IAuthRepository = {
           vipTier: 'Vàng'
         };
 
-        const tokenExpiresAt = Date.now() + 3600 * 1000;
-        await AsyncStorage.setItem('accessToken', 'mock_access_token');
-        await AsyncStorage.setItem('refreshToken', 'mock_refresh_token');
+        if (userStr) {
+          try {
+            mockUser = JSON.parse(userStr);
+          } catch (e) {
+            // fallback to default mockUser
+          }
+        }
+
+        const tokenExpiresAt = Date.now() + 3600 * 1000 * 24 * 365;
+        await AsyncStorage.setItem('accessToken', token || 'mock_access_token');
+        await AsyncStorage.setItem('refreshToken', rToken || 'mock_refresh_token');
         await AsyncStorage.setItem('currentUser', JSON.stringify(mockUser));
         await AsyncStorage.setItem('tokenExpiresAt', tokenExpiresAt.toString());
         await AsyncStorage.setItem('userName', mockUser.fullName);
