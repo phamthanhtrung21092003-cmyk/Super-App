@@ -33,6 +33,18 @@ export interface CinemaBranch {
   moviesCount: number;
 }
 
+// Helper to remove Vietnamese diacritical marks (tones) for search matching
+export function removeVietnameseTones(str: string): string {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+}
+
 // 63 Tỉnh Thành Việt Nam Đầy Đủ
 const ALL_63_PROVINCES = [
   'Tất cả tỉnh thành',
@@ -277,6 +289,21 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 6,
   },
 
+  // ==================== HÀ NAM ====================
+  {
+    id: 'lotte-cinema-phu-ly-ha-nam',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Phủ Lý (Hà Nam)',
+    area: 'Phủ Lý',
+    city: 'Hà Nam',
+    address: 'Tầng 4, Vincom Plaza Phủ Lý, Số 60 Nguyễn Văn Trỗi, TP. Phủ Lý, Hà Nam',
+    phone: '0226 3888 999',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Hầm xe Vincom', '🎟️ Kiosk check-in', '🔊 Dolby Atmos'],
+    distance: '1.1 km',
+    moviesCount: 5,
+  },
+
   // ==================== ĐÀ NẴNG ====================
   {
     id: 'cgv-vincom-da-nang',
@@ -323,37 +350,34 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
   },
 ];
 
-// Robust Search Function matching name, area, city, address, brand
+// Robust Search Function matching name, area, city, address, brand with Accent-Insensitive matching (Không dấu)
 function getCinemasForCity(searchOrCity: string): CinemaBranch[] {
   if (searchOrCity === 'Tất cả tỉnh thành' || !searchOrCity) {
     return BASE_CINEMA_BRANCHES;
   }
 
   const rawQuery = searchOrCity.toLowerCase().trim();
-
-  // Normalize query string (remove "tp.", brackets, extra spaces)
-  const normQuery = rawQuery
-    .replace(/tp\.\s*/g, '')
-    .replace(/\s*\(.*\)/g, '')
-    .trim();
+  const cleanQuery = removeVietnameseTones(searchOrCity);
 
   const matched = BASE_CINEMA_BRANCHES.filter(b => {
-    const nameStr = b.name.toLowerCase();
-    const areaStr = b.area.toLowerCase();
-    const cityStr = b.city.toLowerCase();
-    const addressStr = b.address.toLowerCase();
-    const brandStr = b.brand.toLowerCase();
+    const nameClean = removeVietnameseTones(b.name);
+    const areaClean = removeVietnameseTones(b.area);
+    const cityClean = removeVietnameseTones(b.city);
+    const addressClean = removeVietnameseTones(b.address);
+    const brandClean = removeVietnameseTones(b.brand);
 
     return (
-      nameStr.includes(rawQuery) ||
-      areaStr.includes(rawQuery) ||
-      cityStr.includes(rawQuery) ||
-      addressStr.includes(rawQuery) ||
-      brandStr.includes(rawQuery) ||
-      (normQuery.length > 0 &&
-        (nameStr.includes(normQuery) ||
-          cityStr.includes(normQuery) ||
-          addressStr.includes(normQuery)))
+      b.name.toLowerCase().includes(rawQuery) ||
+      b.area.toLowerCase().includes(rawQuery) ||
+      b.city.toLowerCase().includes(rawQuery) ||
+      b.address.toLowerCase().includes(rawQuery) ||
+      b.brand.toLowerCase().includes(rawQuery) ||
+      (cleanQuery.length > 0 &&
+        (nameClean.includes(cleanQuery) ||
+          areaClean.includes(cleanQuery) ||
+          cityClean.includes(cleanQuery) ||
+          addressClean.includes(cleanQuery) ||
+          brandClean.includes(cleanQuery)))
     );
   });
 
@@ -366,7 +390,7 @@ function getCinemasForCity(searchOrCity: string): CinemaBranch[] {
 
   return [
     {
-      id: `cgv-vincom-${cityName.toLowerCase()}`,
+      id: `cgv-vincom-${removeVietnameseTones(cityName)}`,
       brand: 'CGV',
       name: `CGV Vincom Plaza ${cityName}`,
       area: `Trung tâm ${cityName}`,
@@ -672,8 +696,8 @@ export default function CinemaShowtimesScreen() {
   // Get cinemas based on current city filter or search query
   let displayCinemas = getCinemasForCity(searchQuery || selectedCityFilter);
 
-  // Apply brand filter if selected
-  if (selectedBrandId !== 'all') {
+  // Apply brand filter if selected ONLY when not searching by query
+  if (selectedBrandId !== 'all' && !searchQuery) {
     displayCinemas = displayCinemas.filter(b => b.brand === selectedBrandId);
   }
 
@@ -741,7 +765,7 @@ export default function CinemaShowtimesScreen() {
           <TouchableOpacity style={styles.searchAreaInputBox} onPress={() => setShowSearchModal(true)}>
             <Ionicons name="search-outline" size={18} color="#64748B" style={{ marginRight: 8 }} />
             <Text style={styles.searchAreaPlaceholder}>
-              Bấm để xem danh sách rạp thực tế chính xác từng tỉnh thành...
+              Gõ tên rạp hoặc tỉnh thành (vd: Nam Định, Thái Bình...)...
             </Text>
           </TouchableOpacity>
         </View>
@@ -899,10 +923,15 @@ export default function CinemaShowtimesScreen() {
                 <Ionicons name="search" size={20} color="#64748B" style={{ marginRight: 8 }} />
                 <TextInput
                   style={styles.modalSearchInput}
-                  placeholder="Gõ tên rạp hoặc tỉnh thành (vd: Bắc Giang, Hải Dương, Gia Lai...)"
+                  placeholder="Gõ tên rạp hoặc tỉnh thành (vd: Nam Định, Hải Dương, Gia Lai...)"
                   placeholderTextColor="#94A3B8"
                   value={searchQuery}
-                  onChangeText={setSearchQuery}
+                  onChangeText={(text) => {
+                    setSearchQuery(text);
+                    if (text && selectedBrandId !== 'all') {
+                      setSelectedBrandId('all'); // Reset brand filter to show search results across all brands
+                    }
+                  }}
                   autoFocus={true}
                 />
                 {searchQuery ? (
@@ -925,6 +954,7 @@ export default function CinemaShowtimesScreen() {
                         onPress={() => {
                           setSelectedCityFilter(city);
                           setSearchQuery('');
+                          setSelectedBrandId('all');
                         }}
                       >
                         <Text style={[styles.cityPillText, isSelected && styles.cityPillTextActive]}>
@@ -940,7 +970,9 @@ export default function CinemaShowtimesScreen() {
               <View style={styles.selectedCityHeaderRow}>
                 <Ionicons name="location-sharp" size={16} color="#DC2626" />
                 <Text style={styles.selectedCityHeaderText}>
-                  {selectedCityFilter !== 'Tất cả tỉnh thành'
+                  {searchQuery
+                    ? `Kết quả tìm kiếm rạp cho "${searchQuery}" (${displayCinemas.length} rạp)`
+                    : selectedCityFilter !== 'Tất cả tỉnh thành'
                     ? `Danh sách rạp thực tế tại ${selectedCityFilter} (${displayCinemas.length} rạp)`
                     : `Tất cả cụm rạp Moveek (${displayCinemas.length} rạp)`}
                 </Text>
@@ -952,7 +984,7 @@ export default function CinemaShowtimesScreen() {
                   <View style={styles.emptyResultsBox}>
                     <Ionicons name="location-outline" size={48} color="#CBD5E1" />
                     <Text style={styles.emptyResultsText}>
-                      Không tìm thấy rạp nào ở "{searchQuery || selectedCityFilter}"
+                      Không tìm thấy rạp nào cho "{searchQuery || selectedCityFilter}"
                     </Text>
                   </View>
                 ) : (
