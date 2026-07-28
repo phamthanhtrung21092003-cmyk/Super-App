@@ -381,14 +381,55 @@ function getCinemasForCity(searchOrCity: string): CinemaBranch[] {
   ];
 }
 
-const DATES = [
-  { id: '1', dateStr: '27/7', dayStr: 'Thứ 2', label: 'Thứ Hai · 27/07' },
-  { id: '2', dateStr: '28/7', dayStr: 'Thứ 3', label: 'Thứ Ba · 28/07' },
-  { id: '3', dateStr: '29/7', dayStr: 'Thứ 4', label: 'Thứ Tư · 29/07' },
-  { id: '4', dateStr: '30/7', dayStr: 'Thứ 5', label: 'Thứ Năm · 30/07' },
-  { id: '5', dateStr: '31/7', dayStr: 'Thứ 6', label: 'Thứ Sáu · 31/07' },
-  { id: '6', dateStr: '1/8', dayStr: 'Thứ 7', label: 'Thứ Bảy · 01/08' },
-];
+export interface DateTabItem {
+  id: string;
+  dateStr: string;
+  dayStr: string;
+  label: string;
+  dayOfWeekIdx: number; // 0: Sun, 1: Mon, 2: Tue, 3: Wed, 4: Thu, 5: Fri, 6: Sat
+  isToday: boolean;
+}
+
+/**
+ * Dynamic 6-Day Date Tab Generator
+ * Computes 6 consecutive dates starting dynamically from TODAY (Hôm nay)!
+ */
+export function generateDynamic6Dates(): DateTabItem[] {
+  const daysOfWeek = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  const fullDaysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+  const today = new Date();
+  const result: DateTabItem[] = [];
+
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+
+    const dayNum = d.getDate();
+    const monthNum = d.getMonth() + 1;
+    const dayOfWeekIdx = d.getDay();
+
+    const dateStr = `${dayNum}/${monthNum}`;
+    const dayStr = i === 0 ? 'Hôm nay' : daysOfWeek[dayOfWeekIdx];
+    const dayFormatted = dayNum < 10 ? `0${dayNum}` : `${dayNum}`;
+    const monthFormatted = monthNum < 10 ? `0${monthNum}` : `${monthNum}`;
+
+    const label = i === 0
+      ? `Hôm Nay · ${dayFormatted}/${monthFormatted}`
+      : `${fullDaysOfWeek[dayOfWeekIdx]} · ${dayFormatted}/${monthFormatted}`;
+
+    result.push({
+      id: `${i + 1}`,
+      dateStr,
+      dayStr,
+      label,
+      dayOfWeekIdx,
+      isToday: i === 0,
+    });
+  }
+
+  return result;
+}
 
 const CINEMA_BRANDS = [
   { id: 'all', name: 'Tất cả rạp', color: '#1E293B' },
@@ -479,70 +520,75 @@ const MASTER_MOVIE_CATALOG: Omit<MovieItem, 'showtimes'>[] = [
  * Dynamic Showtime & Movie Schedule Engine
  * Generates unique movies, screening formats, prices, and time slots based on Cinema Branch & Date!
  */
-function getMoviesForBranchAndDate(branch: CinemaBranch, dateId: string): MovieItem[] {
+function getMoviesForBranchAndDate(branch: CinemaBranch, dateTab: DateTabItem): MovieItem[] {
   const isCGV = branch.brand === 'CGV';
   const isLotte = branch.brand === 'Lotte';
   const isBeta = branch.brand === 'Beta';
   const isCinestar = branch.brand === 'Cinestar';
 
+  const dayIdx = dateTab.dayOfWeekIdx; // 0: Sun, 1: Mon, 2: Tue, 3: Wed, 4: Thu, 5: Fri, 6: Sat
+  const isTuesday = dayIdx === 2;
+  const isWeekend = dayIdx === 5 || dayIdx === 6 || dayIdx === 0;
+
   // Base price dynamically computed per date & brand
   let basePrice = 50000;
-  if (dateId === '2') basePrice = 45000; // Happy Tuesday
-  if (dateId === '5' || dateId === '6') basePrice = 70000; // Weekend
+  if (isTuesday) basePrice = 45000; // Happy Tuesday
+  if (isWeekend) basePrice = 70000; // Weekend
 
   if (isCGV) basePrice += 10000;
   if (isBeta || isCinestar) basePrice = Math.max(45000, basePrice - 5000);
 
-  // Different time slot presets per Date ID
-  const timePresets: Record<string, { t1: string[]; t2: string[]; avail1: boolean[]; avail2: boolean[] }> = {
-    '1': {
-      // 27/07 Thứ 2
+  // Dynamic Time Slot Presets depending on Day of Week
+  const timePresets: Record<number, { t1: string[]; t2: string[] }> = {
+    1: {
+      // Thứ 2
       t1: ['08:30', '11:00', '14:15', '17:00', '18:30', '20:30', '21:45'],
       t2: ['10:00', '13:30', '16:00', '19:00', '20:45', '22:15'],
-      avail1: [false, false, true, true, true, true, true],
-      avail2: [false, true, true, true, true, true]
     },
-    '2': {
-      // 28/07 Thứ 3 (Happy Day)
+    2: {
+      // Thứ 3 (Happy Day)
       t1: ['09:15', '11:45', '14:00', '16:30', '18:15', '19:45', '21:15'],
       t2: ['10:30', '13:00', '15:30', '17:45', '20:00', '22:00'],
-      avail1: [true, true, true, true, true, true, true],
-      avail2: [true, true, true, true, true, true]
     },
-    '3': {
-      // 29/07 Thứ 4
+    3: {
+      // Thứ 4
       t1: ['10:00', '12:30', '15:15', '17:45', '19:20', '21:00'],
       t2: ['09:30', '11:50', '14:20', '16:45', '18:50', '21:30'],
-      avail1: [true, true, true, true, true, true],
-      avail2: [true, true, true, true, true, true]
     },
-    '4': {
-      // 30/07 Thứ 5
+    4: {
+      // Thứ 5
       t1: ['08:45', '11:15', '13:50', '16:30', '18:45', '20:45', '22:15'],
       t2: ['10:15', '12:45', '15:00', '17:30', '19:40', '21:50'],
-      avail1: [true, true, true, true, true, true, true],
-      avail2: [true, true, true, true, true, true]
     },
-    '5': {
-      // 31/07 Thứ 6 (Đêm Cuối Tuần)
+    5: {
+      // Thứ 6 (Đêm Cuối Tuần)
       t1: ['13:15', '15:45', '17:30', '19:00', '20:15', '21:30', '22:45', '23:30'],
       t2: ['14:00', '16:15', '18:30', '20:00', '21:15', '22:30', '23:55'],
-      avail1: [true, true, true, true, true, true, true, true],
-      avail2: [true, true, true, true, true, true, true]
     },
-    '6': {
-      // 01/08 Thứ 7 (Sáng Đến Khuya)
+    6: {
+      // Thứ 7 (Sáng Đến Khuya)
       t1: ['08:00', '09:30', '11:00', '13:30', '15:00', '17:00', '18:30', '20:00', '21:30', '23:15'],
       t2: ['08:45', '10:15', '12:00', '14:15', '16:00', '17:45', '19:15', '20:45', '22:15'],
-      avail1: [true, true, true, true, true, true, true, true, true, true],
-      avail2: [true, true, true, true, true, true, true, true, true]
+    },
+    0: {
+      // Chủ Nhật
+      t1: ['08:15', '09:45', '11:30', '13:45', '15:30', '17:15', '18:45', '20:15', '22:00'],
+      t2: ['09:00', '10:45', '12:30', '14:30', '16:15', '18:00', '19:30', '21:00', '22:30'],
     }
   };
 
-  const preset = timePresets[dateId] || timePresets['1'];
+  const preset = timePresets[dayIdx] || timePresets[1];
 
-  // Select subset of movies based on branch ID hash
-  const branchHash = branch.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  // Helper to determine if slot is available (if today, past morning hours are disabled)
+  const currentHour = new Date().getHours();
+  const isSlotAvailable = (timeStr: string) => {
+    if (!dateTab.isToday) return true;
+    const hour = parseInt(timeStr.split(':')[0], 10);
+    return hour >= currentHour;
+  };
+
+  // Select subset of movies based on branch ID hash & day
+  const branchHash = branch.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + dayIdx;
   const movieCount = isCGV ? 6 : isLotte ? 5 : 4;
 
   const movieIndices = [];
@@ -558,26 +604,26 @@ function getMoviesForBranchAndDate(branch: CinemaBranch, dateId: string): MovieI
 
     // Format 1: 2D Lồng Tiếng or IMAX 3D
     const fmt1Name = isCGV && mIdx === 0 ? 'IMAX 3D Phụ Đề' : '2D Lồng Tiếng';
-    const fmt1Times = preset.t1.map((time, tIdx) => {
+    const fmt1Times = preset.t1.map((time) => {
       const price = fmt1Name.includes('IMAX') ? basePrice + 40000 : basePrice;
       return {
         time,
         price,
         priceText: `${Math.round(price / 1000)}K`,
-        available: preset.avail1[tIdx % preset.avail1.length]
+        available: isSlotAvailable(time)
       };
     });
     formats.push({ format: fmt1Name, times: fmt1Times });
 
     // Format 2: 2D Phụ Đề Việt or 4DX
     const fmt2Name = isCGV && mIdx === 1 ? '4DX Lồng Tiếng' : '2D Phụ Đề Việt';
-    const fmt2Times = preset.t2.map((time, tIdx) => {
+    const fmt2Times = preset.t2.map((time) => {
       const price = fmt2Name.includes('4DX') ? basePrice + 35000 : basePrice + 5000;
       return {
         time,
         price,
         priceText: `${Math.round(price / 1000)}K`,
-        available: preset.avail2[tIdx % preset.avail2.length]
+        available: isSlotAvailable(time)
       };
     });
     formats.push({ format: fmt2Name, times: fmt2Times });
@@ -596,7 +642,11 @@ export default function CinemaShowtimesScreen() {
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const { selectShowtime } = useCinema();
-  const [selectedDateId, setSelectedDateId] = useState('1');
+
+  // Dynamic 6 Dates generated starting from Today
+  const dynamicDates = useMemo(() => generateDynamic6Dates(), []);
+
+  const [selectedDateId, setSelectedDateId] = useState('1'); // Default to Day 1 (Hôm Nay)
   const [selectedBrandId, setSelectedBrandId] = useState('all');
 
   // Selected Cinema Branch & Selected City Filters
@@ -610,12 +660,14 @@ export default function CinemaShowtimesScreen() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const selectedDateObj = DATES.find(d => d.id === selectedDateId) || DATES[0];
+  const selectedDateObj = useMemo(() => {
+    return dynamicDates.find(d => d.id === selectedDateId) || dynamicDates[0];
+  }, [dynamicDates, selectedDateId]);
 
   // Dynamic Movie List per selected Branch & Date
   const activeMovies = useMemo(() => {
-    return getMoviesForBranchAndDate(currentBranch, selectedDateId);
-  }, [currentBranch, selectedDateId]);
+    return getMoviesForBranchAndDate(currentBranch, selectedDateObj);
+  }, [currentBranch, selectedDateObj]);
 
   // Get cinemas based on current city filter or search query
   let displayCinemas = getCinemasForCity(searchQuery || selectedCityFilter);
@@ -717,10 +769,10 @@ export default function CinemaShowtimesScreen() {
           </ScrollView>
         </View>
 
-        {/* Horizontal Date Selector */}
+        {/* Horizontal Date Selector - Dynamically starts from TODAY */}
         <View style={styles.dateSelectorContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateList}>
-            {DATES.map(date => {
+            {dynamicDates.map(date => {
               const isSelected = date.id === selectedDateId;
               return (
                 <TouchableOpacity
