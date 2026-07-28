@@ -243,8 +243,21 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     distance: '5.2 km',
     moviesCount: 6,
   },
+  {
+    id: 'galaxy-nguyen-du',
+    brand: 'Galaxy',
+    name: 'Galaxy Cinema Nguyễn Du',
+    area: 'Quận 1',
+    city: 'TP. Hồ Chí Minh',
+    address: '116 Nguyễn Du, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh',
+    phone: '1900 2224',
+    hours: '08:00 - 23:45',
+    facilities: ['🍿 Bắp caramel', '🅿️ Giữ xe khuôn viên', '🎟️ Quét QR', '🎬 2D/3D Hi-Def'],
+    distance: '1.8 km',
+    moviesCount: 7,
+  },
 
-  // ==================== HẢI PHÒNG (ĐỐI SOÁT CHUẨN GOOGLE/MOVEEK 5 CỤM RẠP) ====================
+  // ==================== HẢI PHÒNG (ĐỐI SOÁT CHUẨN GOOGLE/MOVEEK 4 CỤM RẠP) ====================
   {
     id: 'cgv-aeon-mall-hai-phong',
     brand: 'CGV',
@@ -298,7 +311,104 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 6,
   },
 
-  // ==================== ĐÀ NẴNG (ĐỐI SOÁT CHUẨN GOOGLE/MOVEEK 6 CỤM RẠP) ====================
+  // ==================== BÌNH DƯƠNG ====================
+  {
+    id: 'cgv-aeon-canary-binh-duong',
+    brand: 'CGV',
+    name: 'CGV AEON Canary Bình Dương',
+    area: 'Thuận An',
+    city: 'Bình Dương',
+    address: 'Tầng 2, TTTM AEON Mall Canary, QL13, TP. Thuận An, Bình Dương',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Free bãi xe AEON Mall', '🎟️ QR Scan', '🔊 Dolby Atmos'],
+    distance: '2.5 km',
+    moviesCount: 7,
+  },
+  {
+    id: 'lotte-cinema-binh-duong',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Bình Dương',
+    area: 'Thuận An',
+    city: 'Bình Dương',
+    address: 'Tầng 2, Lotte Mart Bình Dương, QL13, TP. Thuận An, Bình Dương',
+    phone: '0274 3798 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Bãi xe Lotte Mart', '🎟️ Vé QR code', '🎬 2D/3D'],
+    distance: '3.0 km',
+    moviesCount: 6,
+  },
+  {
+    id: 'beta-empire-binh-duong',
+    brand: 'Beta',
+    name: 'Beta Cinema Empire Dĩ An',
+    area: 'Dĩ An',
+    city: 'Bình Dương',
+    address: 'Tầng 4, Empire City, TP. Dĩ An, Bình Dương',
+    phone: '1900 636807',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp phô mai giá tốt', '🅿️ Bãi đỗ xe Empire', '🎟️ Kiosk in vé', '🔊 Sound 7.1'],
+    distance: '4.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== ĐỒNG NAI ====================
+  {
+    id: 'lotte-cinema-bien-hoa',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Biên Hòa',
+    area: 'Biên Hòa',
+    city: 'Đồng Nai',
+    address: 'Tầng 5, Vincom Plaza Biên Hòa, 1096 Phạm Văn Thuận, TP. Biên Hòa, Đồng Nai',
+    phone: '0251 3918 888',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Combo Popcorn', '🅿️ Hầm xe Vincom', '🎟️ Check-in QR Code', '🔊 Dolby 7.1'],
+    distance: '1.8 km',
+    moviesCount: 6,
+  },
+  {
+    id: 'cgv-bigc-dong-nai',
+    brand: 'CGV',
+    name: 'CGV BigC (GO!) Đồng Nai',
+    area: 'Biên Hòa',
+    city: 'Đồng Nai',
+    address: 'Tầng 2, TTTM Big C (GO!) Đồng Nai, KDC Bình Đa, TP. Biên Hòa, Đồng Nai',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Bãi xe Big C rộng', '🎟️ QR Scan', '🎬 2D/3D'],
+    distance: '2.2 km',
+    moviesCount: 6,
+  },
+
+  // ==================== BÀ RỊA - VŨNG TÀU ====================
+  {
+    id: 'cgv-lapen-vung-tau',
+    brand: 'CGV',
+    name: 'CGV Lapen Center Vũng Tàu',
+    area: 'Phường 9',
+    city: 'Bà Rịa - Vũng Tàu',
+    address: 'Tầng 4, Lapen Center, 33A Đường 30/4, Phường 9, TP. Vũng Tàu',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Gourmet', '🅿️ Hầm xe Lapen', '🎟️ Scan QR', '🔊 Dolby Atmos'],
+    distance: '1.2 km',
+    moviesCount: 6,
+  },
+  {
+    id: 'lotte-cinema-vung-tau',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Vũng Tàu',
+    area: 'Phường 8',
+    city: 'Bà Rịa - Vũng Tàu',
+    address: 'Tầng 3, Lotte Mart Vũng Tàu, Đường 3/2, Phường 8, TP. Vũng Tàu',
+    phone: '0254 3551 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Bắp phô mai & caramel', '🅿️ Bãi xe Lotte Mart', '🎟️ Kiosk in vé', '🎬 2D/3D'],
+    distance: '2.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== ĐÀ NẴNG (ĐỐI SOÁT CHUẨN GOOGLE/MOVEEK 5 CỤM RẠP) ====================
   {
     id: 'cgv-vincom-da-nang',
     brand: 'CGV',
@@ -365,7 +475,7 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 6,
   },
 
-  // ==================== CẦN THƠ (ĐỐI SOÁT CHUẨN GOOGLE/MOVEEK 5 CỤM RẠP) ====================
+  // ==================== CẦN THƠ (ĐỐI SOÁT CHUẨN GOOGLE/MOVEEK 3 CỤM RẠP) ====================
   {
     id: 'cgv-vincom-xuan-khanh-can-tho',
     brand: 'CGV',
@@ -406,7 +516,7 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 6,
   },
 
-  // ==================== NHA TRANG (KHÁNH HÒA - GOOGLE VERIFIED) ====================
+  // ==================== NHA TRANG (KHÁNH HÒA) ====================
   {
     id: 'galaxy-gold-coast-nha-trang',
     brand: 'Galaxy',
@@ -434,7 +544,7 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 5,
   },
 
-  // ==================== THỪA THIÊN HUẾ (GOOGLE VERIFIED) ====================
+  // ==================== THỪA THIÊN HUẾ ====================
   {
     id: 'galaxy-aeon-mall-hue',
     brand: 'Galaxy',
@@ -475,7 +585,7 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     moviesCount: 6,
   },
 
-  // ==================== BÌNH ĐỊNH (QUY NHƠN - GOOGLE VERIFIED) ====================
+  // ==================== BÌNH ĐỊNH (QUY NHƠN) ====================
   {
     id: 'starlight-quy-nhon',
     brand: 'Starlight',
@@ -500,6 +610,146 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     hours: '08:00 - 23:00',
     facilities: ['🍿 Bắp phô mai', '🅿️ Giữ xe máy free', '🎟️ Check-in QR', '🔊 Dolby Sound'],
     distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== QUẢNG NINH ====================
+  {
+    id: 'cgv-vincom-ha-long',
+    brand: 'CGV',
+    name: 'CGV Vincom Hạ Long',
+    area: 'Bạch Đằng',
+    city: 'Quảng Ninh',
+    address: 'Tầng 4, TTTM Vincom Center Hạ Long, Khu Cột Đồng Hồ, P. Bạch Đằng, TP. Hạ Long',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D Phụ đề / Lồng tiếng'],
+    distance: '2.2 km',
+    moviesCount: 5,
+  },
+  {
+    id: 'lotte-cinema-ha-long',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Hạ Long',
+    area: 'Hồng Hải',
+    city: 'Quảng Ninh',
+    address: 'TTTM Big C (GO!) Hạ Long, KDC Cột 1, P. Hồng Hải, TP. Hạ Long, Quảng Ninh',
+    phone: '0203 3819 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Bắp caramel', '🅿️ Bãi xe Big C rộng', '🎟️ Check-in QR', '🔊 Dolby 7.1'],
+    distance: '3.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== THÁI NGUYÊN ====================
+  {
+    id: 'beta-thai-nguyen',
+    brand: 'Beta',
+    name: 'Beta Cinema Thái Nguyên',
+    area: 'Tân Thịnh',
+    city: 'Thái Nguyên',
+    address: '259 Quang Trung, P. Tân Thịnh, TP. Thái Nguyên',
+    phone: '1900 636807',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp giá rẻ', '🅿️ Xe máy free', '🎟️ Kiosk in vé', '🔊 Dolby 7.1'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+  {
+    id: 'cgv-vincom-thai-nguyen',
+    brand: 'CGV',
+    name: 'CGV Vincom Thái Nguyên',
+    area: 'Quang Trung',
+    city: 'Thái Nguyên',
+    address: 'Tầng 4, TTTM Vincom Plaza Thái Nguyên, 284 Lương Ngọc Quyến, P. Quang Trung, TP. Thái Nguyên',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm đỗ Vincom', '🎟️ Scan QR', '🎬 2D/3D Hi-Def'],
+    distance: '1.5 km',
+    moviesCount: 5,
+  },
+
+  // ==================== BẮC GIANG ====================
+  {
+    id: 'beta-bac-giang',
+    brand: 'Beta',
+    name: 'Beta Cinema Bắc Giang',
+    area: 'TP. Bắc Giang',
+    city: 'Bắc Giang',
+    address: 'Tầng 4, Co.opmart Bắc Giang, 51 Nguyễn Văn Cừ, P. Ngô Quyền, TP. Bắc Giang',
+    phone: '1900 636807',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Bãi xe Co.opmart', '🎟️ Kiosk in vé', '🔊 7.1 Surround'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+  {
+    id: 'lotte-bac-giang',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Bắc Giang',
+    area: 'Tân Tiến',
+    city: 'Bắc Giang',
+    address: 'Tầng 1, TTTM Big C (GO!), Xã Tân Tiến, TP. Bắc Giang',
+    phone: '0204 3828 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Bắp phô mai', '🅿️ Bãi xe Big C rộng', '🎟️ Scan QR', '🎬 2D/3D'],
+    distance: '2.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== BẮC NINH ====================
+  {
+    id: 'lotte-cinema-bac-ninh',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Bắc Ninh',
+    area: 'Suối Hoa',
+    city: 'Bắc Ninh',
+    address: 'Tầng 3, TTTM Vincom Plaza Bắc Ninh, Ngã 6, P. Suối Hoa, TP. Bắc Ninh',
+    phone: '0222 3899 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vincom', '🎟️ Scan vé QR', '🎬 2D/3D'],
+    distance: '1.4 km',
+    moviesCount: 6,
+  },
+  {
+    id: 'dabaco-lotus-bac-ninh',
+    brand: 'Dabaco',
+    name: 'Dabaco Cinema Lotus Central Bắc Ninh',
+    area: 'TP. Bắc Ninh',
+    city: 'Bắc Ninh',
+    address: 'TTTM Dabaco Lotus Central, 28 Lý Thái Tổ, TP. Bắc Ninh',
+    phone: '0222 3822 999',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp bơ mặn', '🅿️ Hầm Lotus Central', '🎟️ Vé QR code', '🔊 Sound 7.1'],
+    distance: '1.8 km',
+    moviesCount: 5,
+  },
+
+  // ==================== HẢI DƯƠNG ====================
+  {
+    id: 'lotte-cinema-hai-duong',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Hải Dương',
+    area: 'Thanh Bình',
+    city: 'Hải Dương',
+    address: 'Tầng 4, TTTM Đỗ Gia Palace, 158 Ngô Quyền, P. Thanh Bình, TP. Hải Dương',
+    phone: '0220 3898 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Bắp caramel', '🅿️ Bãi xe Đỗ Gia Palace', '🎟️ Scan vé QR', '🔊 Dolby Atmos'],
+    distance: '1.7 km',
+    moviesCount: 5,
+  },
+  {
+    id: 'venus-cinema-hai-duong',
+    brand: 'Venus',
+    name: 'Venus Cinema Hải Dương',
+    area: 'Tân Bình',
+    city: 'Hải Dương',
+    address: '62 - 66 Nguyễn Văn Linh, P. Tân Bình, TP. Hải Dương',
+    phone: '0220 3899 777',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Bãi xe Nguyễn Văn Linh', '🎟️ Check-in QR', '🔊 Sound 7.1'],
+    distance: '1.5 km',
     moviesCount: 5,
   },
 
@@ -560,6 +810,426 @@ const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
     hours: '08:30 - 23:00',
     facilities: ['🍿 Popcorn Combo', '🅿️ Hầm xe Vincom', '🎟️ Kiosk check-in', '🔊 Dolby Atmos'],
     distance: '1.1 km',
+    moviesCount: 5,
+  },
+
+  // ==================== HƯNG YÊN ====================
+  {
+    id: 'cgv-ecopark-hung-yen',
+    brand: 'CGV',
+    name: 'CGV Ecopark Hưng Yên',
+    area: 'Văn Giang',
+    city: 'Hưng Yên',
+    address: 'TTTM Ecopark, Phụng Công, Huyện Văn Giang, Tỉnh Hưng Yên',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Bãi xe Ecopark rộng', '🎟️ Scan QR', '🔊 Dolby Sound'],
+    distance: '2.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== PHÚ THỌ (VIỆT TRÌ) ====================
+  {
+    id: 'lotte-cinema-viet-tri',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Việt Trì (Phú Thọ)',
+    area: 'Việt Trì',
+    city: 'Phú Thọ (Việt Trì)',
+    address: 'Tầng 4, Vincom Plaza Việt Trì, Đường Hùng Vương, TP. Việt Trì, Phú Thọ',
+    phone: '0210 3888 999',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Hầm đỗ xe Vincom', '🎟️ Kiosk in vé', '🔊 Dolby Atmos'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== THANH HÓA ====================
+  {
+    id: 'beta-cinema-thanh-hoa',
+    brand: 'Beta',
+    name: 'Beta Cinema Thanh Hóa',
+    area: 'TP. Thanh Hóa',
+    city: 'Thanh Hóa',
+    address: 'Tầng 3, TTTM Vincom Plaza Thanh Hóa, Đường Trần Phú, TP. Thanh Hóa',
+    phone: '1900 636807',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp phô mai & caramel', '🅿️ Hầm xe Vincom', '🎟️ Vé QR code', '🔊 Sound 7.1'],
+    distance: '1.4 km',
+    moviesCount: 5,
+  },
+
+  // ==================== NGHỆ AN (VINH) ====================
+  {
+    id: 'lotte-cinema-vinh',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Vinh (Nghệ An)',
+    area: 'TP. Vinh',
+    city: 'Nghệ An (Vinh)',
+    address: 'Tầng 5, TTTM Vinh Centre, Đường Trần Phú, TP. Vinh, Nghệ An',
+    phone: '0238 3888 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vinh Centre', '🎟️ Check-in QR', '🔊 Dolby Sound'],
+    distance: '1.5 km',
+    moviesCount: 5,
+  },
+
+  // ==================== QUẢNG BÌNH (ĐỒNG HỚI) ====================
+  {
+    id: 'lotte-cinema-dong-hoi',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Đồng Hới',
+    area: 'Đồng Hới',
+    city: 'Quảng Bình (Đồng Hới)',
+    address: 'Tầng 3, TTTM Vincom Plaza Đồng Hới, Đường Quách Xuân Kỳ, TP. Đồng Hới',
+    phone: '0232 3888 999',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D/3D'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== QUẢNG TRỊ (ĐÔNG HÀ) ====================
+  {
+    id: 'rio-vincom-quang-tri',
+    brand: 'RIO',
+    name: 'RIO Cinema Vincom Quảng Trị',
+    area: 'Nam Đông Hà',
+    city: 'Quảng Trị (Đông Hà)',
+    address: 'Tầng 4, Vincom Plaza Đông Hà, 252 Hùng Vương, P. Nam Đông Hà, TP. Đông Hà',
+    phone: '0233 3888 999',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Hầm xe Vincom', '🎟️ Scan vé QR', '🔊 Dolby 7.1'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== QUẢNG NGÃI ====================
+  {
+    id: 'cgv-vincom-quang-ngai',
+    brand: 'CGV',
+    name: 'CGV Vincom Quảng Ngãi',
+    area: 'Nghĩa Chánh',
+    city: 'Quảng Ngãi',
+    address: 'Vincom Plaza Quảng Ngãi, 26 Lê Thánh Tôn, Nghĩa Chánh Nam, TP. Quảng Ngãi',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm đỗ Vincom', '🎟️ Scan QR', '🔊 Dolby Sound 7.1'],
+    distance: '1.1 km',
+    moviesCount: 5,
+  },
+
+  // ==================== GIA LAI (PLEIKU) ====================
+  {
+    id: 'touch-cinema-pleiku',
+    brand: 'Touch',
+    name: 'Touch Cinema Pleiku',
+    area: 'Phù Đổng',
+    city: 'Gia Lai (Pleiku)',
+    address: '212 Nguyễn Tất Thành, Phường Phù Đổng, TP. Pleiku, Gia Lai',
+    phone: '0269 3838 999',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Popcorn Caramel & Cheese', '🅿️ Hầm đỗ xe máy', '🎟️ Kiosk quét QR', '🔊 Sound Atmos'],
+    distance: '1.2 km',
+    moviesCount: 6,
+  },
+
+  // ==================== BÌNH THUẬN (PHAN THIẾT) ====================
+  {
+    id: 'lotte-cinema-phan-thiet',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Phan Thiết',
+    area: 'Phú Thủy',
+    city: 'Bình Thuận (Phan Thiết)',
+    address: 'Tầng 6, Lotte Mart Phan Thiết, KDC Hùng Vương I, P. Phú Thủy, TP. Phan Thiết',
+    phone: '0252 3750 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Combo Popcorn', '🅿️ Free bãi xe Lotte Mart', '🎟️ Scan QR', '🔊 Dolby Atmos'],
+    distance: '1.5 km',
+    moviesCount: 5,
+  },
+
+  // ==================== AN GIANG (LONG XUYÊN) ====================
+  {
+    id: 'lotte-cinema-long-xuyen',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Long Xuyên',
+    area: 'Long Xuyên',
+    city: 'An Giang (Long Xuyên)',
+    address: 'Tầng 5, TTTM Vincom Plaza Long Xuyên, Đường Trần Hưng Đạo, TP. Long Xuyên',
+    phone: '0296 3888 999',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D/3D'],
+    distance: '1.1 km',
+    moviesCount: 5,
+  },
+
+  // ==================== KIÊN GIANG (RẠCH GIÁ / PHÚ QUỐC) ====================
+  {
+    id: 'cgv-vincom-rach-gia',
+    brand: 'CGV',
+    name: 'CGV Vincom Rạch Giá',
+    area: 'Rạch Giá',
+    city: 'Kiên Giang (Rạch Giá / Phú Quốc)',
+    address: 'Tầng 4, Vincom Plaza Rạch Giá, Đường Cô Bắc, TP. Rạch Giá, Kiên Giang',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Hầm đỗ Vincom', '🎟️ Scan QR', '🔊 Dolby 7.1'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== ĐẮK LẮK (BUÔN MA THUỘT) ====================
+  {
+    id: 'starlight-buon-ma-thuot',
+    brand: 'Starlight',
+    name: 'Starlight Cinema Buôn Ma Thuột',
+    area: 'Buôn Ma Thuột',
+    city: 'Đắc Lắk (Buôn Ma Thuột)',
+    address: 'Tầng 6, Vincom Plaza Buôn Ma Thuột, 78 Lý Thường Kiệt, TP. Buôn Ma Thuột',
+    phone: '1900 1722',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp caramel', '🅿️ Hầm xe Vincom', '🎟️ Vé QR code', '🔊 Sound Atmos'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== TIỀN GIANG (MỸ THO) ====================
+  {
+    id: 'cgv-go-my-tho',
+    brand: 'CGV',
+    name: 'CGV GO! Mỹ Tho',
+    area: 'Mỹ Tho',
+    city: 'Tiền Giang (Mỹ Tho)',
+    address: 'Tầng 2, TTTM GO! Mỹ Tho, Đường Tết Mậu Thân, TP. Mỹ Tho, Tiền Giang',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Bãi xe GO! rộng', '🎟️ Scan QR', '🎬 2D/3D'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== TÂY NINH ====================
+  {
+    id: 'lotte-cinema-tay-ninh',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Tây Ninh',
+    area: 'TP. Tây Ninh',
+    city: 'Tây Ninh',
+    address: 'Tầng 3, TTTM Vincom Plaza Tây Ninh, Số 444 Đường 30/4, TP. Tây Ninh',
+    phone: '0276 3888 999',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm đỗ xe Vincom', '🎟️ Check-in QR', '🔊 Dolby Sound'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== BẠC LIÊU ====================
+  {
+    id: 'cgv-vincom-bac-lieu',
+    brand: 'CGV',
+    name: 'CGV Vincom Bạc Liêu',
+    area: 'Phường 7',
+    city: 'Bạc Liêu',
+    address: 'Tầng 4, TTTM Vincom Plaza Bạc Liêu, Đường Trần Huỳnh, Phường 7, TP. Bạc Liêu',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D Phụ đề / Lồng tiếng'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== BẾN TRE ====================
+  {
+    id: 'galaxy-sense-city-ben-tre',
+    brand: 'Galaxy',
+    name: 'Galaxy Cinema Sense City Bến Tre',
+    area: 'Phường 4',
+    city: 'Bến Tre',
+    address: 'Lầu 1, TTTM Sense City, 26A Trần Quốc Tuấn, Phường 4, TP. Bến Tre',
+    phone: '1900 2224',
+    hours: '08:00 - 23:30',
+    facilities: ['🍿 Bắp phô mai', '🅿️ Bãi xe Sense City', '🎟️ Quét QR', '🎬 2D/3D'],
+    distance: '0.9 km',
+    moviesCount: 5,
+  },
+
+  // ==================== BÌNH PHƯỚC (ĐỒNG XOÀI) ====================
+  {
+    id: 'evg-dong-xoai-cinema',
+    brand: 'EVG',
+    name: 'EVG Cinema Đồng Xoài',
+    area: 'Tân Phú',
+    city: 'Bình Phước (Đồng Xoài)',
+    address: 'Số 1 Nguyễn Thị Minh Khai, Phường Tân Phú, TP. Đồng Xoài, Bình Phước',
+    phone: '0271 3888 555',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp phô mai', '🅿️ Bãi xe máy free', '🎟️ Kiosk in vé', '🔊 Dolby Sound'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== CÀ MAU ====================
+  {
+    id: 'lotte-cinema-ca-mau',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Cà Mau',
+    area: 'Phường 1',
+    city: 'Cà Mau',
+    address: 'Tầng 4, TTTM Vincom Plaza Cà Mau, Lê Duẩn, Phường 1, TP. Cà Mau',
+    phone: '0290 3888 999',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Combo Popcorn', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D/3D'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== ĐỒNG THÁP (CAO LÃNH) ====================
+  {
+    id: 'cgv-vincom-cao-lanh',
+    brand: 'CGV',
+    name: 'CGV Vincom Cao Lãnh',
+    area: 'Phường 1',
+    city: 'Đồng Tháp (Cao Lãnh)',
+    address: 'Tầng 5, TTTM Vincom Plaza Cao Lãnh, 02 Đường 30/4, Phường 1, TP. Cao Lãnh',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D/3D Hi-Def'],
+    distance: '1.1 km',
+    moviesCount: 5,
+  },
+
+  // ==================== HÀ TĨNH ====================
+  {
+    id: 'cgv-vincom-ha-tinh',
+    brand: 'CGV',
+    name: 'CGV Vincom Hà Tĩnh',
+    area: 'Hà Huy Tập',
+    city: 'Hà Tĩnh',
+    address: 'Tầng 3, Vincom Plaza Hà Tĩnh, Phường Hà Huy Tập, TP. Hà Tĩnh',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D/3D Hi-Def'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== LONG AN (TÂN AN) ====================
+  {
+    id: 'starlight-long-an',
+    brand: 'Starlight',
+    name: 'Starlight Cinema Long An (Tân An)',
+    area: 'Tân An',
+    city: 'Long An (Tân An)',
+    address: 'Tầng 3, TTTM Vincom Plaza Long An, Đường Hùng Vương, TP. Tân An, Long An',
+    phone: '1900 1722',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp phô mai & caramel', '🅿️ Hầm đỗ xe Vincom', '🎟️ Vé QR code', '🔊 Sound Atmos'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== NINH THUẬN (PHAN RANG) ====================
+  {
+    id: 'lotte-cinema-phan-rang',
+    brand: 'Lotte',
+    name: 'LOTTE Cinema Phan Rang',
+    area: 'Mỹ Hải',
+    city: 'Ninh Thuận (Phan Rang)',
+    address: 'Tầng 3, TTTM Vincom Plaza Phan Rang, 122 Đường 16/4, P. Mỹ Hải, TP. Phan Rang – Tháp Chàm',
+    phone: '0259 3888 888',
+    hours: '08:30 - 23:00',
+    facilities: ['🍿 Combo Popcorn', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🔊 Dolby Sound'],
+    distance: '1.3 km',
+    moviesCount: 5,
+  },
+
+  // ==================== PHÚ YÊN (TUY HÒA) ====================
+  {
+    id: 'cgv-vincom-phu-yen',
+    brand: 'CGV',
+    name: 'CGV Vincom Plaza Phú Yên (Tuy Hòa)',
+    area: 'Phường 7',
+    city: 'Phú Yên (Tuy Hòa)',
+    address: 'Tầng 4, TTTM Vincom Plaza Tuy Hòa, Ngã tư Hùng Vương & Trần Phú, P. 7, TP. Tuy Hòa',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Gourmet', '🅿️ Hầm đỗ xe Vincom', '🎟️ Scan QR', '🔊 Dolby 7.1'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== QUẢNG NAM (TAM KỲ / HỘI AN) ====================
+  {
+    id: 'rio-tam-ky',
+    brand: 'RIO',
+    name: 'RIO Cinema Tam Kỳ',
+    area: 'Tam Kỳ',
+    city: 'Quảng Nam (Hội An / Tam Kỳ)',
+    address: 'Khu tổ hợp giải trí RIO, Đường Bạch Đằng, TP. Tam Kỳ, Quảng Nam',
+    phone: '0235 3888 777',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Bãi xe RIO rộng', '🎟️ Check-in QR', '🔊 Sound 7.1'],
+    distance: '1.5 km',
+    moviesCount: 5,
+  },
+
+  // ==================== SÓC TRĂNG ====================
+  {
+    id: 'cgv-vincom-soc-trang',
+    brand: 'CGV',
+    name: 'CGV Vincom Sóc Trăng',
+    area: 'Phường 2',
+    city: 'Sóc Trăng',
+    address: 'TTTM Vincom Plaza Sóc Trăng, Đường Trần Hưng Đạo, Phường 2, TP. Sóc Trăng',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm đỗ xe Vincom', '🎟️ Scan QR', '🎬 2D/3D'],
+    distance: '1.2 km',
+    moviesCount: 5,
+  },
+
+  // ==================== TRÀ VINH ====================
+  {
+    id: 'cgv-vincom-tra-vinh',
+    brand: 'CGV',
+    name: 'CGV Vincom Trà Vinh',
+    area: 'Phường 2',
+    city: 'Trà Vinh',
+    address: 'Tầng 4, TTTM Vincom Plaza Trà Vinh, 24 Nguyễn Thị Minh Khai, P. 2, TP. Trà Vinh',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Bar', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🎬 2D/3D'],
+    distance: '1.0 km',
+    moviesCount: 5,
+  },
+
+  // ==================== VĨNH LONG ====================
+  {
+    id: 'cgv-vincom-vinh-long',
+    brand: 'CGV',
+    name: 'CGV Vincom Vĩnh Long',
+    area: 'Phường 4',
+    city: 'Vĩnh Long',
+    address: 'Tầng 4, TTTM Vincom Plaza Vĩnh Long, 55 Phạm Thái Bường, P. 4, TP. Vĩnh Long',
+    phone: '1900 6017',
+    hours: '08:30 - 23:30',
+    facilities: ['🍿 Popcorn Combo', '🅿️ Hầm xe Vincom', '🎟️ Scan QR', '🔊 Sound 7.1'],
+    distance: '1.1 km',
+    moviesCount: 5,
+  },
+
+  // ==================== VĨNH PHÚC (VĨNH YÊN) ====================
+  {
+    id: 'cinemax-vinh-phuc',
+    brand: 'Cinemax',
+    name: 'Cinemax Vĩnh Phúc (Vĩnh Yên)',
+    area: 'Vĩnh Yên',
+    city: 'Vĩnh Phúc (Vĩnh Yên)',
+    address: 'Tầng 4, Soiva Plaza (Co.opmart), Đường Mê Linh, TP. Vĩnh Yên, Vĩnh Phúc',
+    phone: '0211 3888 666',
+    hours: '08:00 - 23:00',
+    facilities: ['🍿 Bắp phô mai', '🅿️ Bãi xe Soiva Plaza', '🎟️ Kiosk in vé', '🔊 Dolby 7.1'],
+    distance: '1.4 km',
     moviesCount: 5,
   },
 
@@ -994,7 +1664,7 @@ export default function CinemaShowtimesScreen() {
           <TouchableOpacity style={styles.searchAreaInputBox} onPress={() => setShowSearchModal(true)}>
             <Ionicons name="search-outline" size={18} color="#64748B" style={{ marginRight: 8 }} />
             <Text style={styles.searchAreaPlaceholder}>
-              Gõ tên rạp hoặc tỉnh thành (vd: Hải Phòng, Nha Trang, Huế...)...
+              Bấm để chọn rạp thực tế tại 63 Tỉnh Thành...
             </Text>
           </TouchableOpacity>
         </View>
@@ -1140,7 +1810,7 @@ export default function CinemaShowtimesScreen() {
               {/* Modal Header */}
               <View style={styles.modalHeaderRow}>
                 <Text style={[styles.modalTitle, { fontFamily: theme.fontFamily }]}>
-                  Chọn Rạp Thực Tế Moveek ({displayCinemas.length} rạp)
+                  Chọn Rạp Chi Chiết 63 Tỉnh Thành ({displayCinemas.length} rạp)
                 </Text>
                 <TouchableOpacity onPress={() => setShowSearchModal(false)} style={styles.modalCloseBtn}>
                   <Ionicons name="close" size={24} color="#64748B" />
@@ -1152,7 +1822,7 @@ export default function CinemaShowtimesScreen() {
                 <Ionicons name="search" size={20} color="#64748B" style={{ marginRight: 8 }} />
                 <TextInput
                   style={styles.modalSearchInput}
-                  placeholder="Gõ tên rạp hoặc tỉnh thành (vd: Hải Phòng, Nha Trang, Huế...)"
+                  placeholder="Gõ tên rạp hoặc tỉnh thành (vd: Nam Định, Bình Dương, Hải Phòng...)"
                   placeholderTextColor="#94A3B8"
                   value={searchQuery}
                   onChangeText={(text) => {
