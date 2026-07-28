@@ -88,6 +88,12 @@ type UserContextType = {
   setRewardPoints: (points: number) => void;
   vipTier: 'Đồng' | 'Bạc' | 'Vàng' | 'Kim cương';
 
+  // Wallet Activation
+  hasWallet: boolean;
+  setHasWallet: (val: boolean) => void;
+  walletProfile: any;
+  activateWalletProfile: (profile: any) => void;
+
   // Wallet Additions
   wallet: Wallet | null;
   walletLoading: boolean;
@@ -142,6 +148,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [coins, setCoins] = useState(15000); 
   const [rewardPoints, setRewardPoints] = useState(1850); 
   const [vipTier, setVipTier] = useState<'Đồng' | 'Bạc' | 'Vàng' | 'Kim cương'>('Vàng');
+
+  // Wallet Activation State (Default false for new users to trigger Activation Wizard v3.4)
+  const [hasWallet, setHasWallet] = useState(false);
+  const [walletProfile, setWalletProfile] = useState<any>(null);
+
+  const activateWalletProfile = (profile: any) => {
+    setWalletProfile(profile);
+    setHasWallet(true);
+  };
 
   // Wallet States
   const [wallet, setWallet] = useState<Wallet | null>(null);
@@ -542,6 +557,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       isLoggedIn, currentUser, restoreSession, logout,
       addresses, addAddress, deleteAddress, setDefaultAddress, refreshAddresses,
       coins, setCoins, rewardPoints, setRewardPoints, vipTier,
+      hasWallet, setHasWallet, walletProfile, activateWalletProfile,
       wallet, walletLoading, walletError, refreshWallet,
       transactions, transactionsLoading, refreshTransactions,
     }}>

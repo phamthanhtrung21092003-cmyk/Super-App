@@ -21,6 +21,12 @@ import { ImageBackground } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
+import { useWalletSecurity } from '../context/WalletSecurityContext';
+import { DeviceBlockModal } from '../components/wallet/DeviceBlockModal';
+import { NetworkOfflineModal } from '../components/wallet/NetworkOfflineModal';
+import { WalletAuthModal } from '../components/wallet/WalletAuthModal';
+import { TransactionAuthModal } from '../components/wallet/TransactionAuthModal';
+import { WalletActivationWizard } from '../components/wallet/activation/WalletActivationWizard';
 
 const MAIN_ACTIONS = [
   { id: 'topup', title: 'Nạp tiền', icon: 'download-outline', color: '#3B82F6' },
@@ -172,7 +178,28 @@ const getUserTier = (balance: number) => {
 };
 
 export default function WalletScreen() {
-  const { walletBalance, transactions, addTransaction, linkedBanks, addLinkedBank } = useUser();
+  const { walletBalance, transactions, addTransaction, linkedBanks, addLinkedBank, hasWallet, setHasWallet, activateWalletProfile } = useUser();
+  const {
+    isDeviceSecure,
+    isNetworkConnected,
+    isWalletLocked,
+    isBalanceMasked,
+    toggleBalanceMask,
+    lockWallet,
+  } = useWalletSecurity();
+
+  const [isActivationWizardVisible, setIsActivationWizardVisible] = useState(false);
+
+  const handleActivationComplete = () => {
+    activateWalletProfile({
+      status: 'ACTIVE',
+      level: 'Level 1',
+      currency: 'VND',
+    });
+    setIsActivationWizardVisible(false);
+    lockWallet();
+  };
+
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [modalType, setModalType] = useState<'topup' | 'withdraw' | 'transfer' | 'bill' | null>(null);
   const [amountInput, setAmountInput] = useState('');
@@ -185,6 +212,15 @@ export default function WalletScreen() {
   const [searchBankQuery, setSearchBankQuery] = useState('');
   const [selectedBankToLink, setSelectedBankToLink] = useState<any>(null);
   const [newBankAccount, setNewBankAccount] = useState('');
+
+  // Transaction Auth States
+  const [txAuthVisible, setTxAuthVisible] = useState(false);
+  const [txAuthData, setTxAuthData] = useState<{ title: string; amount?: number; recipient?: string; actionType: 'submit' | 'add_bank' } | null>(null);
+
+  // Auto lock wallet on screen entry to ALWAYS enforce 2nd layer security prompt (PIN 6 số)
+  useEffect(() => {
+    lockWallet();
+  }, []);
 
   // Auto select default bank if available
   useEffect(() => {
@@ -220,12 +256,13 @@ export default function WalletScreen() {
       Alert.alert('Lỗi', 'Vui lòng điền đủ thông tin thẻ');
       return;
     }
-    addLinkedBank(selectedBankToLink.name, newBankAccount, selectedBankToLink.color, selectedBankToLink.icon);
-    setSelectedBankToLink(null);
-    setNewBankAccount('');
-    setSearchBankQuery('');
-    setIsAddBankModalVisible(false);
-    Alert.alert('Thành công', `Đã liên kết thành công thẻ ${selectedBankToLink.name}`);
+    // Trigger Security Transaction Auth Modal
+    setTxAuthData({
+      title: `Thêm liên kết ${selectedBankToLink.name}`,
+      recipient: `STK: ${newBankAccount}`,
+      actionType: 'add_bank',
+    });
+    setTxAuthVisible(true);
   };
 
   const submitTransaction = () => {
@@ -244,34 +281,52 @@ export default function WalletScreen() {
         Alert.alert('Lỗi', 'Số dư không đủ để rút tiền');
         return;
       }
-  
-      if (modalType === 'topup') {
-        addTransaction(amount, 'in', 'Nạp tiền vào ví', `Từ ${selectedBank.name} ${selectedBank.account}`, 'download-outline', '#D1FAE5', '#10B981');
-        Alert.alert('Thành công', `Đã nạp ${amount.toLocaleString('vi-VN')}đ từ ${selectedBank.name}`);
-      } else {
-        addTransaction(amount, 'out', 'Rút tiền về thẻ', `Về ${selectedBank.name} ${selectedBank.account}`, 'push-outline', '#FEE2E2', '#EF4444');
-        Alert.alert('Thành công', `Đã rút ${amount.toLocaleString('vi-VN')}đ về ${selectedBank.name}`);
-      }
-    } else if (modalType === 'transfer') {
+    } else if (modalType === 'transfer' || modalType === 'bill') {
       if (!extraInput.trim() || !amount || amount <= 0) {
-        Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại người nhận và số tiền');
+        Alert.alert('Lỗi', 'Vui lòng nhập thông tin đầy đủ');
         return;
       }
       if (amount > walletBalance) {
-        Alert.alert('Lỗi', 'Số dư không đủ để chuyển tiền');
+        Alert.alert('Lỗi', 'Số dư không đủ để thực hiện');
         return;
       }
+    }
+
+    // Trigger Security Transaction Auth Modal
+    const title = modalType === 'topup' ? 'Nạp tiền vào ví' : modalType === 'withdraw' ? 'Rút tiền về thẻ' : modalType === 'transfer' ? 'Chuyển tiền' : 'Thanh toán hóa đơn';
+    setTxAuthData({
+      title,
+      amount,
+      recipient: extraInput ? `Đến: ${extraInput}` : selectedBank ? `${selectedBank.name}` : undefined,
+      actionType: 'submit',
+    });
+    setTxAuthVisible(true);
+  };
+
+  const executeConfirmedTransaction = (signaturePkg: any) => {
+    setTxAuthVisible(false);
+    
+    if (txAuthData?.actionType === 'add_bank') {
+      addLinkedBank(selectedBankToLink.name, newBankAccount, selectedBankToLink.color, selectedBankToLink.icon);
+      setSelectedBankToLink(null);
+      setNewBankAccount('');
+      setSearchBankQuery('');
+      setIsAddBankModalVisible(false);
+      Alert.alert('Thành công', `Đã liên kết thành công thẻ ${selectedBankToLink.name}`);
+      return;
+    }
+
+    const amount = parseInt(amountInput.replace(/[^0-9]/g, ''), 10);
+    if (modalType === 'topup') {
+      addTransaction(amount, 'in', 'Nạp tiền vào ví', `Từ ${selectedBank.name} ${selectedBank.account}`, 'download-outline', '#D1FAE5', '#10B981');
+      Alert.alert('Thành công', `Đã nạp ${amount.toLocaleString('vi-VN')}đ từ ${selectedBank.name}`);
+    } else if (modalType === 'withdraw') {
+      addTransaction(amount, 'out', 'Rút tiền về thẻ', `Về ${selectedBank.name} ${selectedBank.account}`, 'push-outline', '#FEE2E2', '#EF4444');
+      Alert.alert('Thành công', `Đã rút ${amount.toLocaleString('vi-VN')}đ về ${selectedBank.name}`);
+    } else if (modalType === 'transfer') {
       addTransaction(amount, 'out', 'Chuyển tiền', `Đến số ${extraInput}`, 'swap-horizontal-outline', '#FEF3C7', '#F59E0B');
       Alert.alert('Thành công', `Đã chuyển ${amount.toLocaleString('vi-VN')}đ đến ${extraInput}`);
     } else if (modalType === 'bill') {
-      if (!extraInput.trim() || !amount || amount <= 0) {
-        Alert.alert('Lỗi', 'Vui lòng nhập mã khách hàng và số tiền');
-        return;
-      }
-      if (amount > walletBalance) {
-        Alert.alert('Lỗi', 'Số dư không đủ để thanh toán');
-        return;
-      }
       addTransaction(amount, 'out', 'Thanh toán hóa đơn', `Mã KH: ${extraInput}`, 'receipt-outline', '#E0F2FE', '#0EA5E9');
       Alert.alert('Thành công', `Đã thanh toán hóa đơn thành công`);
     }
@@ -350,7 +405,7 @@ export default function WalletScreen() {
           <View style={[styles.headerBackground, currentTier.isDiamondMockup && { backgroundColor: 'transparent', borderBottomLeftRadius: 35, borderBottomRightRadius: 35, paddingBottom: 130 }]}>
             {!currentTier.isDiamondMockup && (
               <LinearGradient
-                colors={currentTier.headerColors}
+                colors={currentTier.headerColors as any}
                 style={StyleSheet.absoluteFill}
               />
             )}
@@ -367,6 +422,14 @@ export default function WalletScreen() {
               <TouchableOpacity style={styles.bellButton}>
                 <Ionicons name="notifications-outline" size={24} color="#FFF" />
                 <View style={styles.bellBadge} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.bellButton, { marginLeft: 8 }]} onPress={lockWallet}>
+                <Ionicons name="lock-closed-outline" size={22} color="#D8C690" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.bellButton, { marginLeft: 8 }]} onPress={() => { setHasWallet(false); setIsActivationWizardVisible(true); }}>
+                <Ionicons name="person-add-outline" size={22} color="#10B981" />
               </TouchableOpacity>
             </View>
 
@@ -394,12 +457,12 @@ export default function WalletScreen() {
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 25 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                           <Text style={{ color: '#ffffff', fontSize: 40, fontWeight: 'bold', textShadowColor: 'rgba(255, 255, 255, 0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>
-                            {isBalanceHidden ? '******' : walletBalance.toLocaleString('vi-VN')}
+                            {isBalanceMasked ? '************' : walletBalance.toLocaleString('vi-VN')}
                           </Text>
-                          {!isBalanceHidden && <Text style={{ color: '#a0aec0', fontSize: 24, marginLeft: 4 }}>đ</Text>}
+                          {!isBalanceMasked && <Text style={{ color: '#a0aec0', fontSize: 24, marginLeft: 4 }}>đ</Text>}
                         </View>
-                        <TouchableOpacity onPress={() => setIsBalanceHidden(!isBalanceHidden)} style={{ padding: 4 }}>
-                          <Ionicons name={isBalanceHidden ? 'eye-off-outline' : 'eye-outline'} size={24} color="#a0aec0" />
+                        <TouchableOpacity onPress={toggleBalanceMask} style={{ padding: 4 }}>
+                          <Ionicons name={isBalanceMasked ? 'eye-off-outline' : 'eye-outline'} size={24} color="#a0aec0" />
                         </TouchableOpacity>
                       </View>
                       
@@ -414,7 +477,7 @@ export default function WalletScreen() {
                 ) : (
                   <BlurView intensity={currentTier.isDark ? 50 : 0} tint={currentTier.isDark ? "dark" : "light"} style={[styles.virtualCard, { borderColor: currentTier.borderColor, overflow: 'hidden', padding: 0 }, currentTier.id === 'black' && styles.blackGlow]}>
                     <LinearGradient
-                    colors={currentTier.cardColors}
+                    colors={currentTier.cardColors as any}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={{ padding: 20, width: '100%' }}
@@ -437,13 +500,13 @@ export default function WalletScreen() {
                         <Text style={[styles.balanceLabelCard, { color: currentTier.secondaryTextColor }]}>Số dư ví</Text>
                         <View style={styles.balanceValueContainer}>
                           <Text style={[styles.balanceValueCard, { color: currentTier.balanceColor }]}>
-                            {isBalanceHidden ? '******' : walletBalance.toLocaleString('vi-VN')}
+                            {isBalanceMasked ? '************' : walletBalance.toLocaleString('vi-VN')}
                           </Text>
-                          {!isBalanceHidden && <Text style={[styles.balanceCurrencyCard, { color: currentTier.balanceColor }]}>đ</Text>}
+                          {!isBalanceMasked && <Text style={[styles.balanceCurrencyCard, { color: currentTier.balanceColor }]}>đ</Text>}
                         </View>
                       </View>
-                      <TouchableOpacity onPress={() => setIsBalanceHidden(!isBalanceHidden)} style={styles.eyeBtn}>
-                        <Ionicons name={isBalanceHidden ? 'eye-off-outline' : 'eye-outline'} size={24} color={currentTier.balanceColor} />
+                      <TouchableOpacity onPress={toggleBalanceMask} style={styles.eyeBtn}>
+                        <Ionicons name={isBalanceMasked ? 'eye-off-outline' : 'eye-outline'} size={24} color={currentTier.balanceColor} />
                       </TouchableOpacity>
                     </View>
                     
@@ -950,6 +1013,33 @@ export default function WalletScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Enterprise Security Modals */}
+        <DeviceBlockModal visible={!isDeviceSecure} />
+        <NetworkOfflineModal visible={!isNetworkConnected && isDeviceSecure} />
+        <WalletAuthModal
+          visible={isWalletLocked && isDeviceSecure && isNetworkConnected}
+          onRegister={() => {
+            setHasWallet(false);
+            setIsActivationWizardVisible(true);
+          }}
+        />
+        <TransactionAuthModal
+          visible={txAuthVisible}
+          actionTitle={txAuthData?.title || ''}
+          amount={txAuthData?.amount}
+          recipientInfo={txAuthData?.recipient}
+          onSuccess={executeConfirmedTransaction}
+          onCancel={() => setTxAuthVisible(false)}
+        />
+        <WalletActivationWizard
+          visible={isActivationWizardVisible || !hasWallet}
+          onComplete={handleActivationComplete}
+          onCancel={() => {
+            setIsActivationWizardVisible(false);
+            if (!hasWallet) setHasWallet(true);
+          }}
+        />
     </View>
   );
 }

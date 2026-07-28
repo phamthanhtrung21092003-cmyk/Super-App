@@ -40,17 +40,24 @@ function AppNavigation() {
   );
 }
 
+import { WalletSecurityProvider } from '../context/WalletSecurityContext';
+import { WalletActivationProvider } from '../context/WalletActivationContext';
+
 export default function RootLayout() {
   return (
     <ThemeProvider>
       <UserProvider>
-        <ShoppingProvider>
-          <EducationProvider>
-            <CinemaProvider>
-              <AppNavigation />
-            </CinemaProvider>
-          </EducationProvider>
-        </ShoppingProvider>
+        <WalletSecurityProvider>
+          <WalletActivationProvider>
+            <ShoppingProvider>
+              <EducationProvider>
+                <CinemaProvider>
+                  <AppNavigation />
+                </CinemaProvider>
+              </EducationProvider>
+            </ShoppingProvider>
+          </WalletActivationProvider>
+        </WalletSecurityProvider>
       </UserProvider>
     </ThemeProvider>
   );
