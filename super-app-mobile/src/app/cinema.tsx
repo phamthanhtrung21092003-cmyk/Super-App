@@ -1528,6 +1528,14 @@ export default function CinemaShowtimesScreen() {
     router.push('/cinema/seat-selection');
   };
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
@@ -1535,7 +1543,7 @@ export default function CinemaShowtimesScreen() {
 
         {/* Top Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>
 

@@ -132,6 +132,14 @@ export default function CheckoutScreen() {
     }, 1200);
   };
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/cinema/concessions');
+    }
+  };
+
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
@@ -139,7 +147,7 @@ export default function CheckoutScreen() {
 
         {/* Top Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtnRow}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backBtnRow}>
             <Ionicons name="arrow-back" size={20} color="#64748B" />
             <Text style={[styles.backBtnText, { fontFamily: theme.fontFamily }]}>
               Quay lại chọn bắp nước

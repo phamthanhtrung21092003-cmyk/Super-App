@@ -37,6 +37,14 @@ export default function ConcessionsScreen() {
     router.push('/cinema/checkout');
   };
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/cinema/seat-selection');
+    }
+  };
+
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
@@ -44,7 +52,7 @@ export default function ConcessionsScreen() {
 
         {/* Top Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtnRow}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backBtnRow}>
             <Ionicons name="arrow-back" size={20} color="#64748B" />
             <Text style={[styles.backBtnText, { fontFamily: theme.fontFamily }]}>
               Quay lại chọn ghế

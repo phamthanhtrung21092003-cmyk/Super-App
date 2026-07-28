@@ -97,6 +97,14 @@ export default function SeatSelectionScreen() {
     poster: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80',
   };
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/cinema');
+    }
+  };
+
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
@@ -104,7 +112,7 @@ export default function SeatSelectionScreen() {
 
         {/* Top Header Link */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtnRow}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backBtnRow}>
             <Ionicons name="arrow-back" size={20} color="#64748B" />
             <Text style={[styles.backBtnText, { fontFamily: theme.fontFamily }]}>
               Quay lại chọn suất chiếu
