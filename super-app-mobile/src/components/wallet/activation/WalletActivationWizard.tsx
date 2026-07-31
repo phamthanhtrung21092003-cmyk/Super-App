@@ -538,7 +538,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
                 }
                 if (key === '') return <View key={kIdx} style={styles.keyButtonEmpty} />;
                 return (
-                  <TouchableOpacity key={key} style={styles.keyButton} onPress={() => handlePinKeyPress(key)}>
+                  <TouchableOpacity key={kIdx} style={styles.keyButton} onPress={() => handlePinKeyPress(key)}>
                     <Text style={styles.keyText}>{key}</Text>
                   </TouchableOpacity>
                 );
