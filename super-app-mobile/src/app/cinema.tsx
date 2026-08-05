@@ -109,6 +109,7 @@ const ALL_63_PROVINCES = [
   'Tuyên Quang'
 ];
 
+const BASE_CINEMA_BRANCHES: CinemaBranch[] = [
   // ==================== HÀ NỘI (ĐẦY ĐỦ RẠP TOÀN THÀNH PHỐ) ====================
   {
     id: 'national-cinema-center-hn',
