@@ -48,7 +48,7 @@ export default function ProfileScreen() {
 
         {/* HEADER */}
         <LinearGradient colors={['#0F172A', '#0C4A6E']} style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))} style={S.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={S.headerTitle}>Hồ sơ du lịch</Text>
@@ -228,6 +228,45 @@ export default function ProfileScreen() {
             </View>
           )}
         </ScrollView>
+
+        {/* BOTTOM NAV */}
+        <View style={S.bottomNav}>
+          {[
+            { icon: 'compass' as const, label: 'Khám phá', route: '/travel' },
+            { icon: 'search' as const, label: 'Tìm kiếm', route: '/travel/search' },
+            { icon: 'calendar' as const, label: 'Lịch trình', route: '/travel/itinerary' },
+            { icon: 'people' as const, label: 'Cộng đồng', route: '/travel/community' },
+            { icon: 'person' as const, label: 'Hồ sơ', route: '/travel/profile' },
+          ].map((tab, i) => {
+            const active = i === 4;
+            return (
+              <TouchableOpacity
+                key={i}
+                style={S.navItem}
+                onPress={() => {
+                  if (tab.route && i !== 4) router.replace(tab.route as any);
+                }}
+              >
+                {active && (
+                  <LinearGradient
+                    colors={['#0EA5E9', '#14B8A6']}
+                    style={S.navActiveIndicator}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                )}
+                <Ionicons
+                  name={active ? tab.icon : ((tab.icon + '-outline') as any)}
+                  size={22}
+                  color={active ? '#0EA5E9' : '#64748B'}
+                />
+                <Text style={[S.navLabel, active && S.navLabelActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -304,5 +343,25 @@ const S = StyleSheet.create({
   itineStatusTxt: { fontSize: 11, fontWeight: '700' },
   itineTitle: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   itineDate: { color: '#64748B', fontSize: 12, marginTop: 4 },
+
+  // ── Bottom Nav
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#0F172A',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+  },
+  navItem: { flex: 1, alignItems: 'center', gap: 3, position: 'relative' },
+  navActiveIndicator: {
+    position: 'absolute',
+    top: -8,
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+  },
+  navLabel: { color: '#64748B', fontSize: 10, fontWeight: '500' },
+  navLabelActive: { color: '#0EA5E9', fontWeight: '700' },
 });
 

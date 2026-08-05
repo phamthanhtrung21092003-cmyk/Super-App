@@ -6,6 +6,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ENUMS HỆ THỐNG HỆN TẠI (GIỮ NGUYÊN)
+// ══════════════════════════════════════════════════════════════════════════════
 enum Role {
   USER
   DRIVER
@@ -14,6 +17,119 @@ enum Role {
   MODERATOR
 }
 
+enum Currency {
+  VND
+}
+
+enum WalletStatus {
+  ACTIVE
+  LOCKED
+  SUSPENDED
+  CLOSED
+}
+
+enum TransactionDirection {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionType {
+  TOP_UP
+  WITHDRAW
+  TRANSFER
+  PAYMENT
+  REFUND
+  REWARD
+  PENALTY
+  RIDE_PAYMENT
+  FOOD_PAYMENT
+  SHOP_PAYMENT
+  DELIVERY_PAYMENT
+  SYSTEM_ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ENUMS HỆ THỐNG MỚI (MỞ RỘNG CHO TOÀN V-LIFE)
+// ══════════════════════════════════════════════════════════════════════════════
+enum ServiceType {
+  HOTEL_BOOKING
+  HOMESTAY_BOOKING
+  CAMPING_BOOKING
+  CAR_RENTAL
+  FOOD_ORDER
+  RESTAURANT_RESERVATION
+  RIDE_BOOKING
+  TRAVEL_ACTIVITY
+  TICKET_BOOKING
+  GENERAL_SERVICE
+}
+
+enum PaymentProvider {
+  VIETQR
+  VNPAY
+  MOMO
+  ZALOPAY
+  STRIPE
+  VLIFE_WALLET
+  CASH_ON_DELIVERY
+}
+
+enum PayoutProvider {
+  BANK_TRANSFER_247
+  VIETQR_PAYOUT
+  INTERNAL_WALLET
+  MANUAL_PAYOUT
+}
+
+enum PaymentStatus {
+  PENDING
+  PAYMENT_PROCESSING
+  PAID
+  PAYMENT_FAILED
+  PAYMENT_EXPIRED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  PAYMENT_PAID
+  PAYOUT_PROCESSING
+  PAYOUT_ERROR
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDING
+  REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODELS HỆ THỐNG HỆN TẠI (GIỮ NGUYÊN THÊM QUAN HỆ Bổ SUNG)
+// ══════════════════════════════════════════════════════════════════════════════
 model User {
   id                 String    @id @default(uuid())
   phone              String    @unique
@@ -26,6 +142,7 @@ model User {
   updatedAt          DateTime  @updatedAt
   addresses          Address[]
   wallet             Wallet?
+  bookings           Booking[]
 }
 
 model Address {
@@ -63,17 +180,6 @@ model Driver {
   updatedAt          DateTime @updatedAt
 }
 
-enum Currency {
-  VND
-}
-
-enum WalletStatus {
-  ACTIVE
-  LOCKED
-  SUSPENDED
-  CLOSED
-}
-
 model Wallet {
   id             String       @id @default(uuid())
   userId         String       @unique
@@ -90,34 +196,6 @@ model Wallet {
   transactions Transaction[]
 
   @@index([userId])
-}
-
-enum TransactionDirection {
-  CREDIT
-  DEBIT
-}
-
-enum TransactionType {
-  TOP_UP
-  WITHDRAW
-  TRANSFER
-  PAYMENT
-  REFUND
-  REWARD
-  PENALTY
-  RIDE_PAYMENT
-  FOOD_PAYMENT
-  SHOP_PAYMENT
-  DELIVERY_PAYMENT
-  SYSTEM_ADJUSTMENT
-}
-
-enum TransactionStatus {
-  PENDING
-  SUCCESS
-  FAILED
-  CANCELLED
-  EXPIRED
 }
 
 model Transaction {
@@ -145,4 +223,202 @@ model Transaction {
   @@index([type])
   @@index([createdAt])
   @@index([idempotencyKey])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODELS BỔ SUNG: ĐỐI TÁC & DỊCH VỤ V-LIFE
+// ══════════════════════════════════════════════════════════════════════════════
+model Partner {
+  id                String          @id @default(uuid())
+  userId            String?         @unique
+  businessName      String
+  phone             String          @unique
+  email             String?
+  bankName          String
+  bankCode          String
+  bankAccountNo     String
+  bankAccountHolder String
+  commissionRate    Decimal         @default(0.10)
+  isActive          Boolean         @default(true)
+  balance           PartnerBalance?
+  services          Service[]
+  bookings          Booking[]
+  payouts           Payout[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model PartnerBalance {
+  id               String   @id @default(uuid())
+  partnerId        String   @unique
+  partner          Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  availableBalance Decimal  @default(0)
+  pendingBalance   Decimal  @default(0)
+  totalRevenue     Decimal  @default(0)
+  totalCommission  Decimal  @default(0)
+  totalPaidOut     Decimal  @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model Service {
+  id          String      @id @default(uuid())
+  partnerId   String
+  partner     Partner     @relation(fields: [partnerId], references: [id])
+  type        ServiceType
+  title       String
+  description String?
+  basePrice   Decimal
+  isAvailable Boolean     @default(true)
+  metadata    Json?
+  bookings    Booking[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([partnerId])
+  @@index([type])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODELS BỔ SUNG: BOOKING, PAYMENT & IDEMPOTENCY ENGINE
+// ══════════════════════════════════════════════════════════════════════════════
+model Booking {
+  id               String        @id @default(uuid())
+  bookingCode      String        @unique
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  partnerId        String
+  partner          Partner       @relation(fields: [partnerId], references: [id])
+  serviceId        String
+  service          Service       @relation(fields: [serviceId], references: [id])
+  status           BookingStatus @default(PENDING_PAYMENT)
+  
+  grossAmount      Decimal
+  commissionRate   Decimal       @default(0.10)
+  commissionAmount Decimal
+  partnerAmount    Decimal
+
+  startDate        DateTime
+  endDate          DateTime
+  expiresAt        DateTime
+
+  payments         Payment[]
+  commission       Commission?
+  payout           Payout?
+  refunds          Refund[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([partnerId])
+  @@index([status])
+  @@index([bookingCode])
+  @@index([expiresAt])
+}
+
+model Payment {
+  id                    String          @id @default(uuid())
+  orderId               String          @unique
+  bookingId             String
+  booking               Booking         @relation(fields: [bookingId], references: [id])
+  amount                Decimal
+  currency              Currency        @default(VND)
+  provider              PaymentProvider @default(VIETQR)
+  status                PaymentStatus   @default(PENDING)
+  providerTransactionId String?
+  idempotencyKey        String          @unique
+  events                PaymentEvent[]
+  refunds               Refund[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@index([orderId])
+}
+
+model PaymentEvent {
+  id                    String   @id @default(uuid())
+  paymentId             String
+  payment               Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  eventType             String
+  providerTransactionId String?
+  payload               Json
+  createdAt             DateTime @default(now())
+
+  @@index([paymentId])
+  @@index([providerTransactionId])
+}
+
+model Commission {
+  id               String   @id @default(uuid())
+  bookingId        String   @unique
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  grossAmount      Decimal
+  commissionRate   Decimal
+  commissionAmount Decimal
+  partnerAmount    Decimal
+  createdAt        DateTime @default(now())
+}
+
+model Payout {
+  id             String         @id @default(uuid())
+  partnerId      String
+  partner        Partner        @relation(fields: [partnerId], references: [id])
+  bookingId      String         @unique
+  booking        Booking        @relation(fields: [bookingId], references: [id])
+  amount         Decimal
+  provider       PayoutProvider @default(BANK_TRANSFER_247)
+  status         PayoutStatus   @default(PENDING)
+  retryCount     Int            @default(0)
+  failureReason  String?
+  idempotencyKey String         @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([partnerId])
+  @@index([status])
+  @@index([idempotencyKey])
+}
+
+model Refund {
+  id             String       @id @default(uuid())
+  bookingId      String
+  booking        Booking      @relation(fields: [bookingId], references: [id])
+  paymentId      String
+  payment        Payment      @relation(fields: [paymentId], references: [id])
+  amount         Decimal
+  reason         String?
+  status         RefundStatus @default(PENDING)
+  idempotencyKey String       @unique
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([bookingId])
+  @@index([paymentId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODELS BỔ SUNG: HỆ THỐNG CẤU HÌNH & THÔNG BÁO TẬP TRUNG
+// ══════════════════════════════════════════════════════════════════════════════
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id            String   @id @default(uuid())
+  recipientId   String
+  recipientType String
+  title         String
+  body          String
+  data          Json?
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([recipientType])
 }

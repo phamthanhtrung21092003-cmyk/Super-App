@@ -26,7 +26,7 @@ export default function CampingScreen() {
         
         {/* HEADER */}
         <LinearGradient colors={['#166534', '#14532D']} style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))} style={S.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={S.headerTitle}>Tìm điểm Cắm Trại</Text>

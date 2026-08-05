@@ -284,7 +284,7 @@ export default function AIBudgetScreen() {
         
         {/* HEADER */}
         <LinearGradient colors={['#0F172A', '#0F172A']} style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.headerBackBtn}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))} style={S.headerBackBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={S.headerTitle}>AI Lên Ngân Sách</Text>

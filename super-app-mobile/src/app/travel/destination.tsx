@@ -12,14 +12,12 @@ import {
   Animated,
   Image,
   ImageBackground,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
-
-const { width: SCREEN_W } = Dimensions.get('window');
 
 // ─────────────────────────── MOCK DATA ───────────────────────────
 const DESTINATION = {
@@ -219,7 +217,8 @@ export default function DestinationScreen() {
   }, []);
 
   // ── Desktop frame ──
-  const isWeb = Platform.OS === 'web';
+  const { width: SCREEN_W } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && SCREEN_W > 768;
 
   const content = (
     <View style={styles.container}>
@@ -230,7 +229,7 @@ export default function DestinationScreen() {
         <LinearGradient colors={['#0F172A', '#0C4A6E']} style={styles.floatingHeaderGrad}>
           <SafeAreaView>
             <View style={styles.floatingHeaderInner}>
-              <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
+              <TouchableOpacity style={styles.headerBtn} onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))}>
                 <Ionicons name="arrow-back" size={20} color="#fff" />
               </TouchableOpacity>
               <Text style={styles.floatingHeaderTitle} numberOfLines={1}>
@@ -268,7 +267,7 @@ export default function DestinationScreen() {
             {/* Top action buttons */}
             <SafeAreaView>
               <View style={styles.heroTop}>
-                <TouchableOpacity style={styles.heroBtn} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.heroBtn} onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))}>
                   <Ionicons name="arrow-back" size={22} color="#fff" />
                 </TouchableOpacity>
                 <View style={styles.heroTopRight}>
@@ -693,7 +692,7 @@ export default function DestinationScreen() {
     </View>
   );
 
-  if (isWeb) {
+  if (isDesktop) {
     return (
       <View style={styles.webOuter}>
         <View style={styles.desktopFrame}>{content}</View>

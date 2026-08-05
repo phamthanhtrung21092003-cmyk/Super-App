@@ -13,6 +13,7 @@ import {
   Animated,
   Image,
   Keyboard,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -178,12 +179,13 @@ export default function TravelSearchScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+    }
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 450, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 450, useNativeDriver: true }),
     ]).start();
-    const t = setTimeout(() => inputRef.current?.focus(), 350);
-    return () => clearTimeout(t);
   }, []);
 
   const hasResults = query.trim().length > 0;
@@ -204,7 +206,8 @@ export default function TravelSearchScreen() {
   };
 
   // ── Desktop frame ──
-  const isWeb = Platform.OS === 'web';
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && SCREEN_WIDTH > 768;
 
   const content = (
     <View style={styles.container}>
@@ -214,7 +217,11 @@ export default function TravelSearchScreen() {
       <LinearGradient colors={['#0F172A', '#0C4A6E']} style={styles.header}>
         <SafeAreaView>
           <View style={styles.headerInner}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
 
@@ -437,9 +444,9 @@ export default function TravelSearchScreen() {
             </ScrollView>
 
             <View style={[styles.monthCard, { marginTop: 12 }]}>
-              <Text style={styles.monthCardTip}>{MONTH_SUGGESTIONS[activeMonth].tip}</Text>
+              <Text style={styles.monthCardTip}>{MONTH_SUGGESTIONS[activeMonth]?.tip ?? ''}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                {MONTH_SUGGESTIONS[activeMonth].places.map((p) => (
+                {(MONTH_SUGGESTIONS[activeMonth]?.places ?? []).map((p) => (
                   <TouchableOpacity
                     key={p}
                     style={styles.monthPlace}
@@ -471,10 +478,49 @@ export default function TravelSearchScreen() {
           </View>
         </Animated.ScrollView>
       )}
+
+      {/* ══════ BOTTOM NAV ══════ */}
+      <View style={styles.bottomNav}>
+        {[
+          { icon: 'compass' as const, label: 'Khám phá', route: '/travel' },
+          { icon: 'search' as const, label: 'Tìm kiếm', route: '/travel/search' },
+          { icon: 'calendar' as const, label: 'Lịch trình', route: '/travel/itinerary' },
+          { icon: 'people' as const, label: 'Cộng đồng', route: '/travel/community' },
+          { icon: 'person' as const, label: 'Hồ sơ', route: '/travel/profile' },
+        ].map((tab, i) => {
+          const active = i === 1;
+          return (
+            <TouchableOpacity
+              key={i}
+              style={styles.navItem}
+              onPress={() => {
+                if (tab.route && i !== 1) router.replace(tab.route as any);
+              }}
+            >
+              {active && (
+                <LinearGradient
+                  colors={['#0EA5E9', '#14B8A6']}
+                  style={styles.navActiveIndicator}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
+              )}
+              <Ionicons
+                name={active ? tab.icon : ((tab.icon + '-outline') as any)}
+                size={22}
+                color={active ? '#0EA5E9' : '#64748B'}
+              />
+              <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 
-  if (isWeb) {
+  if (isDesktop) {
     return (
       <View style={styles.webOuter}>
         <View style={styles.desktopFrame}>{content}</View>
@@ -504,19 +550,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A' },
 
   // ── Header ──
-  header: { paddingBottom: 14 },
+  header: { paddingBottom: 12, zIndex: 100 },
   headerInner: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 10 : 10,
+    paddingTop: Platform.OS === 'web' ? 24 : Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 12,
+    paddingBottom: 4,
     gap: 8,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -761,4 +810,24 @@ const styles = StyleSheet.create({
   },
   budgetPrice: { fontSize: 12, fontFamily: 'Outfit', fontWeight: '600', marginBottom: 5 },
   budgetDesc: { color: '#64748B', fontSize: 11, fontFamily: 'Outfit', lineHeight: 16 },
+
+  // ── Bottom Nav
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#0F172A',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+  },
+  navItem: { flex: 1, alignItems: 'center', gap: 3, position: 'relative' },
+  navActiveIndicator: {
+    position: 'absolute',
+    top: -8,
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+  },
+  navLabel: { color: '#64748B', fontSize: 10, fontWeight: '500' },
+  navLabelActive: { color: '#0EA5E9', fontWeight: '700' },
 });

@@ -24,7 +24,7 @@ export default function HomestayScreen() {
         <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
         
         <LinearGradient colors={['#9D174D', '#831843']} style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))} style={S.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={S.headerTitle}>Tìm Homestay</Text>

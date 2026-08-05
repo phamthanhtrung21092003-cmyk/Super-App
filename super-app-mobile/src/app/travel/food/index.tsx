@@ -24,7 +24,7 @@ export default function FoodScreen() {
         <StatusBar barStyle="dark-content" />
         
         <LinearGradient colors={['#F97316', '#F59E0B']} style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))} style={S.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={S.headerTitle}>Khám phá Ẩm thực</Text>

@@ -91,7 +91,7 @@ export default function CommunityScreen() {
 
         {/* HEADER */}
         <LinearGradient colors={['#0F172A', '#0F172A']} style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.headerBack}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))} style={S.headerBack}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <Text style={S.headerTitle}>Cộng đồng</Text>
@@ -242,23 +242,40 @@ export default function CommunityScreen() {
         {/* BOTTOM NAV */}
         <View style={S.bottomNav}>
           {[
-            { icon: 'home-outline', label: 'Khám phá', route: '/travel' },
-            { icon: 'search-outline', label: 'Tìm kiếm', route: '/travel/search' },
-            { icon: 'add-circle', label: 'Đăng', route: null, accent: true },
-            { icon: 'people', label: 'Cộng đồng', route: '/travel/community', active: true },
-            { icon: 'person-outline', label: 'Hồ sơ', route: '/travel/profile' },
-          ].map((tab, i) => (
-            <TouchableOpacity key={i} style={S.navTab} onPress={() => tab.route ? router.push(tab.route as any) : setIsPostModalVisible(true)}>
-              {tab.accent ? (
-                <LinearGradient colors={['#0EA5E9', '#14B8A6']} style={S.navAddBtn}>
-                  <Ionicons name={tab.icon as any} size={26} color="#FFF" />
-                </LinearGradient>
-              ) : (
-                <Ionicons name={tab.icon as any} size={24} color={tab.active ? '#0EA5E9' : '#64748B'} />
-              )}
-              {!tab.accent && <Text style={[S.navLabel, tab.active && { color: '#0EA5E9' }]}>{tab.label}</Text>}
-            </TouchableOpacity>
-          ))}
+            { icon: 'compass' as const, label: 'Khám phá', route: '/travel' },
+            { icon: 'search' as const, label: 'Tìm kiếm', route: '/travel/search' },
+            { icon: 'calendar' as const, label: 'Lịch trình', route: '/travel/itinerary' },
+            { icon: 'people' as const, label: 'Cộng đồng', route: '/travel/community' },
+            { icon: 'person' as const, label: 'Hồ sơ', route: '/travel/profile' },
+          ].map((tab, i) => {
+            const active = i === 3;
+            return (
+              <TouchableOpacity
+                key={i}
+                style={S.navItem}
+                onPress={() => {
+                  if (tab.route && i !== 3) router.replace(tab.route as any);
+                }}
+              >
+                {active && (
+                  <LinearGradient
+                    colors={['#0EA5E9', '#14B8A6']}
+                    style={S.navActiveIndicator}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                )}
+                <Ionicons
+                  name={active ? tab.icon : ((tab.icon + '-outline') as any)}
+                  size={22}
+                  color={active ? '#0EA5E9' : '#64748B'}
+                />
+                <Text style={[S.navLabel, active && S.navLabelActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* POST MODAL */}
@@ -366,9 +383,24 @@ const S = StyleSheet.create({
   commentInput: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
   commentTextInput: { flex: 1, backgroundColor: '#1E293B', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, color: '#FFF', fontSize: 14 },
 
-  bottomNav: { flexDirection: 'row', backgroundColor: '#1E293B', borderTopWidth: 1, borderTopColor: '#334155', paddingVertical: 8 },
-  navTab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  navAddBtn: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  navLabel: { color: '#64748B', fontSize: 10, marginTop: 2 },
+  // ── Bottom Nav
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#0F172A',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+  },
+  navItem: { flex: 1, alignItems: 'center', gap: 3, position: 'relative' },
+  navActiveIndicator: {
+    position: 'absolute',
+    top: -8,
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+  },
+  navLabel: { color: '#64748B', fontSize: 10, fontWeight: '500' },
+  navLabelActive: { color: '#0EA5E9', fontWeight: '700' },
 });
 

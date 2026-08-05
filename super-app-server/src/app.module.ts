@@ -10,6 +10,8 @@ import { TransactionModule } from './transaction/transaction.module';
 import { RideModule } from './ride/ride.module';
 import { FoodModule } from './food/food.module';
 import { TravelModule } from './travel/travel.module';
+import { PaymentModule } from './payment/payment.module';
+import { PayoutModule } from './payout/payout.module';
 import { ChatModule } from './chat/chat.module';
 import { NotificationModule } from './notification/notification.module';
 import { UploadModule } from './upload/upload.module';
@@ -48,6 +50,8 @@ import { AdminModule } from './admin/admin.module';
     RideModule,
     FoodModule,
     TravelModule,
+    PaymentModule,
+    PayoutModule,
     ChatModule,
     NotificationModule,
     UploadModule,
