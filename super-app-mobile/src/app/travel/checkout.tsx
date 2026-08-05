@@ -302,7 +302,7 @@ export default function CheckoutScreen() {
             {uiStatus === 'CREATING_BOOKING' ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.submitBtnText}>Xác Nhận Đặt Hàng</Text>
+              <Text style={styles.submitBtnText}>Xác Nhận Thanh Toán</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
