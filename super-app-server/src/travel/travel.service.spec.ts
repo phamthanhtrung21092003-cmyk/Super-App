@@ -24,7 +24,7 @@ describe('TravelService & Booking Core Tests', () => {
     bankCode: 'MB',
     bankAccountNo: '0912345678',
     bankAccountHolder: 'SUPER APP TRAVEL V-LIFE',
-    commissionRate: 0.1,
+    commissionRate: 0.25,
     isActive: true,
   };
 
@@ -71,7 +71,7 @@ describe('TravelService & Booking Core Tests', () => {
     jest.clearAllMocks();
   });
 
-  it('1. Nên tạo Booking thành công & Server tự tính tổng tiền và hoa hồng 10%', async () => {
+  it('1. Nên tạo Booking thành công & Server tự tính tổng tiền và hoa hồng 25%', async () => {
     mockPrismaService.service.findUnique.mockResolvedValue(mockService);
 
     const now = new Date();
@@ -86,7 +86,7 @@ describe('TravelService & Booking Core Tests', () => {
       serviceId: mockService.id,
       status: BookingStatus.PENDING_PAYMENT,
       grossAmount: 4000000, // 2000000 * 2 days = 4000000
-      commissionRate: 0.1,
+      commissionRate: 0.25,
       commissionAmount: 400000, // 10% of 4000000 = 400000
       partnerAmount: 3600000, // 4000000 - 400000 = 3600000
       startDate: tomorrow,

@@ -30,9 +30,9 @@ describe('PayoutService - Step 4 Partner Payout Engine Tests', () => {
     serviceId: 'service-1',
     status: BookingStatus.PAYMENT_PAID,
     grossAmount: 5000000,
-    commissionRate: 0.1,
-    commissionAmount: 500000,
-    partnerAmount: 4500000,
+    commissionRate: 0.25,
+    commissionAmount: 1250000,
+    partnerAmount: 3750000,
     partner: mockPartner,
     payments: [{ status: PaymentStatus.PAID, amount: 5000000 }],
     payout: null,
@@ -83,15 +83,15 @@ describe('PayoutService - Step 4 Partner Payout Engine Tests', () => {
     mockPrismaService.payout.create.mockResolvedValue({
       id: 'payout-1',
       status: PayoutStatus.PROCESSING,
-      amount: 4500000,
+      amount: 3750000,
     });
     mockPrismaService.payout.update.mockResolvedValue({
       id: 'payout-1',
       status: PayoutStatus.SUCCESS,
-      amount: 4500000,
+      amount: 3750000,
     });
     mockPrismaService.partnerBalance.upsert.mockResolvedValue({
-      availableBalance: 4500000,
+      availableBalance: 3750000,
       totalRevenue: 5000000,
     });
     mockPrismaService.booking.update.mockResolvedValue({
@@ -107,10 +107,10 @@ describe('PayoutService - Step 4 Partner Payout Engine Tests', () => {
     expect(mockPrismaService.partnerBalance.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: expect.objectContaining({
-          availableBalance: { increment: 4500000 },
+          availableBalance: { increment: 3750000 },
           totalRevenue: { increment: 5000000 },
-          totalCommission: { increment: 500000 },
-          totalPaidOut: { increment: 4500000 },
+          totalCommission: { increment: 1250000 },
+          totalPaidOut: { increment: 3750000 },
         }),
       }),
     );
@@ -134,7 +134,7 @@ describe('PayoutService - Step 4 Partner Payout Engine Tests', () => {
       payout: {
         id: 'payout-1',
         status: PayoutStatus.SUCCESS,
-        amount: 4500000,
+        amount: 3750000,
       },
     };
 
@@ -153,7 +153,7 @@ describe('PayoutService - Step 4 Partner Payout Engine Tests', () => {
     mockPrismaService.payout.create.mockResolvedValue({
       id: 'payout-failed-1',
       status: PayoutStatus.PROCESSING,
-      amount: 4500000,
+      amount: 3750000,
     });
 
     // Giả lập Provider Payout báo lỗi

@@ -58,7 +58,7 @@ export class TravelService {
     // 3. Lấy tỷ lệ hoa hồng V-life (Server config hoặc mặc định 10%)
     const commissionRate = service.partner?.commissionRate
       ? Number(service.partner.commissionRate)
-      : 0.10;
+      : 0.25;
     const commissionAmount = Math.round(grossAmount * commissionRate);
     const partnerAmount = grossAmount - commissionAmount;
 

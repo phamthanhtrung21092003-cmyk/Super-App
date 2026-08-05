@@ -238,7 +238,7 @@ model Partner {
   bankCode          String
   bankAccountNo     String
   bankAccountHolder String
-  commissionRate    Decimal         @default(0.10)
+  commissionRate    Decimal         @default(0.25)
   isActive          Boolean         @default(true)
   balance           PartnerBalance?
   services          Service[]
@@ -293,7 +293,7 @@ model Booking {
   status           BookingStatus @default(PENDING_PAYMENT)
   
   grossAmount      Decimal
-  commissionRate   Decimal       @default(0.10)
+  commissionRate   Decimal       @default(0.25)
   commissionAmount Decimal
   partnerAmount    Decimal
 

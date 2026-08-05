@@ -37,7 +37,7 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
     bankCode: 'MB',
     bankAccountNo: '1111222233334444',
     bankAccountHolder: 'VINPEARL PHU QUOC',
-    commissionRate: 0.1,
+    commissionRate: 0.25,
     isActive: true,
   };
 
@@ -59,9 +59,9 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
     serviceId: mockService.id,
     status: BookingStatus.PENDING_PAYMENT,
     grossAmount: 5000000,
-    commissionRate: 0.1,
-    commissionAmount: 500000,
-    partnerAmount: 4500000,
+    commissionRate: 0.25,
+    commissionAmount: 1250000,
+    partnerAmount: 3750000,
     startDate: new Date('2026-08-10'),
     endDate: new Date('2026-08-11'),
     expiresAt: new Date(Date.now() + 10 * 60 * 1000), // Valid hold
@@ -198,7 +198,7 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
   // 1. BOOKING CREATION FLOW
   // ============================================================
   describe('1. Booking Creation Flow (Traveler → Backend)', () => {
-    it('1A. Tạo Booking thành công: Server tính đúng Gross, Commission 10%, Partner Amount 90%', async () => {
+    it('1A. Tạo Booking thành công: Server tính đúng Gross, Commission 25%, Partner Amount 90%', async () => {
       mockPrismaService.service.findUnique.mockResolvedValue(mockService);
       mockPrismaService.booking.create.mockResolvedValue({
         ...mockBooking,
@@ -265,9 +265,9 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
       mockPrismaService.commission.findUnique.mockResolvedValue(null);
       mockPrismaService.commission.create.mockResolvedValue({});
       mockPrismaService.payout.findUnique.mockResolvedValue(null);
-      mockPrismaService.payout.create.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.PROCESSING, amount: 4500000 });
-      mockPrismaService.payout.update.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.SUCCESS, amount: 4500000, retryCount: 0 });
-      mockPrismaService.partnerBalance.upsert.mockResolvedValue({ availableBalance: 4500000, totalRevenue: 5000000 });
+      mockPrismaService.payout.create.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.PROCESSING, amount: 3750000 });
+      mockPrismaService.payout.update.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.SUCCESS, amount: 3750000, retryCount: 0 });
+      mockPrismaService.partnerBalance.upsert.mockResolvedValue({ availableBalance: 3750000, totalRevenue: 5000000 });
       mockPrismaService.paymentEvent.create.mockResolvedValue({});
 
       const result = await paymentService.processWebhook(
@@ -394,9 +394,9 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
       mockPrismaService.commission.findUnique.mockResolvedValue(existingCommission); // Commission đã tồn tại!
       mockPrismaService.commission.create.mockResolvedValue({});
       mockPrismaService.payout.findUnique.mockResolvedValue(null);
-      mockPrismaService.payout.create.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.PROCESSING, amount: 4500000 });
-      mockPrismaService.payout.update.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.SUCCESS, amount: 4500000, retryCount: 0 });
-      mockPrismaService.partnerBalance.upsert.mockResolvedValue({ availableBalance: 4500000, totalRevenue: 5000000 });
+      mockPrismaService.payout.create.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.PROCESSING, amount: 3750000 });
+      mockPrismaService.payout.update.mockResolvedValue({ id: 'payout-1', status: PayoutStatus.SUCCESS, amount: 3750000, retryCount: 0 });
+      mockPrismaService.partnerBalance.upsert.mockResolvedValue({ availableBalance: 3750000, totalRevenue: 5000000 });
       mockPrismaService.paymentEvent.create.mockResolvedValue({});
 
       await paymentService.processWebhook({}, {
@@ -501,7 +501,7 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
       });
       mockPrismaService.payout.findUnique.mockResolvedValue(null);
       mockPrismaService.payout.create.mockResolvedValue({
-        id: 'payout-fail-1', status: PayoutStatus.PROCESSING, amount: 4500000
+        id: 'payout-fail-1', status: PayoutStatus.PROCESSING, amount: 3750000
       });
       mockPrismaService.payout.update.mockResolvedValue({
         id: 'payout-fail-1',

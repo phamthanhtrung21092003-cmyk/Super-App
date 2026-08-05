@@ -24,9 +24,9 @@ describe('PaymentService - Step 3 & 4 Webhook, Idempotency & Payout Trigger Test
     userId: mockUser1,
     status: BookingStatus.PENDING_PAYMENT,
     grossAmount: 3500000,
-    commissionRate: 0.1,
-    commissionAmount: 350000,
-    partnerAmount: 3150000,
+    commissionRate: 0.25,
+    commissionAmount: 875000,
+    partnerAmount: 2625000,
     expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     partner: {
       bankName: 'MB BANK',
