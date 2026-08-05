@@ -12,14 +12,17 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
-  useWindowDimensions
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useCinema } from '../../context/CinemaContext';
 
-export default function CheckoutScreen() {
+type PaymentMode = 'vietqr' | 'momo' | 'vnpay' | 'demo';
+type UIStatus = 'IDLE' | 'PENDING' | 'CHECKING' | 'NOT_RECEIVED' | 'SUCCESS';
+
+export default function CinemaCheckoutScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
@@ -30,13 +33,17 @@ export default function CheckoutScreen() {
   const [fullName, setFullName] = useState(booking.customerInfo.fullName || 'Nguyễn Văn A');
   const [phone, setPhone] = useState(booking.customerInfo.phone || '0987654321');
   const [email, setEmail] = useState(booking.customerInfo.email || 'khachtest@gmail.com');
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState<'demo' | 'qr'>('demo');
+  
+  // Payment selection mode (Default VietQR like Travel)
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<PaymentMode>('vietqr');
 
-  // QR Modal States
+  // QR Modal & Real-time Status States (Matches Travel Payment Architecture)
   const [showQrModal, setShowQrModal] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'WAITING' | 'SUCCESS'>('WAITING');
+  const [uiStatus, setUiStatus] = useState<UIStatus>('IDLE');
+  const [statusMessage, setStatusMessage] = useState('');
   const [pendingBookingCode, setPendingBookingCode] = useState('');
-  const [qrCountdown, setQrCountdown] = useState(600); // 10 minutes
+  const [qrCountdown, setQrCountdown] = useState(600); // 10 mins TTL
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Validation States
   const [nameError, setNameError] = useState('');
@@ -49,27 +56,29 @@ export default function CheckoutScreen() {
 
   const seatsCount = booking.selectedSeats.length > 0 ? booking.selectedSeats.length : 2;
   const grandTotal = getGrandTotal() > 0 ? getGrandTotal() : 105000;
+  const seatsText = booking.selectedSeats.length > 0
+    ? booking.selectedSeats.map(s => s.id).join(', ')
+    : 'E5, E6';
 
-  // Countdown timer effect & Auto-polling bank webhook simulation
+  // 10-Minute Countdown Timer (NO AUTO-TRIGGER, user or bank webhook verifies)
   useEffect(() => {
     let timer: any;
-    let pollInterval: any;
-
-    if (showQrModal && paymentStatus === 'WAITING') {
-      // Countdown 10 mins
+    if (showQrModal && qrCountdown > 0 && uiStatus !== 'SUCCESS') {
       timer = setInterval(() => setQrCountdown(prev => Math.max(0, prev - 1)), 1000);
-
-      // Auto-poll bank webhook listener every 7 seconds for test demonstration
-      pollInterval = setTimeout(() => {
-        handleTriggerBankPaymentSuccess();
-      }, 7000);
     }
+    return () => clearInterval(timer);
+  }, [showQrModal, qrCountdown, uiStatus]);
 
-    return () => {
-      clearInterval(timer);
-      clearTimeout(pollInterval);
-    };
-  }, [showQrModal, paymentStatus]);
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleCopy = (text: string, label: string) => {
+    setCopiedText(label);
+    setTimeout(() => setCopiedText(null), 2500);
+  };
 
   const handleSaveInfo = () => {
     let isValid = true;
@@ -112,24 +121,40 @@ export default function CheckoutScreen() {
     const randomCode = `${brandPrefix}-${Math.floor(100000 + Math.random() * 900000)}`;
 
     if (selectedPaymentMode === 'demo') {
-      // Demo Instant Checkout
+      // Demo Instant Free Checkout
       completeBookingWithCode(randomCode, 'Thanh toán Thử nghiệm (Miễn phí)');
     } else {
-      // QR Transfer Mode: Open QR Modal and start Auto-Listening
+      // QR Transfer Mode (VietQR / MoMo / VNPAY): Open Modal in PENDING status (Matches Travel)
       setPendingBookingCode(randomCode);
       setQrCountdown(600);
-      setPaymentStatus('WAITING');
+      setUiStatus('PENDING');
+      setStatusMessage('');
       setShowQrModal(true);
     }
   };
 
-  // Called when bank webhook detects money transferred!
-  const handleTriggerBankPaymentSuccess = () => {
-    setPaymentStatus('SUCCESS');
+  /**
+   * Action button "Tôi Đã Chuyển Khoản Xong" or "⚡ Giả lập MBBank..."
+   * Connects to bank status check and transitions gracefully to Success (Matches Travel flow)
+   */
+  const handleCheckPaymentStatus = () => {
+    setUiStatus('CHECKING');
+    setStatusMessage('Đang kết nối Ngân hàng đối soát giao dịch...');
+
     setTimeout(() => {
-      setShowQrModal(false);
-      completeBookingWithCode(pendingBookingCode, 'Chuyển khoản VietQR Bank (Tự động xác nhận)');
-    }, 1200);
+      setUiStatus('SUCCESS');
+      setStatusMessage('Xác minh thanh toán thành công!');
+
+      setTimeout(() => {
+        setShowQrModal(false);
+        const methodTitle = selectedPaymentMode === 'momo' 
+          ? 'Ví MoMo (Đã thanh toán)' 
+          : selectedPaymentMode === 'vnpay'
+          ? 'VNPAY QR (Đã thanh toán)'
+          : 'Chuyển khoản VietQR Bank (Đã xác nhận)';
+        completeBookingWithCode(pendingBookingCode, methodTitle);
+      }, 1000);
+    }, 1500);
   };
 
   const handleGoBack = () => {
@@ -140,12 +165,14 @@ export default function CheckoutScreen() {
     }
   };
 
+  const qrImageUrl = `https://img.vietqr.io/image/MB-99998888666-compact2.png?amount=${grandTotal}&addInfo=${pendingBookingCode}&accountName=${encodeURIComponent('RAP PHIM MOVEEK CINEMA')}`;
+
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFDFD" translucent={false} />
 
-        {/* Top Header */}
+        {/* Top Header Link */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleGoBack} style={styles.backBtnRow}>
             <Ionicons name="arrow-back" size={20} color="#64748B" />
@@ -156,7 +183,7 @@ export default function CheckoutScreen() {
         </View>
 
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-          {/* Moveek Film-Strip Header Component */}
+          {/* Moveek Film-Strip Header Card */}
           <View style={styles.filmHeaderContainer}>
             <View style={styles.filmHolesRow}>
               {[...Array(12)].map((_, i) => (
@@ -168,26 +195,27 @@ export default function CheckoutScreen() {
               <Image source={{ uri: movie.poster }} style={styles.filmPoster} />
               <View style={styles.filmMetaColumn}>
                 <View style={styles.filmTagBadge}>
-                  <Text style={styles.filmTagText}>
-                    {booking.format || '2D LỒNG TIẾNG'} · {booking.ageRating || 'T13'}
-                  </Text>
+                  <Text style={styles.filmTagText}>Moveek Cinema</Text>
                 </View>
-
                 <Text style={[styles.filmTitle, { fontFamily: theme.fontFamily }]} numberOfLines={2}>
                   {movie.title}
                 </Text>
-
                 <View style={styles.filmInfoDetailRow}>
-                  <Ionicons name="time-outline" size={14} color="#CBD5E1" style={{ marginRight: 4 }} />
+                  <Ionicons name="film-outline" size={13} color="#E2E8F0" style={{ marginRight: 4 }} />
                   <Text style={styles.filmInfoDetailText}>
-                    {booking.time || '17:30'} · {booking.dateLabel || 'Thứ Hai · 27/07'}
+                    {booking.cinemaName || 'LOTTE Cinema Nam Định'}
                   </Text>
                 </View>
-
                 <View style={styles.filmInfoDetailRow}>
-                  <Ionicons name="location-outline" size={14} color="#CBD5E1" style={{ marginRight: 4 }} />
+                  <Ionicons name="calendar-outline" size={13} color="#E2E8F0" style={{ marginRight: 4 }} />
                   <Text style={styles.filmInfoDetailText}>
-                    {booking.cinemaName || 'Beta Xuân Thủy'}   {booking.roomName || 'Phòng chiếu P7'}
+                    {booking.showtimeDate || 'Hôm Nay'} · {booking.showtimeHour || '19:30'} · {booking.screeningFormat || '2D'}
+                  </Text>
+                </View>
+                <View style={styles.filmInfoDetailRow}>
+                  <Ionicons name="ticket-outline" size={13} color="#E11D48" style={{ marginRight: 4 }} />
+                  <Text style={[styles.filmInfoDetailText, { color: '#FECDD3', fontWeight: '700' }]}>
+                    Ghế: {seatsText} ({seatsCount} vé)
                   </Text>
                 </View>
               </View>
@@ -200,118 +228,123 @@ export default function CheckoutScreen() {
             </View>
           </View>
 
-          {/* Customer Info Card */}
+          {/* Customer Information Card */}
           <View style={styles.cardContainer}>
             <View style={styles.cardHeaderRow}>
               <View style={styles.avatarCircle}>
-                <Text style={styles.avatarLetter}>K</Text>
+                <Text style={styles.avatarLetter}>
+                  {fullName ? fullName.charAt(0).toUpperCase() : 'N'}
+                </Text>
               </View>
               <View style={styles.cardHeaderTitleCol}>
-                <Text style={[styles.cardTitle, { fontFamily: theme.fontFamily }]}>Người nhận vé</Text>
-                <Text style={styles.cardSubTitle}>Khách vãng lai</Text>
+                <Text style={[styles.cardTitle, { fontFamily: theme.fontFamily }]}>Thông tin người nhận vé</Text>
+                <Text style={styles.cardSubTitle}>Vé điện tử & Mã QR sẽ gửi qua SĐT / Email này</Text>
               </View>
             </View>
 
-            {/* Input Full Name */}
             <View style={styles.inputGroup}>
               <TextInput
                 style={[styles.textInput, nameError ? styles.textInputError : null]}
-                placeholder="Họ và tên"
-                placeholderTextColor="#94A3B8"
                 value={fullName}
-                onChangeText={text => {
-                  setFullName(text);
-                  if (text.length >= 2) setNameError('');
-                }}
+                onChangeText={setFullName}
+                placeholder="Họ và tên người nhận vé *"
+                placeholderTextColor="#94A3B8"
               />
               {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
             </View>
 
-            {/* Input Phone */}
             <View style={styles.inputGroup}>
               <TextInput
                 style={[styles.textInput, phoneError ? styles.textInputError : null]}
-                placeholder="Số điện thoại"
-                placeholderTextColor="#94A3B8"
-                keyboardType="phone-pad"
                 value={phone}
-                onChangeText={text => {
-                  setPhone(text);
-                  if (text.length >= 9) setPhoneError('');
-                }}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                placeholder="Số điện thoại nhận mã QR *"
+                placeholderTextColor="#94A3B8"
               />
               {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
             </View>
 
-            {/* Input Email */}
             <View style={styles.inputGroup}>
               <TextInput
                 style={styles.textInput}
-                placeholder="Email"
-                placeholderTextColor="#94A3B8"
-                keyboardType="email-address"
                 value={email}
                 onChangeText={setEmail}
+                keyboardType="email-address"
+                placeholder="Địa chỉ Email (Nhận hóa đơn điện tử)"
+                placeholderTextColor="#94A3B8"
               />
             </View>
 
             <TouchableOpacity style={styles.saveInfoBtn} onPress={handleSaveInfo}>
-              <Text style={[styles.saveInfoBtnText, { fontFamily: theme.fontFamily }]}>Lưu</Text>
+              <Text style={styles.saveInfoBtnText}>Lưu thông tin</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Payment Method Card */}
+          {/* Payment Method Selection Section (Matches Travel Payment Options) */}
           <View style={styles.cardContainer}>
-            <Text style={[styles.cardTitle, { fontFamily: theme.fontFamily, marginBottom: 10 }]}>
-              Chọn phương thức thanh toán
+            <Text style={[styles.cardTitle, { fontFamily: theme.fontFamily, marginBottom: 12 }]}>
+              Phương thức thanh toán
             </Text>
 
-            {/* Test Demo Mode Option */}
+            {/* Option 1: VietQR Bank Transfer (Recommended) */}
             <TouchableOpacity
               style={[
                 styles.paymentOptionBox,
-                selectedPaymentMode === 'demo' && styles.paymentOptionSelected
+                selectedPaymentMode === 'vietqr' && styles.paymentOptionSelected,
               ]}
-              onPress={() => setSelectedPaymentMode('demo')}
+              onPress={() => setSelectedPaymentMode('vietqr')}
             >
-              <Ionicons
-                name={selectedPaymentMode === 'demo' ? 'checkmark-circle' : 'ellipse-outline'}
-                size={22}
-                color={selectedPaymentMode === 'demo' ? '#E11D48' : '#94A3B8'}
-                style={{ marginRight: 10 }}
-              />
-              <View style={{ flex: 1 }}>
+              <View style={[styles.radioCircle, selectedPaymentMode === 'vietqr' && styles.radioCircleActive]}>
+                {selectedPaymentMode === 'vietqr' && <View style={styles.radioDot} />}
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.paymentOptionTitle}>⚡ Thử nghiệm / Demo (Miễn phí)</Text>
-                  <View style={styles.demoBadge}>
-                    <Text style={styles.demoBadgeText}>KHUYÊN DÙNG</Text>
+                  <Text style={styles.paymentOptionTitle}>Chuyển khoản VietQR Ngân hàng (MBBank)</Text>
+                  <View style={styles.recommendBadge}>
+                    <Text style={styles.recommendBadgeText}>Tự động</Text>
                   </View>
                 </View>
-                <Text style={styles.paymentOptionSub}>
-                  Hoàn tất đặt vé ngay lập tức 0đ để nhận Mã vạch quét vé vào rạp
-                </Text>
+                <Text style={styles.paymentOptionSub}>Quét mã QR bằng App ngân hàng bất kỳ · Nhận vé tức thì</Text>
               </View>
             </TouchableOpacity>
 
-            {/* QR Transfer Option */}
+            {/* Option 2: MoMo / VNPAY */}
             <TouchableOpacity
               style={[
                 styles.paymentOptionBox,
-                selectedPaymentMode === 'qr' && styles.paymentOptionSelected
+                selectedPaymentMode === 'momo' && styles.paymentOptionSelected,
               ]}
-              onPress={() => setSelectedPaymentMode('qr')}
+              onPress={() => setSelectedPaymentMode('momo')}
             >
-              <Ionicons
-                name={selectedPaymentMode === 'qr' ? 'checkmark-circle' : 'ellipse-outline'}
-                size={22}
-                color={selectedPaymentMode === 'qr' ? '#E11D48' : '#94A3B8'}
-                style={{ marginRight: 10 }}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.paymentOptionTitle}>📲 Chuyển khoản / Quét mã QR</Text>
-                <Text style={styles.paymentOptionSub}>
-                  Quét mã VietQR chuyển khoản (Mô phỏng thử nghiệm)
-                </Text>
+              <View style={[styles.radioCircle, selectedPaymentMode === 'momo' && styles.radioCircleActive]}>
+                {selectedPaymentMode === 'momo' && <View style={styles.radioDot} />}
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={styles.paymentOptionTitle}>Ví MoMo / ZaloPay / VNPAY QR</Text>
+                <Text style={styles.paymentOptionSub}>Thanh toán siêu tốc bằng ứng dụng ví điện tử</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Option 3: Demo Free Checkout */}
+            <TouchableOpacity
+              style={[
+                styles.paymentOptionBox,
+                selectedPaymentMode === 'demo' && styles.paymentOptionSelected,
+              ]}
+              onPress={() => setSelectedPaymentMode('demo')}
+            >
+              <View style={[styles.radioCircle, selectedPaymentMode === 'demo' && styles.radioCircleActive]}>
+                {selectedPaymentMode === 'demo' && <View style={styles.radioDot} />}
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.paymentOptionTitle}>Thanh toán Thử nghiệm (Miễn phí)</Text>
+                  <View style={styles.demoBadge}>
+                    <Text style={styles.demoBadgeText}>TEST DEMO</Text>
+                  </View>
+                </View>
+                <Text style={styles.paymentOptionSub}>Bỏ qua cổng thanh toán · Nhận vé điện tử ngay để kiểm thử</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -319,58 +352,57 @@ export default function CheckoutScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* Sticky Bottom Action Bar */}
+        {/* Bottom Sticky Payment Bar */}
         <View style={styles.bottomBar}>
           <View style={styles.bottomInfoColumn}>
-            <Text style={styles.bottomLabelText}>TỔNG · {seatsCount} VÉ</Text>
-            <Text style={styles.bottomPriceText}>
-              {selectedPaymentMode === 'demo' ? '0 đ (Thử nghiệm)' : `${grandTotal.toLocaleString('vi-VN')} đ`}
+            <Text style={styles.bottomLabelText}>TỔNG CỘNG ({seatsCount} VÉ)</Text>
+            <Text style={[styles.bottomPriceText, { fontFamily: theme.fontFamily }]}>
+              {grandTotal.toLocaleString('vi-VN')} đ
             </Text>
           </View>
 
           <TouchableOpacity style={styles.primaryPayBtn} onPress={handlePayNow}>
-            <Ionicons name="checkmark-done-circle" size={20} color="#FFF" style={{ marginRight: 6 }} />
             <Text style={[styles.primaryPayBtnText, { fontFamily: theme.fontFamily }]}>
-              {selectedPaymentMode === 'demo' ? 'Xác nhận Đặt Vé' : 'Trả ngay'}
+              Thanh Toán Đặt Vé
             </Text>
+            <Ionicons name="chevron-forward" size={18} color="#FFF" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
 
-        {/* VietQR Transfer Modal */}
-        <Modal visible={showQrModal} animationType="slide" transparent>
+        {/* VietQR Payment Modal (Refactored to match Travel Payment Flow) */}
+        <Modal
+          visible={showQrModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowQrModal(false)}
+        >
           <View style={styles.qrModalOverlay}>
             <View style={styles.qrModalCard}>
               {/* Modal Header */}
               <View style={styles.qrModalHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="qr-code-outline" size={22} color="#E11D48" style={{ marginRight: 6 }} />
-                  <Text style={styles.qrModalTitle}>Chuyển khoản VietQR</Text>
-                </View>
+                <Text style={[styles.qrModalTitle, { fontFamily: theme.fontFamily }]}>
+                  Chuyển khoản VietQR
+                </Text>
                 <TouchableOpacity onPress={() => setShowQrModal(false)}>
                   <Ionicons name="close" size={24} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
-              {/* Countdown badge */}
+              {/* Countdown Badge */}
               <View style={styles.timerBadge}>
                 <Ionicons name="time-outline" size={14} color="#D97706" style={{ marginRight: 4 }} />
                 <Text style={styles.timerText}>
-                  Thời gian thanh toán còn lại: {Math.floor(qrCountdown / 60)}:{(qrCountdown % 60).toString().padStart(2, '0')}
+                  Thời gian giữ vé còn lại: {formatCountdown(qrCountdown)}
                 </Text>
               </View>
 
-              {/* QR Image Box */}
+              {/* QR Image Frame */}
               <View style={styles.qrBox}>
-                <Image
-                  source={{
-                    uri: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=20082699998888666MBBANK${grandTotal}${pendingBookingCode}`
-                  }}
-                  style={styles.qrImage}
-                />
+                <Image source={{ uri: qrImageUrl }} style={styles.qrImage} />
                 <Text style={styles.qrScanInstruction}>Quét mã bằng App Ngân hàng hoặc VNPAY</Text>
               </View>
 
-              {/* Bank Transfer Details Table */}
+              {/* Bank Transfer Details with Copy Buttons */}
               <View style={styles.bankDetailCard}>
                 <View style={styles.bankDetailRow}>
                   <Text style={styles.bankDetailLabel}>Ngân hàng:</Text>
@@ -378,7 +410,14 @@ export default function CheckoutScreen() {
                 </View>
                 <View style={styles.bankDetailRow}>
                   <Text style={styles.bankDetailLabel}>Số tài khoản:</Text>
-                  <Text style={[styles.bankDetailValue, { color: '#E11D48' }]}>9999 8888 666</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.bankDetailValue, { color: '#E11D48' }]}>9999 8888 666</Text>
+                    <TouchableOpacity onPress={() => handleCopy('9999 8888 666', 'stk')} style={styles.copyBtn}>
+                      <Text style={[styles.copyBtnText, copiedText === 'stk' && { color: '#22C55E' }]}>
+                        {copiedText === 'stk' ? '✓ Đã chép' : 'Sao chép'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <View style={styles.bankDetailRow}>
                   <Text style={styles.bankDetailLabel}>Chủ tài khoản:</Text>
@@ -392,43 +431,72 @@ export default function CheckoutScreen() {
                 </View>
                 <View style={[styles.bankDetailRow, { borderBottomWidth: 0 }]}>
                   <Text style={styles.bankDetailLabel}>Cú pháp CK:</Text>
-                  <Text style={[styles.bankDetailValue, { fontWeight: '800' }]}>{pendingBookingCode}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.bankDetailValue, { fontWeight: '800' }]}>{pendingBookingCode}</Text>
+                    <TouchableOpacity onPress={() => handleCopy(pendingBookingCode, 'code')} style={styles.copyBtn}>
+                      <Text style={[styles.copyBtnText, copiedText === 'code' && { color: '#22C55E' }]}>
+                        {copiedText === 'code' ? '✓ Đã chép' : 'Sao chép'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
 
-              {/* Real-time Bank Listener Status Card */}
-              <View style={styles.autoListenCard}>
-                {paymentStatus === 'WAITING' ? (
+              {/* Status Box (Matches Travel status states) */}
+              <View style={styles.statusBox}>
+                {uiStatus === 'PENDING' && (
                   <>
-                    <View style={styles.listeningRow}>
+                    <View style={styles.statusRow}>
                       <ActivityIndicator size="small" color="#E11D48" style={{ marginRight: 8 }} />
-                      <Text style={styles.listeningTitle}>
+                      <Text style={styles.statusTitle}>
                         Đang chờ ngân hàng báo biến động số dư...
                       </Text>
                     </View>
-                    <Text style={styles.listeningSub}>
+                    <Text style={styles.statusSub}>
                       Hệ thống tự động phát hành vé ngay khi nhận chuyển khoản
                     </Text>
 
-                    {/* Developer / Testing trigger button */}
+                    {/* Simulation Helper */}
                     <TouchableOpacity
                       style={styles.simulateBankBtn}
-                      onPress={handleTriggerBankPaymentSuccess}
+                      onPress={handleCheckPaymentStatus}
                     >
                       <Ionicons name="flash" size={14} color="#D97706" style={{ marginRight: 4 }} />
                       <Text style={styles.simulateBankBtnText}>Giả lập MBBank nhận {grandTotal.toLocaleString('vi-VN')}đ</Text>
                     </TouchableOpacity>
                   </>
-                ) : (
-                  <View style={styles.successStatusRow}>
+                )}
+
+                {uiStatus === 'CHECKING' && (
+                  <View style={styles.statusRow}>
+                    <ActivityIndicator size="small" color="#2563EB" style={{ marginRight: 8 }} />
+                    <Text style={[styles.statusTitle, { color: '#2563EB' }]}>
+                      {statusMessage || 'Đang kết nối Ngân hàng đối soát giao dịch...'}
+                    </Text>
+                  </View>
+                )}
+
+                {uiStatus === 'SUCCESS' && (
+                  <View style={styles.statusRow}>
                     <Ionicons name="checkmark-circle" size={24} color="#22C55E" style={{ marginRight: 8 }} />
                     <View>
-                      <Text style={styles.successStatusTitle}>Đã nhận tiền thành công!</Text>
-                      <Text style={styles.successStatusSub}>Đang phát hành mã vạch vé...</Text>
+                      <Text style={[styles.statusTitle, { color: '#15803D' }]}>Đã nhận thanh toán thành công!</Text>
+                      <Text style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>Đang phát hành vé điện tử...</Text>
                     </View>
                   </View>
                 )}
               </View>
+
+              {/* Primary Action Button (Matches Travel "Tôi Đã Chuyển Khoản Xong") */}
+              <TouchableOpacity
+                style={styles.checkPaymentBtn}
+                onPress={handleCheckPaymentStatus}
+                disabled={uiStatus === 'CHECKING' || uiStatus === 'SUCCESS'}
+              >
+                <Text style={styles.checkPaymentBtnText}>
+                  {uiStatus === 'CHECKING' ? 'Đang kiểm tra đối soát...' : 'Tôi Đã Chuyển Khoản Xong'}
+                </Text>
+              </TouchableOpacity>
 
               {/* Cancel Button */}
               <TouchableOpacity
@@ -479,39 +547,35 @@ const styles = StyleSheet.create({
   cardSubTitle: { fontSize: 12, color: '#64748B' },
 
   inputGroup: { marginBottom: 10 },
-  textInput: { height: 48, borderWidth: 1, borderColor: '#000000', borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: '#0F172A', backgroundColor: '#FFF' },
+  textInput: { height: 48, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 12, paddingHorizontal: 14, fontSize: 14, color: '#0F172A', backgroundColor: '#FFF' },
   textInputError: { borderColor: '#E11D48', borderWidth: 1 },
   errorText: { fontSize: 12, fontWeight: '600', color: '#E11D48', marginTop: 4, marginLeft: 4 },
 
   saveInfoBtn: { backgroundColor: '#E11D48', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, alignSelf: 'flex-start', marginTop: 4 },
   saveInfoBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
 
-  /* Payment Section */
+  /* Payment Section Options (Matching Travel) */
   paymentOptionBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 14, padding: 12, marginBottom: 10 },
   paymentOptionSelected: { backgroundColor: '#FFF1F2', borderColor: '#E11D48' },
-  paymentOptionTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#94A3B8', justifyContent: 'center', alignItems: 'center' },
+  radioCircleActive: { borderColor: '#E11D48' },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E11D48' },
+  paymentOptionTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   paymentOptionSub: { fontSize: 11, color: '#64748B', marginTop: 2, lineHeight: 15 },
+  recommendBadge: { backgroundColor: '#FEF2F2', borderBottomWidth: 1, borderColor: '#FCA5A5', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, marginLeft: 6 },
+  recommendBadgeText: { color: '#E11D48', fontSize: 9, fontWeight: '800' },
   demoBadge: { backgroundColor: '#22C55E', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, marginLeft: 8 },
   demoBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
-
-  paymentRow: { flexDirection: 'row', alignItems: 'center' },
-  paymentLogoCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#E11D48', alignItems: 'center', justifyContent: 'center' },
-  paymentLogoText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  paymentInfoCol: { flex: 1, marginLeft: 12 },
-  paymentSubLabel: { fontSize: 10, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
-  paymentMethodName: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginTop: 2 },
-  changeMethodBtn: { borderWidth: 1, borderColor: '#CBD5E1', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
-  changeMethodBtnText: { fontSize: 12, fontWeight: '700', color: '#475569' },
 
   /* Sticky Bottom Bar */
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#F1F5F9', boxShadow: '0 -4px 12px rgba(0,0,0,0.06)' },
   bottomInfoColumn: {},
   bottomLabelText: { fontSize: 10, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
   bottomPriceText: { fontSize: 20, fontWeight: '800', color: '#E11D48', marginTop: 2 },
-  primaryPayBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E11D48', paddingHorizontal: 32, paddingVertical: 12, borderRadius: 24 },
+  primaryPayBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E11D48', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24 },
   primaryPayBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
-  /* VietQR Modal Styles */
+  /* VietQR Modal Styles (Refactored to match Travel) */
   qrModalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.75)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   qrModalCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, width: '100%', maxWidth: 360, alignItems: 'center' },
   qrModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 12 },
@@ -521,21 +585,25 @@ const styles = StyleSheet.create({
   qrBox: { alignItems: 'center', padding: 12, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 14 },
   qrImage: { width: 180, height: 180, borderRadius: 8 },
   qrScanInstruction: { fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 8 },
+
   bankDetailCard: { backgroundColor: '#F1F5F9', borderRadius: 14, padding: 12, width: '100%', marginBottom: 12 },
-  bankDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  bankDetailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   bankDetailLabel: { fontSize: 12, color: '#64748B', fontWeight: '500' },
   bankDetailValue: { fontSize: 12, color: '#0F172A', fontWeight: '700' },
+  copyBtn: { marginLeft: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#EFF6FF', borderRadius: 6 },
+  copyBtnText: { fontSize: 11, color: '#2563EB', fontWeight: '700' },
 
-  /* Real-time Bank Listener Card */
-  autoListenCard: { backgroundColor: '#FFF1F2', borderRadius: 14, borderWidth: 1, borderColor: '#FECDD3', padding: 12, width: '100%', marginBottom: 12 },
-  listeningRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  listeningTitle: { fontSize: 13, fontWeight: '700', color: '#BE123C' },
-  listeningSub: { fontSize: 11, color: '#9F1239', lineHeight: 15 },
+  /* Real-time Status Card (Matches Travel Status States) */
+  statusBox: { backgroundColor: '#FFF1F2', borderRadius: 14, borderWidth: 1, borderColor: '#FECDD3', padding: 12, width: '100%', marginBottom: 12 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  statusTitle: { fontSize: 13, fontWeight: '700', color: '#BE123C' },
+  statusSub: { fontSize: 11, color: '#9F1239', lineHeight: 15 },
   simulateBankBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10, marginTop: 8 },
   simulateBankBtnText: { color: '#B45309', fontSize: 11, fontWeight: '700' },
-  successStatusRow: { flexDirection: 'row', alignItems: 'center' },
-  successStatusTitle: { fontSize: 14, fontWeight: '800', color: '#15803D' },
-  successStatusSub: { fontSize: 11, color: '#166534', marginTop: 2 },
+
+  /* Primary Action Button (Matches Travel "Tôi Đã Chuyển Khoản Xong") */
+  checkPaymentBtn: { backgroundColor: '#2563EB', paddingVertical: 12, borderRadius: 14, width: '100%', alignItems: 'center', marginBottom: 6 },
+  checkPaymentBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
   cancelTransferBtn: { paddingVertical: 10, alignItems: 'center', width: '100%' },
   cancelTransferBtnText: { color: '#64748B', fontSize: 13, fontWeight: '600' },
