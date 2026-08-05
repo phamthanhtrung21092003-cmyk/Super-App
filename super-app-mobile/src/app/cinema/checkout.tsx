@@ -32,13 +32,11 @@ export default function CheckoutScreen() {
   const [email, setEmail] = useState(booking.customerInfo.email || 'khachtest@gmail.com');
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<'demo' | 'qr'>('demo');
 
-  // QR Modal States & UI Status (Matching Travel Checkout Flow)
+  // QR Modal States
   const [showQrModal, setShowQrModal] = useState(false);
-  const [uiStatus, setUiStatus] = useState<'PENDING' | 'CHECKING' | 'NOT_RECEIVED' | 'SUCCESS'>('PENDING');
-  const [statusMessage, setStatusMessage] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState<'WAITING' | 'SUCCESS'>('WAITING');
   const [pendingBookingCode, setPendingBookingCode] = useState('');
   const [qrCountdown, setQrCountdown] = useState(600); // 10 minutes
-  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Validation States
   const [nameError, setNameError] = useState('');
@@ -52,19 +50,26 @@ export default function CheckoutScreen() {
   const seatsCount = booking.selectedSeats.length > 0 ? booking.selectedSeats.length : 2;
   const grandTotal = getGrandTotal() > 0 ? getGrandTotal() : 105000;
 
-  // Countdown timer effect (DOES NOT AUTO-TRIGGER SUCCESS, matches Travel)
+  // Countdown timer effect & Auto-polling bank webhook simulation
   useEffect(() => {
     let timer: any;
-    if (showQrModal && qrCountdown > 0 && uiStatus !== 'SUCCESS') {
-      timer = setInterval(() => setQrCountdown(prev => Math.max(0, prev - 1)), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [showQrModal, qrCountdown, uiStatus]);
+    let pollInterval: any;
 
-  const handleCopy = (text: string, label: string) => {
-    setCopiedText(label);
-    setTimeout(() => setCopiedText(null), 2500);
-  };
+    if (showQrModal && paymentStatus === 'WAITING') {
+      // Countdown 10 mins
+      timer = setInterval(() => setQrCountdown(prev => Math.max(0, prev - 1)), 1000);
+
+      // Auto-poll bank webhook listener every 7 seconds for test demonstration
+      pollInterval = setTimeout(() => {
+        handleTriggerBankPaymentSuccess();
+      }, 7000);
+    }
+
+    return () => {
+      clearInterval(timer);
+      clearTimeout(pollInterval);
+    };
+  }, [showQrModal, paymentStatus]);
 
   const handleSaveInfo = () => {
     let isValid = true;
@@ -110,29 +115,21 @@ export default function CheckoutScreen() {
       // Demo Instant Checkout
       completeBookingWithCode(randomCode, 'Thanh toán Thử nghiệm (Miễn phí)');
     } else {
-      // QR Transfer Mode: Open QR Modal in PENDING status
+      // QR Transfer Mode: Open QR Modal and start Auto-Listening
       setPendingBookingCode(randomCode);
       setQrCountdown(600);
-      setUiStatus('PENDING');
-      setStatusMessage('');
+      setPaymentStatus('WAITING');
       setShowQrModal(true);
     }
   };
 
-  // Called when user clicks "Tôi đã chuyển khoản xong" or "⚡ Giả lập MBBank..."
-  const handleCheckPayment = () => {
-    setUiStatus('CHECKING');
-    setStatusMessage('Đang kết nối Ngân hàng đối soát giao dịch...');
-
+  // Called when bank webhook detects money transferred!
+  const handleTriggerBankPaymentSuccess = () => {
+    setPaymentStatus('SUCCESS');
     setTimeout(() => {
-      setUiStatus('SUCCESS');
-      setStatusMessage('Đã nhận thanh toán thành công!');
-
-      setTimeout(() => {
-        setShowQrModal(false);
-        completeBookingWithCode(pendingBookingCode, 'Chuyển khoản VietQR Bank (Đã xác nhận)');
-      }, 1000);
-    }, 1500);
+      setShowQrModal(false);
+      completeBookingWithCode(pendingBookingCode, 'Chuyển khoản VietQR Bank (Tự động xác nhận)');
+    }, 1200);
   };
 
   const handleGoBack = () => {
@@ -381,14 +378,7 @@ export default function CheckoutScreen() {
                 </View>
                 <View style={styles.bankDetailRow}>
                   <Text style={styles.bankDetailLabel}>Số tài khoản:</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.bankDetailValue, { color: '#E11D48' }]}>9999 8888 666</Text>
-                    <TouchableOpacity onPress={() => handleCopy('9999 8888 666', 'stk')} style={{ marginLeft: 6 }}>
-                      <Text style={{ fontSize: 11, color: copiedText === 'stk' ? '#22C55E' : '#2563EB', fontWeight: '700' }}>
-                        {copiedText === 'stk' ? '✓ Đã chép' : 'Sao chép'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={[styles.bankDetailValue, { color: '#E11D48' }]}>9999 8888 666</Text>
                 </View>
                 <View style={styles.bankDetailRow}>
                   <Text style={styles.bankDetailLabel}>Chủ tài khoản:</Text>
@@ -402,20 +392,13 @@ export default function CheckoutScreen() {
                 </View>
                 <View style={[styles.bankDetailRow, { borderBottomWidth: 0 }]}>
                   <Text style={styles.bankDetailLabel}>Cú pháp CK:</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.bankDetailValue, { fontWeight: '800' }]}>{pendingBookingCode}</Text>
-                    <TouchableOpacity onPress={() => handleCopy(pendingBookingCode, 'code')} style={{ marginLeft: 6 }}>
-                      <Text style={{ fontSize: 11, color: copiedText === 'code' ? '#22C55E' : '#2563EB', fontWeight: '700' }}>
-                        {copiedText === 'code' ? '✓ Đã chép' : 'Sao chép'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={[styles.bankDetailValue, { fontWeight: '800' }]}>{pendingBookingCode}</Text>
                 </View>
               </View>
 
-              {/* Status Box matching Travel */}
+              {/* Real-time Bank Listener Status Card */}
               <View style={styles.autoListenCard}>
-                {uiStatus === 'PENDING' && (
+                {paymentStatus === 'WAITING' ? (
                   <>
                     <View style={styles.listeningRow}>
                       <ActivityIndicator size="small" color="#E11D48" style={{ marginRight: 8 }} />
@@ -427,46 +410,25 @@ export default function CheckoutScreen() {
                       Hệ thống tự động phát hành vé ngay khi nhận chuyển khoản
                     </Text>
 
+                    {/* Developer / Testing trigger button */}
                     <TouchableOpacity
                       style={styles.simulateBankBtn}
-                      onPress={handleCheckPayment}
+                      onPress={handleTriggerBankPaymentSuccess}
                     >
                       <Ionicons name="flash" size={14} color="#D97706" style={{ marginRight: 4 }} />
                       <Text style={styles.simulateBankBtnText}>Giả lập MBBank nhận {grandTotal.toLocaleString('vi-VN')}đ</Text>
                     </TouchableOpacity>
                   </>
-                )}
-
-                {uiStatus === 'CHECKING' && (
-                  <View style={styles.listeningRow}>
-                    <ActivityIndicator size="small" color="#2563EB" style={{ marginRight: 8 }} />
-                    <Text style={[styles.listeningTitle, { color: '#2563EB' }]}>
-                      {statusMessage || 'Đang kết nối Ngân hàng đối soát giao dịch...'}
-                    </Text>
-                  </View>
-                )}
-
-                {uiStatus === 'SUCCESS' && (
+                ) : (
                   <View style={styles.successStatusRow}>
                     <Ionicons name="checkmark-circle" size={24} color="#22C55E" style={{ marginRight: 8 }} />
                     <View>
-                      <Text style={styles.successStatusTitle}>Đã nhận thanh toán thành công!</Text>
-                      <Text style={styles.successStatusSub}>Đang chuyển đến vé xem phim điện tử...</Text>
+                      <Text style={styles.successStatusTitle}>Đã nhận tiền thành công!</Text>
+                      <Text style={styles.successStatusSub}>Đang phát hành mã vạch vé...</Text>
                     </View>
                   </View>
                 )}
               </View>
-
-              {/* Primary Action Button matching Travel */}
-              <TouchableOpacity
-                style={styles.checkPaymentBtn}
-                onPress={handleCheckPayment}
-                disabled={uiStatus === 'CHECKING' || uiStatus === 'SUCCESS'}
-              >
-                <Text style={styles.checkPaymentBtnText}>
-                  {uiStatus === 'CHECKING' ? 'Đang kiểm tra...' : 'Tôi Đã Chuyển Khoản Xong'}
-                </Text>
-              </TouchableOpacity>
 
               {/* Cancel Button */}
               <TouchableOpacity
@@ -574,9 +536,6 @@ const styles = StyleSheet.create({
   successStatusRow: { flexDirection: 'row', alignItems: 'center' },
   successStatusTitle: { fontSize: 14, fontWeight: '800', color: '#15803D' },
   successStatusSub: { fontSize: 11, color: '#166534', marginTop: 2 },
-
-  checkPaymentBtn: { backgroundColor: '#2563EB', paddingVertical: 12, borderRadius: 14, width: '100%', alignItems: 'center', marginBottom: 6 },
-  checkPaymentBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
   cancelTransferBtn: { paddingVertical: 10, alignItems: 'center', width: '100%' },
   cancelTransferBtnText: { color: '#64748B', fontSize: 13, fontWeight: '600' },
