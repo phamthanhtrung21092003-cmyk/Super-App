@@ -30,7 +30,7 @@ const TRAVEL_ICON = require('../../assets/images/travel-icon.png');
 export default function HomeScreen() {
   const router = useRouter();
   const { userName, avatarUrl, vipTier, accentHex, accentRgb, bgUrl } = useUser();
-  const { theme } = useTheme();
+  const { theme, scaleFont } = useTheme();
 
   const displayAvatar = avatarUrl || DEFAULT_AVATAR;
   const [notificationCount, setNotificationCount] = useState(3);
@@ -41,30 +41,56 @@ export default function HomeScreen() {
     serviceName: string;
     icon: string;
     color: string;
-    items: Array<{ id: string; title: string; message: string; time: string }>;
+    items: Array<{ id: string; title: string; message: string; time: string; detailCode?: string; detailStatus?: string; fullDesc?: string; route?: string }>;
     badge: string;
     route: string;
   } | null>(null);
 
-  const SERVICE_NOTIFICATIONS: Record<string, Array<{ id: string; title: string; message: string; time: string }>> = {
+  const [selectedDetailNotif, setSelectedDetailNotif] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    time: string;
+    serviceName: string;
+    icon: string;
+    color: string;
+    route: string;
+    detailCode?: string;
+    detailStatus?: string;
+    fullDesc?: string;
+  } | null>(null);
+
+  const SERVICE_NOTIFICATIONS: Record<string, Array<{ id: string; title: string; message: string; time: string; detailCode?: string; detailStatus?: string; fullDesc?: string; route?: string }>> = {
     wallet: [
       {
         id: 'w1',
         title: 'Biến Động Số Dư (+50.000đ)',
         message: 'Tài khoản Ví V-Life vừa được cộng +50.000đ từ sự kiện liên kết ngân hàng thành công.',
         time: '10 phút trước',
+        detailCode: 'FT202608069482',
+        detailStatus: 'Cộng tiền thành công vào Ví V-Life',
+        fullDesc: 'Tài khoản Ví V-Life của bạn vừa nhận thành công khoản nạp +50.000đ quà tặng liên kết tài khoản ngân hàng Vietcombank. Số dư hiện tại đã được cộng tự động và có thể dùng để thanh toán tất cả dịch vụ.',
+        route: '/wallet'
       },
       {
         id: 'w2',
         title: 'Hoàn Tiền Giao Dịch (20%)',
         message: 'Hoàn tiền +12.000đ cho đơn hàng mua sắm thành công bằng Ví V-Life Cash.',
         time: '1 giờ trước',
+        detailCode: 'CB94827102',
+        detailStatus: 'Đã hoàn tiền vào Ví',
+        fullDesc: 'Bạn vừa được hoàn lại 20% (+12.000đ) tổng giá trị đơn hàng mua sắm #VK9482 khi thanh toán qua Ví V-Life Cash.',
+        route: '/wallet'
       },
       {
         id: 'w3',
         title: 'Cảnh Báo Bảo Mật',
         message: 'Tài khoản Ví V-Life của bạn vừa phát sinh giao dịch nạp tiền thành công.',
         time: '2 giờ trước',
+        detailCode: 'SEC882194',
+        detailStatus: 'Bảo mật an toàn',
+        fullDesc: 'Hệ thống ghi nhận giao dịch nạp tiền +500.000đ thực hiện từ thiết bị đã đăng ký. Nếu đây không phải là bạn, vui lòng liên hệ tổng đài V-Life ngay lập tức.',
+        route: '/wallet'
       },
     ],
     shopping: [
@@ -73,12 +99,20 @@ export default function HomeScreen() {
         title: 'Đơn Hàng Đang Giao (#VK9482)',
         message: 'Đơn hàng mua sắm #VK9482 đã được bàn giao cho đơn vị vận chuyển.',
         time: '25 phút trước',
+        detailCode: '#VK9482',
+        detailStatus: 'Đang vận chuyển (Viettel Post)',
+        fullDesc: 'Đơn hàng mua sắm #VK9482 (Bộ tai nghe Bluetooth V-Audio Studio) đã được kiểm định chất lượng và đang được nhân viên Viettel Post vận chuyển. Dự kiến giao đến bạn trước 17:00 chiều nay.',
+        route: '/shopping'
       },
       {
         id: 's2',
         title: 'Voucher Siêu Sale 50%',
         message: 'Bạn vừa nhận được Voucher giảm 50% cho ngành hàng điện tử.',
         time: '2 giờ trước',
+        detailCode: 'SUPER50OFF',
+        detailStatus: 'Khả dụng trong Kho Voucher',
+        fullDesc: 'Chúc mừng! Bạn vừa nhận được Voucher giảm 50% (tối đa 100.000đ) áp dụng cho toàn bộ các sản phẩm Thiết Bị Điện Tử & Phụ Kiện Công Nghệ trên sàn Mua Sắm V-Life. Hạn dùng đến 31/08/2026.',
+        route: '/shopping'
       },
     ],
     video: [
@@ -87,30 +121,20 @@ export default function HomeScreen() {
         title: 'Tương Tác Video Mới',
         message: 'Nguyễn Văn B và 4 người khác đã thích video mới nhất của bạn.',
         time: '15 phút trước',
+        detailCode: 'VID-84920',
+        detailStatus: 'Đã cập nhật số lượt thích',
+        fullDesc: 'Video Shorts "Trải nghiệm du lịch biển đảo 2026" của bạn đã đạt +5 lượt thích mới và 120 lượt xem trong 15 phút vừa qua.',
+        route: '/video'
       },
       {
         id: 'v2',
         title: 'Bình Luận Mới',
         message: 'Trần Thị C đã bình luận: "Video tuyệt vời quá anh ơi!"',
         time: '30 phút trước',
-      },
-      {
-        id: 'v3',
-        title: 'Video Đạt Top Xu Hướng',
-        message: 'Chúc mừng! Video của bạn đã đạt 10.000 lượt xem trong hôm nay.',
-        time: '1 giờ trước',
-      },
-      {
-        id: 'v4',
-        title: 'Theo Dõi Mới',
-        message: 'Lê Hoàng D đã bắt đầu theo dõi kênh của bạn.',
-        time: '3 giờ trước',
-      },
-      {
-        id: 'v5',
-        title: 'Thử Thách V-Shorts',
-        message: 'Tham gia thử thách làm video nhận quà tặng 500.000đ.',
-        time: '5 giờ trước',
+        detailCode: 'CMT-99214',
+        detailStatus: 'Bình luận mới',
+        fullDesc: 'Người dùng Trần Thị C vừa bình luận trên video Shorts của bạn: "Video tuyệt vời quá anh ơi! Cho em hỏi địa điểm này ở đâu thế ạ?"',
+        route: '/video'
       },
     ],
     social: [
@@ -119,18 +143,10 @@ export default function HomeScreen() {
         title: 'Tin Nhắn Mới Từ V-Club',
         message: 'Nhóm V-Club: "Tối nay 8h họp nhóm mọi người nhé!"',
         time: '5 phút trước',
-      },
-      {
-        id: 'sc2',
-        title: 'Lời Mời Kết Bạn',
-        message: 'Phạm Minh E đã gửi cho bạn một lời mời kết bạn.',
-        time: '1 giờ trước',
-      },
-      {
-        id: 'sc3',
-        title: 'Nhắc Đến Bạn',
-        message: 'Hoàng Anh F đã nhắc đến bạn trong một bài viết mới.',
-        time: '3 giờ trước',
+        detailCode: 'MSG-77218',
+        detailStatus: 'Tin nhắn chưa đọc',
+        fullDesc: 'Bạn có tin nhắn mới từ Trưởng nhóm V-Club: "Tối nay 8h họp nhóm trao đổi kế hoạch tuần mới mọi người nhé!"',
+        route: '/social'
       },
     ],
     transport: [
@@ -139,6 +155,10 @@ export default function HomeScreen() {
         title: 'Tài Xế Đang Đến',
         message: 'Tài xế Nguyễn Văn A đang di chuyển đến điểm đón (dự kiến 3 phút).',
         time: '3 phút trước',
+        detailCode: 'TR849201',
+        detailStatus: 'Tài xế đang di chuyển (3 phút)',
+        fullDesc: 'Tài xế Nguyễn Văn A (Biển số xe 29A-888.88, Xe Honda SH) đang trên đường di chuyển tới điểm đón bạn tại 102 Nguyễn Trãi. Vui lòng chuẩn bị sẵn sàng.',
+        route: '/transport'
       },
     ],
     food: [
@@ -147,12 +167,10 @@ export default function HomeScreen() {
         title: 'Quán Nhận Đơn (#FD8821)',
         message: 'Quán Bún Chả Hà Nội đã nhận đơn và đang chuẩn bị món ăn.',
         time: '10 phút trước',
-      },
-      {
-        id: 'f2',
-        title: 'Voucher Đồ Ăn 0Đ',
-        message: 'Mã Freeship 0đ cho đơn hàng ăn uống tối nay đã có trong ví voucher.',
-        time: '1 giờ trước',
+        detailCode: '#FD8821',
+        detailStatus: 'Đang chuẩn bị món ăn',
+        fullDesc: 'Nhà hàng Bún Chả Hà Nội Phố đã xác nhận đơn hàng #FD8821 và đang nấu nướng. Tài xế V-Food sẽ ghé lấy món trong 5 phút nữa.',
+        route: '/food'
       },
     ],
   };
@@ -253,7 +271,6 @@ export default function HomeScreen() {
         { id: 'education', title: 'Giáo Dục', icon: 'school', color: '#10B981', gradient: ['#34D399', '#10B981', '#047857'], route: '/education' },
         { id: 'savings', title: 'Gửi Tiết Kiệm', icon: 'trending-up', color: '#F59E0B', gradient: ['#FBBF24', '#D97706', '#92400E'], route: '/savings' },
         { id: 'appearance', title: 'Giao Diện', icon: 'color-palette', color: '#0EA5E9', gradient: ['#38BDF8', '#3B82F6', '#1D4ED8'], route: '/appearance' },
-        { id: 'settings', title: 'Cấu Hình', icon: 'settings', color: '#64748B', gradient: ['#94A3B8', '#64748B', '#334155'], route: '/settings' },
       ]
     }
   ];
@@ -345,14 +362,14 @@ export default function HomeScreen() {
                 <View style={[styles.onlineDot, { backgroundColor: '#10B981' }]} />
               </TouchableOpacity>
 
-              {/* Settings Shortcut Button */}
+              {/* Giao Diện Shortcut Button */}
               <TouchableOpacity 
                 style={styles.iconButton} 
-                onPress={() => router.push('/settings')} 
+                onPress={() => router.push('/appearance')} 
                 activeOpacity={0.7}
               >
                 <View style={styles.iconBoxLight}>
-                  <Ionicons name="options-outline" size={20} color="#0F172A" />
+                  <Ionicons name="color-palette-outline" size={20} color="#0F172A" />
                 </View>
               </TouchableOpacity>
 
@@ -473,7 +490,7 @@ export default function HomeScreen() {
                           </TouchableOpacity>
                         )}
                       </View>
-                      <Text style={[styles.gridTitleLight, { fontFamily: theme.fontFamily }]} numberOfLines={1}>{item.title}</Text>
+                      <Text style={[styles.gridTitleLight, { fontFamily: theme.fontFamily, fontSize: scaleFont(11) }]} numberOfLines={1}>{item.title}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -490,7 +507,7 @@ export default function HomeScreen() {
 
               return (
                 <Animated.View key={group.id} entering={FadeInDown.delay(400 + groupIdx * 100).duration(700)} style={styles.groupContainer}>
-                  <Text style={[styles.groupTitleLight, { fontFamily: theme.fontFamily }]}>{group.title}</Text>
+                  <Text style={[styles.groupTitleLight, { fontFamily: theme.fontFamily, fontSize: scaleFont(14) }]}>{group.title}</Text>
                   <View style={styles.utilityGridContainer}>
                     {filteredItems.map((item) => (
                       <TouchableOpacity 
@@ -523,7 +540,7 @@ export default function HomeScreen() {
                               </TouchableOpacity>
                             )}
                           </View>
-                          <Text style={[styles.utilityItemTitleLight, { fontFamily: theme.fontFamily }]}>{item.title}</Text>
+                          <Text style={[styles.utilityItemTitleLight, { fontFamily: theme.fontFamily, fontSize: scaleFont(12) }]}>{item.title}</Text>
                         </View>
                       </TouchableOpacity>
                     ))}
@@ -621,14 +638,30 @@ export default function HomeScreen() {
                     {/* Scrollable Notification List */}
                     <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
                       {selectedServiceNotif.items.map((n, idx) => (
-                        <View key={n.id || idx} style={styles.serviceNotifListItem}>
+                        <TouchableOpacity 
+                          key={n.id || idx} 
+                          style={styles.serviceNotifListItem}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            const baseRoute = (n as any).route || selectedServiceNotif.route;
+                            const notifTitleParam = encodeURIComponent(n.title);
+                            setSelectedServiceNotif(null);
+                            if (baseRoute) {
+                              const finalRoute = baseRoute.includes('?') 
+                                ? `${baseRoute}&notifTitle=${notifTitleParam}` 
+                                : `${baseRoute}?notifTitle=${notifTitleParam}`;
+                              router.push(finalRoute as any);
+                            }
+                          }}
+                        >
                           <View style={[styles.notifItemDot, { backgroundColor: selectedServiceNotif.color }]} />
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.serviceNotifItemTitle}>{n.title}</Text>
-                            <Text style={styles.serviceNotifItemMessage}>{n.message}</Text>
-                            <Text style={styles.serviceNotifItemTime}>🕒 {n.time}</Text>
+                            <Text style={[styles.serviceNotifItemTitle, { fontSize: scaleFont(13) }]}>{n.title}</Text>
+                            <Text style={[styles.serviceNotifItemMessage, { fontSize: scaleFont(11) }]}>{n.message}</Text>
+                            <Text style={[styles.serviceNotifItemTime, { fontSize: scaleFont(10) }]}>🕒 {n.time}</Text>
                           </View>
-                        </View>
+                          <Ionicons name="chevron-forward" size={16} color="#94A3B8" style={{ alignSelf: 'center' }} />
+                        </TouchableOpacity>
                       ))}
                     </ScrollView>
 

@@ -10,15 +10,18 @@ import { useShopping } from '../../context/ShoppingContext';
 import { useUser } from '../../context/UserContext';
 
 const T = {
-  black: '#222222',
+  black: '#111827',
   white: '#FFFFFF',
-  bg: '#F5F5F5',
-  sub: '#888888',
-  border: '#E8E8E8',
-  orange: '#0066F5',   // Premium Sapphire Blue primary
-  orangeLight: '#EBF3FF', // Soft Sapphire Blue background tint
-  red: '#FF2A54',      // Rose Red price tag accent
-  gold: '#F5A623',
+  bg: '#F3F4F6',
+  sub: '#6B7280',
+  border: '#E5E7EB',
+  green: '#00B14F',      // Vibrant Green primary (Shopee Green / Grab Green)
+  greenDark: '#00883C',  // Darker green for top status bar
+  greenLight: '#E6F4EA', // Soft green background tint
+  red: '#EE4D2D',        // Discount badge red
+  gold: '#F59E0B',
+  orange: '#00B14F',     // Map legacy orange references to vibrant Green
+  orangeLight: '#E6F4EA',
 };
 
 export const MOCK_PRODUCTS = [
@@ -228,7 +231,8 @@ export default function PremiumHome() {
   const { accentHex, accentRgb } = useUser();
   const scrollY = useSharedValue(0);
   const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width > 768;
+  const isMobileUA = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isDesktop = Platform.OS === 'web' && width > 768 && !isMobileUA;
 
   // States
   const [searchQuery, setSearchQuery] = useState('');
@@ -380,204 +384,233 @@ export default function PremiumHome() {
 
   return (
     <View style={S.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" backgroundColor="#00883C" translucent={false} />
       
-      {/* Floating Header */}
-      <Animated.View style={[S.header, headerStyle]}>
-        <SafeAreaView>
-          <View style={S.headerContent}>
-            <TouchableOpacity onPress={() => router.replace('/utilities')} style={{ paddingRight: 8 }}>
+      {/* 🟢 GREEN TOP HEADER (Shopee Green Theme) */}
+      <View style={S.headerGreen}>
+        <SafeAreaView style={{ backgroundColor: '#00B14F' }}>
+          <View style={S.headerGreenRow}>
+            {/* Back to main app */}
+            <TouchableOpacity onPress={() => router.replace('/utilities')} style={{ paddingRight: 6 }}>
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
             
-            <TouchableOpacity style={S.headerSearchBox} onPress={() => setShowSearchOverlay(true)}>
-              <Ionicons name="search-outline" size={16} color={T.orange} style={{ marginRight: 6 }} />
-              <Text style={S.headerSearchText} numberOfLines={1}>Săn Deal 7.7 Siêu Cấp Hấp Dẫn...</Text>
-              <Ionicons name="camera-outline" size={18} color="#888" style={{ marginLeft: 'auto' }} />
+            {/* Search Input Box */}
+            <TouchableOpacity style={S.greenSearchBox} onPress={() => setShowSearchOverlay(true)} activeOpacity={0.9}>
+              <Ionicons name="search-outline" size={18} color="#00B14F" style={{ marginRight: 6 }} />
+              <Text style={S.greenSearchTxt} numberOfLines={1}>{searchQuery || 'USB To 3.5'}</Text>
+              <Ionicons name="camera-outline" size={18} color="#64748B" />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push('/shopping/cart')} style={{ paddingLeft: 8, position: 'relative' }}>
-              <Ionicons name="cart-outline" size={24} color="#FFF" />
-              {cartItemCount > 0 && (
-                <View style={S.cartBadge}><Text style={S.cartBadgeTxt}>{cartItemCount}</Text></View>
-              )}
-            </TouchableOpacity>
+            {/* Right Icons: Cart (99+) & Chat (33) */}
+            <View style={S.headerIconsRight}>
+              <TouchableOpacity onPress={() => router.push('/shopping/cart')} style={S.headerIconBadgeWrap}>
+                <Ionicons name="cart-outline" size={24} color="#FFF" />
+                <View style={S.topBadge}><Text style={S.topBadgeTxt}>99+</Text></View>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => Alert.alert('Tin nhắn', 'Mở danh sách trò chuyện')} style={S.headerIconBadgeWrap}>
+                <Ionicons name="chatbubble-ellipses-outline" size={23} color="#FFF" />
+                <View style={S.topBadge}><Text style={S.topBadgeTxt}>33</Text></View>
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
-      </Animated.View>
+      </View>
 
-      <Animated.ScrollView
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: Platform.OS === 'ios' ? 100 : 90 }}
+        contentContainerStyle={{ paddingBottom: 110 }}
       >
+        {/* 💳 FLOATING TOP WIDGET STRIP (Overlapping Card: ShopeePay, Điểm danh, SPayLater, Xu) */}
+        <View style={S.widgetStripCard}>
+          <TouchableOpacity style={S.widgetStripItem} onPress={() => Alert.alert('ShopeePay', 'Mở ví ShopeePay')}>
+            <View style={[S.widgetIconBox, { backgroundColor: '#DCFCE7' }]}>
+              <Ionicons name="card" size={16} color="#00B14F" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={S.widgetTitle} numberOfLines={1}>ShopeePay</Text>
+              <Text style={S.widgetSub} numberOfLines={1}>Giảm đến 40.000Đ mua sắm mỗi ng...</Text>
+            </View>
+          </TouchableOpacity>
 
-        {/* 🔍 SEARCH UTILITY BAR (Giai đoạn 3) */}
-        <View style={S.searchBarContainer}>
-          <TouchableOpacity style={S.searchBar} onPress={() => setShowSearchOverlay(true)}>
-            <Ionicons name="search-outline" size={20} color={T.sub} style={{ marginRight: 8 }} />
-            <Text style={S.searchPlaceholder}>Tìm sản phẩm, thương hiệu...</Text>
+          <View style={S.widgetDivider} />
+
+          <TouchableOpacity style={S.widgetStripItem} onPress={() => Alert.alert('Điểm danh', 'Đã nhận +500 Xu thưởng!')}>
+            <View style={[S.widgetIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="gift" size={16} color="#D97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={S.widgetTitle} numberOfLines={1}>Điểm danh</Text>
+              <Text style={S.widgetSub} numberOfLines={1}>Để nhận Xu!</Text>
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity style={S.searchIconBtn} onPress={() => setShowVoiceSearch(true)}>
-            <Ionicons name="mic-outline" size={20} color={T.black} />
+
+          <View style={S.widgetDivider} />
+
+          <TouchableOpacity style={S.widgetStripItem} onPress={() => Alert.alert('SPayLater', 'Đã mở ví SPayLater')}>
+            <View style={[S.widgetIconBox, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="flash" size={16} color="#EF4444" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={S.widgetTitle} numberOfLines={1}>SPayLater</Text>
+              <Text style={S.widgetSub} numberOfLines={1}>Kích hoạt nhận voucher 150.000Đ</Text>
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity style={S.searchIconBtn} onPress={() => setShowImageSearch(true)}>
-            <Ionicons name="camera-outline" size={20} color={T.black} />
-          </TouchableOpacity>
-          <TouchableOpacity style={S.searchIconBtn} onPress={() => setShowQRScanner(true)}>
-            <Ionicons name="qr-code-outline" size={20} color={T.black} />
+
+          <View style={S.widgetDivider} />
+
+          <TouchableOpacity style={S.widgetCoinBtn} onPress={() => Alert.alert('Thưởng Xu', 'Tích xu thưởng mua sắm')}>
+            <View style={S.coinCircle}>
+              <Text style={{ fontSize: 12, fontWeight: '900', color: '#D97706' }}>S</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
-        {/* 🎨 PROMOTIONAL BANNER CAROUSEL */}
-        <View style={S.carouselContainer}>
-          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={S.carouselScroll}>
+        {/* 🛍️ CATEGORY ICON GRID (Horizontal Scrollable Grid with Pill Indicator) */}
+        <View style={S.catGridSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 15, gap: 12 }}>
             {[
-              { id: 'b1', title: 'SIÊU SALE THƯƠNG HIỆU', desc: 'Giảm đến 50% - Miễn phí vận chuyển', img: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600' },
-              { id: 'b2', title: 'XU HƯỚNG CÔNG NGHỆ', desc: 'Săn deal iPhone 15 Pro Max cực sốc', img: 'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=600' },
-              { id: 'b3', title: 'NGÀY HỘI LÀM ĐẸP', desc: 'Mỹ phẩm chính hãng hoàn xu 15%', img: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600' }
-            ].map(b => (
-              <View key={b.id} style={{ width: width - 40, height: 130, borderRadius: 12, overflow: 'hidden', backgroundColor: T.white }}>
-                <Image source={{ uri: b.img }} style={StyleSheet.absoluteFillObject} />
-                <View style={S.carouselOverlay}>
-                  <Text style={S.carouselTitle}>{b.title}</Text>
-                  <Text style={S.carouselDesc}>{b.desc}</Text>
+              { id: 'app1', name: 'ShopeeFood\nFlash Sale 50%', icon: '🍔', bg: '#FEE2E2' },
+              { id: 'app2', name: 'Shopee Mart', icon: '🛒', bg: '#E0F2FE' },
+              { id: 'app3', name: 'ShopeeVIP', icon: '👑', bg: '#FEF3C7' },
+              { id: 'app4', name: 'Deal Từ 1.000Đ', icon: '🏷️', bg: '#DCFCE7' },
+              { id: 'app5', name: 'Shopee Siêu Rẻ', icon: '⚡', bg: '#F3E8FF' },
+              { id: 'app6', name: 'Mã Giảm Giá', icon: '🎟️', bg: '#FFEDD5' },
+              { id: 'app7', name: 'Nạp Thẻ & Dịch Vụ', icon: '📱', bg: '#E0E7FF' },
+              { id: 'app8', name: 'Hàng Bán Chạy', icon: '🔥', bg: '#FEE2E2' },
+            ].map(app => (
+              <TouchableOpacity key={app.id} style={S.catAppItem} onPress={() => setShowCategoryBrowser(true)}>
+                <View style={[S.catAppIconWrap, { backgroundColor: app.bg }]}>
+                  <Text style={{ fontSize: 22 }}>{app.icon}</Text>
                 </View>
-              </View>
-            ))}
-          </ScrollView>
-          <View style={S.carouselIndicatorRow}>
-            <View style={[S.carouselDot, S.carouselDotActive]} />
-            <View style={S.carouselDot} />
-            <View style={S.carouselDot} />
-          </View>
-        </View>
-
-        {/* 👗 CATEGORIES (Giai đoạn 2) */}
-        <View style={S.section}>
-          <Text style={S.sectionTitle}>DANH MỤC NỔI BẬT</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
-            {[
-              { id: 'c1', name: 'Thời trang', icon: '👗', bg: '#EEF2FF' },
-              { id: 'c2', name: 'Điện thoại', icon: '📱', bg: '#E0F2FE' },
-              { id: 'c3', name: 'Laptop', icon: '💻', bg: '#F5F5F4' },
-              { id: 'c4', name: 'Làm đẹp', icon: '💄', bg: '#FDF2F8' },
-              { id: 'c5', name: 'Gia dụng', icon: '🏠', bg: '#FEF3C7' },
-              { id: 'c6', name: 'Thể thao', icon: '⚽', bg: '#ECFDF5' },
-            ].map(cat => (
-              <TouchableOpacity
-                key={cat.id}
-                style={S.categoryCard}
-                onPress={() => {
-                  setSelectedCatId(cat.id);
-                  setSelectedSubcatIndex(0);
-                  setShowCategoryBrowser(true);
-                }}
-              >
-                <View style={[S.categoryIconWrap, { backgroundColor: cat.bg }]}><Text style={{ fontSize: 24 }}>{cat.icon}</Text></View>
-                <Text style={S.categoryName}>{cat.name}</Text>
+                <Text style={S.catAppText}>{app.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
+          {/* Scroll progress bar indicator */}
+          <View style={S.catIndicatorTrack}>
+            <View style={S.catIndicatorPill} />
+          </View>
         </View>
 
-        {/* 🔥 FLASH SALE (Giai đoạn 2) */}
-        <View style={S.section}>
-          <View style={S.sectionHeaderRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={S.sectionTitle}>FLASH SALE</Text>
-              <Text style={{ fontSize: 16 }}>⚡</Text>
-              <View style={[S.countdownBox, { backgroundColor: T.black }]}>
-                <Text style={S.countdownText}>{formatTime(flashSaleSecs)}</Text>
+        {/* 🎥 LIVE & VIDEO DUAL CARDS SECTION (Side-by-side) */}
+        <View style={S.liveVideoSection}>
+          {/* SHOPEE LIVE */}
+          <View style={S.mediaCol}>
+            <TouchableOpacity style={S.mediaHeaderRow} onPress={() => router.push('/shopping/live')}>
+              <Text style={S.mediaSecTitle}>SHOPEE LIVE</Text>
+              <Ionicons name="chevron-forward" size={14} color="#00B14F" />
+            </TouchableOpacity>
+            <View style={S.mediaThumbRow}>
+              <TouchableOpacity style={S.mediaThumbCard} onPress={() => router.push('/shopping/live')}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?w=300' }} style={S.mediaThumbImg} />
+                <View style={S.liveBadgeSmall}>
+                  <View style={S.redDotPulse} />
+                  <Text style={S.liveBadgeTxtSmall}>LIVE</Text>
+                </View>
+                <Text style={S.mediaThumbTxt} numberOfLines={1}>salevbvbnbbbnv vjv</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={S.mediaThumbCard} onPress={() => router.push('/shopping/live')}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300' }} style={S.mediaThumbImg} />
+                <View style={S.liveBadgeSmall}>
+                  <View style={S.redDotPulse} />
+                  <Text style={S.liveBadgeTxtSmall}>LIVE</Text>
+                </View>
+                <Text style={S.mediaThumbTxt} numberOfLines={1}>Sale quần áo cầu lông</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* SHOPEE VIDEO */}
+          <View style={S.mediaCol}>
+            <TouchableOpacity style={S.mediaHeaderRow} onPress={() => router.push('/shopping/shorts')}>
+              <Text style={S.mediaSecTitle}>SHOPEE VIDEO</Text>
+              <Ionicons name="chevron-forward" size={14} color="#00B14F" />
+            </TouchableOpacity>
+            <View style={S.mediaThumbRow}>
+              <TouchableOpacity style={S.mediaThumbCard} onPress={() => router.push('/shopping/shorts')}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300' }} style={S.mediaThumbImg} />
+                <View style={S.videoViewsBadge}>
+                  <Ionicons name="play" size={8} color="#FFF" style={{ marginRight: 2 }} />
+                  <Text style={S.videoViewsTxt}>140,7k</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={S.mediaThumbCard} onPress={() => router.push('/shopping/shorts')}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300' }} style={S.mediaThumbImg} />
+                <View style={S.videoViewsBadge}>
+                  <Ionicons name="play" size={8} color="#FFF" style={{ marginRight: 2 }} />
+                  <Text style={S.videoViewsTxt}>38k</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* 🎁 BIG PROMO BANNER & FEATURED PRODUCT FEED (Shopee Grid Layout) */}
+        <View style={S.mainFeedRow}>
+          {/* Big Vertical Promo Card */}
+          <TouchableOpacity style={S.bigPromoCard} onPress={() => Alert.alert('Độc Quyền', 'Tặng bạn đơn 0Đ khi mua hàng hôm nay!')}>
+            <Image source={{ uri: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=500' }} style={StyleSheet.absoluteFillObject} />
+            <View style={S.bigPromoOverlay}>
+              <View style={S.bigPromoTag}>
+                <Text style={S.bigPromoTagTxt}>ĐỘC QUYỀN TRỞ LẠI</Text>
+              </View>
+              <Text style={S.bigPromoTitle}>SHOPEE TẶNG{'\n'}RIÊNG BẠN ĐƠN</Text>
+              <Text style={S.bigPromoPrice0}>0Đ</Text>
+              <View style={S.carouselDotsRow}>
+                <View style={[S.cDot, S.cDotActive]} />
+                <View style={S.cDot} />
+                <View style={S.cDot} />
+                <View style={S.cDot} />
               </View>
             </View>
-            <TouchableOpacity><Text style={{ fontSize: 13, color: T.sub }}>Xem tất cả</Text></TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
-            {MOCK_PRODUCTS.slice(0, 4).map(p => (
-              <TouchableOpacity key={`fs-${p.id}`} style={S.flashCard} onPress={() => router.push(`/shopping/product?id=${p.id}`)}>
-                <Image source={{ uri: p.image }} style={S.flashImg} />
-                <View style={S.flashSaleTag}><Text style={S.flashSaleTagTxt}>-40%</Text></View>
-                <View style={S.flashInfo}>
-                  <Text style={S.flashPrice}>{formatMoney(Math.floor(p.price * 0.6))}</Text>
-                  <Text style={S.flashOrigPrice}>{formatMoney(p.price)}</Text>
-                  
-                  {/* Progress Bar */}
-                  <View style={S.progressBar}>
-                    <View style={[S.progressFill, { width: '70%', backgroundColor: '#EF4444' }]} />
-                    <Text style={S.progressText}>ĐÃ BÁN 7/10</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+          </TouchableOpacity>
 
-        {/* 🎟️ VOUCHER CENTER (Giai đoạn 2) */}
-        <View style={S.section}>
-          <Text style={S.sectionTitle}>MÃ GIẢM GIÁ ĐẶC BIỆT</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
-            {[
-              { code: 'FREESHIP100', desc: 'Miễn phí ship toàn quốc', value: '30k' },
-              { code: 'GIAM50K', desc: 'Giảm 50k đơn từ 500k', value: '50k' },
-              { code: 'XU20K', desc: 'Hoàn xu 20k cho đơn từ 200k', value: '20k xu' },
-            ].map(v => {
-              const isClaimed = claimedVouchers.includes(v.code);
-              return (
-                <View key={v.code} style={S.voucherCard}>
-                  <View style={S.voucherLeft}>
-                    <Text style={S.voucherVal}>{v.value}</Text>
-                    <Text style={S.voucherLabelText}>Voucher</Text>
-                  </View>
-                  <View style={S.voucherRight}>
-                    <Text style={S.voucherCode} numberOfLines={1}>{v.code}</Text>
-                    <Text style={S.voucherDesc} numberOfLines={1}>{v.desc}</Text>
-                    <TouchableOpacity 
-                      style={[S.voucherBtn, isClaimed && { backgroundColor: T.border }]} 
-                      disabled={isClaimed}
-                      onPress={() => handleClaimVoucher(v.code)}
-                    >
-                      <Text style={[S.voucherBtnTxt, isClaimed && { color: T.sub }]}>{isClaimed ? 'Đã lưu' : 'Lưu mã'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* 🎥 INTERACTIVE MEDIA: LIVE & SHORTS (Giai đoạn 7) */}
-        <View style={S.section}>
-          <Text style={S.sectionTitle}>MUA SẮM GIẢI TRÍ</Text>
-          <View style={S.mediaRow}>
-            {/* Live Card */}
-            <TouchableOpacity style={S.mediaCard} onPress={() => router.push('/shopping/live')}>
-              <Image source={{ uri: 'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?w=400' }} style={S.mediaImg} />
-              <View style={S.liveBadge}>
-                <View style={S.liveDot} />
-                <Text style={S.liveBadgeTxt}>TRỰC TIẾP</Text>
+          {/* Featured Product Card */}
+          <TouchableOpacity style={S.featuredProductCard} onPress={() => router.push('/shopping/product?id=p11')} activeOpacity={0.9}>
+            <View style={S.featuredImgWrap}>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400' }} style={S.featuredImg} />
+              <View style={S.discountCornerBadge}>
+                <Text style={S.discountCornerTxt}>-19%</Text>
               </View>
-              <Text style={S.mediaTitle}>Xem Livestream Bán Hàng</Text>
-            </TouchableOpacity>
-
-            {/* Shorts Card */}
-            <TouchableOpacity style={S.mediaCard} onPress={() => router.push('/shopping/shorts')}>
-              <Image source={{ uri: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400' }} style={S.mediaImg} />
-              <View style={[S.liveBadge, { backgroundColor: '#3B82F6' }]}>
-                <Ionicons name="play" size={10} color="#FFF" style={{ marginRight: 4 }} />
-                <Text style={S.liveBadgeTxt}>REELS</Text>
+              <View style={S.xtraBadgeOverlay}>
+                <Text style={S.xtraBadgeTxt}>8.8 VOUCHER XTRA</Text>
               </View>
-              <Text style={S.mediaTitle}>Short Video Review</Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+
+            <View style={S.featuredDetails}>
+              <View style={S.favBadgeRow}>
+                <View style={S.favBadge}><Text style={S.favBadgeTxt}>Yêu thích</Text></View>
+                <Text style={S.featuredProdTitle} numberOfLines={1}>Điện thoại Galaxy S23 Ultra</Text>
+              </View>
+
+              <View style={S.ratingRow}>
+                <Ionicons name="star" size={10} color="#F59E0B" />
+                <Text style={S.ratingTxt}>4.9</Text>
+              </View>
+
+              <View style={S.priceRowShopee}>
+                <Text style={S.shopeePrice}>15.690.000đ</Text>
+                <Text style={S.soldTxt}>...bán 451</Text>
+              </View>
+
+              <View style={S.shipMetaRow}>
+                <Ionicons name="car-outline" size={11} color="#00B14F" />
+                <Text style={S.shipMetaTxt}>&lt; 2 Ngày</Text>
+                <Text style={S.locationMetaTxt}>| Thành phố Hà Nội</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* 🏢 SELLER & ADMIN BANNERS (Giai đoạn 8 & 9) */}
-        <View style={{ paddingHorizontal: 20, gap: 12, marginTop: 30 }}>
-          <TouchableOpacity style={[S.mgmtBanner, { backgroundColor: `rgba(${accentRgb}, 0.08)`, borderColor: accentHex }]} onPress={() => router.push('/shopping/seller')}>
-            <Ionicons name="business" size={24} color={accentHex} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
+        {/* 🏢 SELLER & ADMIN BANNERS */}
+        <View style={{ paddingHorizontal: 15, gap: 10, marginTop: 15 }}>
+          <TouchableOpacity style={[S.mgmtBanner, { backgroundColor: '#DCFCE7', borderColor: '#00B14F' }]} onPress={() => router.push('/shopping/seller')}>
+            <Ionicons name="business" size={22} color="#00B14F" />
+            <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={[S.mgmtBannerTitle, { color: '#0F172A' }]}>Kênh Người Bán (Seller Center)</Text>
               <Text style={S.mgmtBannerDesc}>Quản lý sản phẩm, đơn hàng và xem doanh số</Text>
             </View>
@@ -689,7 +722,7 @@ export default function PremiumHome() {
         </View>
         
         <View style={{ height: 100 }} />
-      </Animated.ScrollView>
+      </ScrollView>
 
       {/* 🔍 SEARCH OVERLAY (Giai đoạn 3 & Bản cập nhật mới) */}
       {showSearchOverlay && (
@@ -1182,12 +1215,70 @@ export default function PremiumHome() {
           </View>
         </View>
       </Modal>
+
+      {/* 🧭 SHOPEE GREEN BOTTOM TAB NAVIGATION */}
+      <View style={S.bottomTabBar}>
+        <TouchableOpacity style={S.tabBarItem} onPress={() => router.push('/shopping')}>
+          <Ionicons name="home" size={22} color="#00B14F" />
+          <Text style={[S.tabBarLabel, { color: '#00B14F', fontWeight: '700' }]}>Home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={S.tabBarItem} onPress={() => router.push('/shopping/brand?name=Apple%20(iPhone)')}>
+          <Ionicons name="bag-handle-outline" size={22} color="#64748B" />
+          <Text style={S.tabBarLabel}>Mall</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={S.tabBarItem} onPress={() => router.push('/shopping/live')}>
+          <Ionicons name="tv-outline" size={22} color="#64748B" />
+          <Text style={S.tabBarLabel}>Live & Video</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={S.tabBarItem} onPress={() => router.push('/notifications')}>
+          <View style={{ position: 'relative' }}>
+            <Ionicons name="notifications-outline" size={22} color="#64748B" />
+            <View style={S.tabBadge}><Text style={S.tabBadgeTxt}>9</Text></View>
+          </View>
+          <Text style={S.tabBarLabel}>Thông báo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={S.tabBarItem} onPress={() => router.push('/account')}>
+          <Ionicons name="person-outline" size={22} color="#64748B" />
+          <Text style={S.tabBarLabel}>Tôi</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.bg },
+  webWrapper: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  mobileFullWrapper: {
+    alignItems: 'stretch',
+    justifyContent: 'stretch',
+  },
+  desktopFrame: {
+    width: 414,
+    maxWidth: 414,
+    maxHeight: 896,
+    height: '100%',
+    borderWidth: 10,
+    borderColor: '#0F172A',
+    borderRadius: 45,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+    ...(Platform.OS === 'web' && { marginVertical: 20 }),
+  },
+  root: { flex: 1, backgroundColor: T.bg, position: 'relative' },
   header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100 },
   headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingTop: Platform.OS === 'ios' ? 10 : 35, paddingBottom: 12 },
   headerSearchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 6, paddingHorizontal: 12, height: 38, marginHorizontal: 8 },
@@ -1195,6 +1286,90 @@ const S = StyleSheet.create({
   brandTitle: { fontSize: 16, fontWeight: '900', letterSpacing: 1 },
   
   cartBadge: { position: 'absolute', top: -5, right: -8, backgroundColor: T.black, borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: T.white },
+
+  // Green Header Styles
+  headerGreen: { backgroundColor: '#00B14F' },
+  headerGreenRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
+  greenSearchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 4, paddingHorizontal: 10, height: 36, marginHorizontal: 8 },
+  greenSearchTxt: { flex: 1, fontSize: 13, color: '#334155' },
+  headerIconsRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerIconBadgeWrap: { position: 'relative', padding: 2 },
+  topBadge: { position: 'absolute', top: -4, right: -8, backgroundColor: '#EF4444', borderRadius: 10, paddingHorizontal: 4, height: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' },
+  topBadgeTxt: { color: '#FFF', fontSize: 9, fontWeight: '800' },
+
+  // Floating Widget Strip Styles
+  widgetStripCard: { flexDirection: 'row', backgroundColor: '#FFF', marginHorizontal: 10, marginTop: -4, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 8, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, alignItems: 'center' },
+  widgetStripItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4 },
+  widgetIconBox: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  widgetTitle: { fontSize: 11, fontWeight: '800', color: '#1E293B' },
+  widgetSub: { fontSize: 8, color: '#64748B', marginTop: 1 },
+  widgetDivider: { width: 1, height: 24, backgroundColor: '#E2E8F0', marginHorizontal: 2 },
+  widgetCoinBtn: { paddingLeft: 4 },
+  coinCircle: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FEF3C7', borderWidth: 1.5, borderColor: '#F59E0B', justifyContent: 'center', alignItems: 'center' },
+
+  // Category App Grid Styles
+  catGridSection: { backgroundColor: '#FFF', marginTop: 10, paddingTop: 12, paddingBottom: 8 },
+  catAppItem: { width: 72, alignItems: 'center' },
+  catAppIconWrap: { width: 44, height: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  catAppText: { fontSize: 10, color: '#1E293B', textAlign: 'center', lineHeight: 12, fontWeight: '500' },
+  catIndicatorTrack: { width: 30, height: 3, backgroundColor: '#E2E8F0', borderRadius: 1.5, alignSelf: 'center', marginTop: 10, overflow: 'hidden' },
+  catIndicatorPill: { width: 12, height: '100%', backgroundColor: '#00B14F', borderRadius: 1.5 },
+
+  // Live & Video Dual Section Styles
+  liveVideoSection: { flexDirection: 'row', paddingHorizontal: 10, marginTop: 10, gap: 10 },
+  mediaCol: { flex: 1, backgroundColor: '#FFF', borderRadius: 8, padding: 8 },
+  mediaHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  mediaSecTitle: { fontSize: 12, fontWeight: '900', color: '#EE4D2D', letterSpacing: 0.5 },
+  mediaThumbRow: { flexDirection: 'row', gap: 6 },
+  mediaThumbCard: { flex: 1, height: 100, borderRadius: 6, overflow: 'hidden', position: 'relative' },
+  mediaThumbImg: { width: '100%', height: '100%' },
+  liveBadgeSmall: { position: 'absolute', top: 4, left: 4, backgroundColor: '#EF4444', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, flexDirection: 'row', alignItems: 'center' },
+  redDotPulse: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#FFF', marginRight: 3 },
+  liveBadgeTxtSmall: { color: '#FFF', fontSize: 7, fontWeight: '900' },
+  mediaThumbTxt: { position: 'absolute', bottom: 4, left: 4, right: 4, color: '#FFF', fontSize: 9, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
+  videoViewsBadge: { position: 'absolute', top: 4, left: 4, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, flexDirection: 'row', alignItems: 'center' },
+  videoViewsTxt: { color: '#FFF', fontSize: 8, fontWeight: '700' },
+
+  // Big Promo & Featured Product Grid Styles
+  mainFeedRow: { flexDirection: 'row', paddingHorizontal: 10, marginTop: 10, gap: 10 },
+  bigPromoCard: { width: '45%', height: 210, borderRadius: 8, overflow: 'hidden', position: 'relative' },
+  bigPromoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(238,77,45,0.75)', padding: 10, justifyContent: 'space-between' },
+  bigPromoTag: { backgroundColor: '#FFF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3, alignSelf: 'flex-start' },
+  bigPromoTagTxt: { color: '#EE4D2D', fontSize: 8, fontWeight: '900' },
+  bigPromoTitle: { color: '#FFF', fontSize: 13, fontWeight: '900', lineHeight: 16 },
+  bigPromoPrice0: { color: '#FFDA24', fontSize: 32, fontWeight: '900' },
+  carouselDotsRow: { flexDirection: 'row', gap: 4, alignSelf: 'center' },
+  cDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.5)' },
+  cDotActive: { backgroundColor: '#FFF', width: 10 },
+
+  featuredProductCard: { flex: 1, backgroundColor: '#FFF', borderRadius: 8, overflow: 'hidden' },
+  featuredImgWrap: { position: 'relative', width: '100%', height: 130 },
+  featuredImg: { width: '100%', height: '100%', resizeMode: 'cover' },
+  discountCornerBadge: { position: 'absolute', top: 0, right: 0, backgroundColor: '#FEE2E2', paddingHorizontal: 4, paddingVertical: 2 },
+  discountCornerTxt: { color: '#EF4444', fontSize: 10, fontWeight: '800' },
+  xtraBadgeOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#00B14F', paddingVertical: 2, alignItems: 'center' },
+  xtraBadgeTxt: { color: '#FFF', fontSize: 8, fontWeight: '900' },
+
+  featuredDetails: { padding: 8 },
+  favBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  favBadge: { backgroundColor: '#EE4D2D', borderRadius: 2, paddingHorizontal: 3, paddingVertical: 1 },
+  favBadgeTxt: { color: '#FFF', fontSize: 7, fontWeight: '900' },
+  featuredProdTitle: { fontSize: 11, color: '#1E293B', fontWeight: '500', flex: 1 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  ratingTxt: { fontSize: 9, color: '#1E293B', fontWeight: '700', marginLeft: 2 },
+  priceRowShopee: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 },
+  shopeePrice: { fontSize: 13, color: '#EE4D2D', fontWeight: '800' },
+  soldTxt: { fontSize: 8, color: '#64748B' },
+  shipMetaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  shipMetaTxt: { fontSize: 8, color: '#00B14F', fontWeight: '700', marginLeft: 2 },
+  locationMetaTxt: { fontSize: 8, color: '#94A3B8', marginLeft: 2 },
+
+  // Bottom Navigation Bar Styles
+  bottomTabBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  tabBarItem: { alignItems: 'center', justifyContent: 'center' },
+  tabBarLabel: { fontSize: 10, color: '#64748B', marginTop: 2 },
+  tabBadge: { position: 'absolute', top: -3, right: -8, backgroundColor: '#EF4444', borderRadius: 8, minWidth: 14, height: 14, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 2 },
+  tabBadgeTxt: { color: '#FFF', fontSize: 8, fontWeight: '800' },
   cartBadgeTxt: { color: T.white, fontSize: 9, fontWeight: '700' },
   
   heroWrapper: { width: '100%', height: 600, position: 'relative' },

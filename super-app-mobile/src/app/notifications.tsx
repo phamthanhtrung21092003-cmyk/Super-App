@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +18,9 @@ import { notificationService, Notification } from '../services/notificationServi
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobileUA = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isDesktop = Platform.OS === 'web' && width > 768 && !isMobileUA;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,68 +95,109 @@ export default function NotificationsScreen() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          Thông Báo {unreadCount > 0 ? `(${unreadCount} chưa đọc)` : ''}
-        </Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={handleMarkAllRead} style={styles.readAllBtn}>
-            <Text style={styles.readAllText}>Đọc tất cả</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#0088FF" />
-        </View>
-      ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-off-outline" size={64} color="#94A3B8" />
-              <Text style={styles.emptyText}>Chưa có thông báo nào</Text>
-            </View>
+    <View style={[styles.webWrapper, !isDesktop && styles.mobileFullWrapper]}>
+      {Platform.OS === 'web' && (
+        <style>{`
+          html, body, #root, #root > div {
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+            background-color: #F8FAFC !important;
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.notifCard, !item.isRead && styles.notifCardUnread]}
-              onPress={() => handleNotifPress(item)}
-            >
-              <View style={styles.notifLeft}>
-                {!item.isRead && <View style={styles.unreadDot} />}
-                <View style={[styles.notifIconBg, !item.isRead && styles.notifIconBgUnread]}>
-                  <Ionicons name="notifications" size={20} color={item.isRead ? '#94A3B8' : '#0088FF'} />
-                </View>
-              </View>
-              <View style={styles.notifContent}>
-                <Text style={[styles.notifTitle, !item.isRead && styles.notifTitleUnread]}>
-                  {item.title}
-                </Text>
-                <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text>
-                <Text style={styles.notifTime}>
-                  {new Date(item.createdAt).toLocaleString('vi-VN')}
-                </Text>
-              </View>
+        `}</style>
+      )}
+      <SafeAreaView style={[styles.container, isDesktop && styles.desktopFrame]}>
+        <StatusBar barStyle="dark-content" />
+
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            Thông Báo {unreadCount > 0 ? `(${unreadCount} chưa đọc)` : ''}
+          </Text>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={handleMarkAllRead} style={styles.readAllBtn}>
+              <Text style={styles.readAllText}>Đọc tất cả</Text>
             </TouchableOpacity>
           )}
-        />
-      )}
-    </SafeAreaView>
+        </View>
+
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#0088FF" />
+          </View>
+        ) : (
+          <FlatList
+            data={notifications}
+            keyExtractor={(item) => item.id}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="notifications-off-outline" size={64} color="#94A3B8" />
+                <Text style={styles.emptyText}>Chưa có thông báo nào</Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.notifCard, !item.isRead && styles.notifCardUnread]}
+                onPress={() => handleNotifPress(item)}
+              >
+                <View style={styles.notifLeft}>
+                  {!item.isRead && <View style={styles.unreadDot} />}
+                  <View style={[styles.notifIconBg, !item.isRead && styles.notifIconBgUnread]}>
+                    <Ionicons name="notifications" size={20} color={item.isRead ? '#94A3B8' : '#0088FF'} />
+                  </View>
+                </View>
+                <View style={styles.notifContent}>
+                  <Text style={[styles.notifTitle, !item.isRead && styles.notifTitleUnread]}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text>
+                  <Text style={styles.notifTime}>
+                    {new Date(item.createdAt).toLocaleString('vi-VN')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  webWrapper: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  mobileFullWrapper: {
+    alignItems: 'stretch',
+    justifyContent: 'stretch',
+  },
+  desktopFrame: {
+    width: 414,
+    maxWidth: 414,
+    maxHeight: 896,
+    height: '100%',
+    borderWidth: 10,
+    borderColor: '#0F172A',
+    borderRadius: 45,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+    ...(Platform.OS === 'web' && { marginVertical: 20 }),
+  },
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {

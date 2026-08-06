@@ -26,6 +26,7 @@ interface ThemeContextProps {
   textColorRgb: string;
   updateTheme: (newTheme: Partial<ThemeState>) => Promise<void>;
   pickImage: () => Promise<void>;
+  scaleFont: (size: number) => number;
 }
 
 export const hexToRgb = (hex: string): string => {
@@ -59,10 +60,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadTheme();
   }, []);
 
-  // Inject web fonts if necessary
+  // Inject web fonts & font size scaling if necessary
   useEffect(() => {
     if (Platform.OS === 'web' && isReady) {
-      // Create or update style tag for fonts
       let styleTag = document.getElementById('dynamic-theme-fonts');
       if (!styleTag) {
         styleTag = document.createElement('style');
@@ -70,17 +70,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         document.head.appendChild(styleTag);
       }
       
-      // Load Google Fonts based on selected fontFamily
-      const fontUrl = `https://fonts.googleapis.com/css2?family=${theme.fontFamily.replace(' ', '+')}:wght@300;400;500;600;700;800&display=swap`;
+      const fontName = theme.fontFamily || 'Outfit';
+      const fontUrl = `https://fonts.googleapis.com/css2?family=${fontName.replace(' ', '+')}:wght@300;400;500;600;700;800&display=swap`;
+      const scale = theme.fontSizeScale || 1.0;
       
       styleTag.textContent = `
         @import url('${fontUrl}');
-        body, div[dir="auto"], span, p { 
-          font-family: '${theme.fontFamily}', system-ui, -apple-system, sans-serif; 
+        body, span, p, input, button { 
+          font-family: '${fontName}', system-ui, -apple-system, sans-serif !important; 
         }
       `;
     }
-  }, [theme.fontFamily, isReady]);
+  }, [theme.fontFamily, theme.fontSizeScale, isReady]);
 
   const updateTheme = async (newSettings: Partial<ThemeState>) => {
     const updatedTheme = { ...theme, ...newSettings };
@@ -90,6 +91,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.error('Failed to save theme to storage', e);
     }
+  };
+
+  const scaleFont = (size: number): number => {
+    return Math.round(size * (theme.fontSizeScale || 1.0));
   };
 
   const pickImage = async () => {
@@ -115,8 +120,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const textColorRgb = hexToRgb(theme.textColor || '#FFFFFF');
+
   return (
-    <ThemeContext.Provider value={{ theme, updateTheme, pickImage }}>
+    <ThemeContext.Provider value={{ theme, textColorRgb, updateTheme, pickImage, scaleFont }}>
       {children}
     </ThemeContext.Provider>
   );
