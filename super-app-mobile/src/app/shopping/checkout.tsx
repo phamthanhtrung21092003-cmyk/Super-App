@@ -14,9 +14,10 @@ const T = {
   bg: '#F5F5F5',
   sub: '#888888',
   border: '#E8E8E8',
-  orange: '#4F46E5',
-  orangeLight: '#EEF2FF',
-  red: '#EE4D2D',
+  orange: '#00B14F',
+  green: '#00B14F',
+  orangeLight: '#DCFCE7',
+  red: '#00B14F',
 };
 
 const formatMoney = (val: number) => val.toLocaleString('vi-VN') + 'đ';

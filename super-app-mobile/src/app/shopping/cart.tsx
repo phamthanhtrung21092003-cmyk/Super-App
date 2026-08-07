@@ -8,14 +8,13 @@ import { useRouter } from 'expo-router';
 import { useShopping, CartItem } from '../../context/ShoppingContext';
 
 const T = {
-  red: '#EE4D2D',
-  redLight: '#FEF2F2',
+  green: '#00B14F',
+  greenLight: '#E6F4EA',
   black: '#111827',
   white: '#FFFFFF',
   bg: '#F3F4F6',
   sub: '#6B7280',
   border: '#E5E7EB',
-  orange: '#00B14F',
 };
 
 const formatMoney = (val: number) => val.toLocaleString('vi-VN') + 'đ';
@@ -47,7 +46,7 @@ export default function ShopeeStyleCart() {
       <SafeAreaView style={S.safe}>
         <StatusBar barStyle="dark-content" backgroundColor={T.white} translucent={false} />
         
-        {/* 🔴 SHOPEE HEADER */}
+        {/* 🟢 GREEN THEME SHOPEE HEADER */}
         <View style={S.header}>
           <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#333" />
@@ -66,7 +65,7 @@ export default function ShopeeStyleCart() {
               onPress={() => Alert.alert('Trò chuyện', 'Mở ứng dụng trò chuyện với người bán')}
               style={S.chatIconWrap}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color="#EE4D2D" />
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color="#00B14F" />
               <View style={S.chatBadge}>
                 <Text style={S.chatBadgeTxt}>33</Text>
               </View>
@@ -188,7 +187,7 @@ export default function ShopeeStyleCart() {
                       style={S.shopVoucherRow} 
                       onPress={() => Alert.alert('Shop Voucher', 'Đã thêm Voucher giảm 15.000đ từ Shop!')}
                     >
-                      <Ionicons name="ticket-outline" size={16} color="#EE4D2D" style={{ marginRight: 6 }} />
+                      <Ionicons name="ticket-outline" size={16} color="#00B14F" style={{ marginRight: 6 }} />
                       <Text style={S.shopVoucherTxt}>Thêm Shop Voucher</Text>
                       <Ionicons name="chevron-forward" size={14} color="#888" />
                     </TouchableOpacity>
@@ -201,7 +200,7 @@ export default function ShopeeStyleCart() {
                 style={S.platformVoucherCard}
                 onPress={() => Alert.alert('Shopee Voucher', 'Chọn hoặc nhập mã giảm giá Shopee')}
               >
-                <Ionicons name="ticket-outline" size={18} color="#EE4D2D" style={{ marginRight: 8 }} />
+                <Ionicons name="ticket-outline" size={18} color="#00B14F" style={{ marginRight: 8 }} />
                 <Text style={S.platformVoucherTitle}>Shopee Voucher</Text>
                 <Text style={S.platformVoucherAction}>Chọn hoặc nhập mã</Text>
                 <Ionicons name="chevron-forward" size={14} color="#888" style={{ marginLeft: 4 }} />
@@ -219,7 +218,7 @@ export default function ShopeeStyleCart() {
                   value={checkedCount > 0 && useCoinsToggle} 
                   onValueChange={(val) => setUseCoinsToggle(val)} 
                   disabled={checkedCount === 0}
-                  trackColor={{ false: '#E5E7EB', true: '#EE4D2D' }}
+                  trackColor={{ false: '#E5E7EB', true: '#00B14F' }}
                   thumbColor="#FFF"
                 />
               </View>
@@ -286,7 +285,7 @@ const S = StyleSheet.create({
   chatIconWrap: { position: 'relative', padding: 4 },
   chatBadge: {
     position: 'absolute', top: -3, right: -6,
-    backgroundColor: '#EE4D2D', borderRadius: 10,
+    backgroundColor: '#00B14F', borderRadius: 10,
     paddingHorizontal: 4, height: 16,
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: '#FFFFFF',
@@ -295,7 +294,7 @@ const S = StyleSheet.create({
 
   emptyState: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyTxt: { marginTop: 16, color: '#6B7280', fontSize: 14, marginBottom: 24 },
-  shopNowBtn: { backgroundColor: '#EE4D2D', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20 },
+  shopNowBtn: { backgroundColor: '#00B14F', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20 },
   shopNowTxt: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
 
   shopCard: {
@@ -325,11 +324,11 @@ const S = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   checkboxChecked: {
-    backgroundColor: '#EE4D2D',
-    borderColor: '#EE4D2D',
+    backgroundColor: '#00B14F',
+    borderColor: '#00B14F',
   },
   mallBadge: {
-    backgroundColor: '#D97706',
+    backgroundColor: '#00883C',
     borderRadius: 3,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -337,7 +336,7 @@ const S = StyleSheet.create({
   },
   mallBadgeTxt: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
   favBadge: {
-    backgroundColor: '#EE4D2D',
+    backgroundColor: '#00B14F',
     borderRadius: 3,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -376,16 +375,16 @@ const S = StyleSheet.create({
   },
   variantPillTxt: { fontSize: 11, color: '#4B5563', maxWidth: 140 },
   voucherXtraTag: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#DCFCE7',
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#00B14F',
     borderRadius: 3,
     paddingHorizontal: 4,
     paddingVertical: 1,
     alignSelf: 'flex-start',
     marginTop: 6,
   },
-  voucherXtraTxt: { fontSize: 9, color: '#D97706', fontWeight: '800' },
+  voucherXtraTxt: { fontSize: 9, color: '#00B14F', fontWeight: '800' },
 
   priceQtyRow: {
     flexDirection: 'row',
@@ -393,9 +392,9 @@ const S = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 8,
   },
-  itemPriceTxt: { fontSize: 15, fontWeight: '700', color: '#EE4D2D' },
+  itemPriceTxt: { fontSize: 15, fontWeight: '700', color: '#00B14F' },
   itemOrigPriceTxt: { fontSize: 11, color: '#9CA3AF', textDecorationLine: 'line-through' },
-  flashSaleTimerNote: { fontSize: 9, color: '#EE4D2D', marginTop: 2, fontWeight: '600' },
+  flashSaleTimerNote: { fontSize: 9, color: '#00B14F', marginTop: 2, fontWeight: '600' },
 
   qtyBox: {
     flexDirection: 'row',
@@ -457,7 +456,7 @@ const S = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#00B14F',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -480,9 +479,9 @@ const S = StyleSheet.create({
   checkAllBarTxt: { fontSize: 13, color: '#374151', marginLeft: 6 },
   totalPriceCol: { flex: 1, alignItems: 'flex-end', paddingRight: 10 },
   totalLabelTxt: { fontSize: 12, color: '#374151' },
-  totalPriceValTxt: { fontSize: 15, fontWeight: '800', color: '#EE4D2D' },
+  totalPriceValTxt: { fontSize: 15, fontWeight: '800', color: '#00B14F' },
   checkoutActionBtn: {
-    backgroundColor: '#EE4D2D',
+    backgroundColor: '#00B14F',
     height: '100%',
     paddingHorizontal: 20,
     justifyContent: 'center',

@@ -14,9 +14,10 @@ const T = {
   bg: '#F8FAFC',
   sub: '#888888',
   border: '#E8E8E8',
-  orange: '#0066F5',   // Premium Sapphire Blue primary
-  orangeLight: '#EBF3FF', // Soft Sapphire Blue background tint
-  red: '#FF2A54',      // Rose Red price tag accent
+  orange: '#00B14F',   // Shopee Green primary
+  green: '#00B14F',
+  orangeLight: '#DCFCE7', // Soft Green background tint
+  red: '#00B14F',      // Green price tag accent
   gold: '#F5A623',
 };
 

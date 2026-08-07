@@ -12,7 +12,7 @@ const T = {
   bg: '#F8FAFC',
   sub: '#64748B',
   border: '#E2E8F0',
-  accent: '#E11D48', // Red for admin control feel
+  accent: '#00B14F', // Green theme
 };
 
 export default function AdminScreen() {

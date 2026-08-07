@@ -13,7 +13,7 @@ const T = {
   bg: '#F8FAFC',
   sub: '#64748B',
   border: '#E2E8F0',
-  accent: '#4F46E5',
+  accent: '#00B14F',
 };
 
 type Product = {

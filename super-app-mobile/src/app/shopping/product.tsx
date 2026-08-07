@@ -16,8 +16,9 @@ const T = {
   bg: '#F5F5F5',
   sub: '#888888',
   border: '#E8E8E8',
-  orange: '#0066F5',   // Premium Sapphire Blue
-  red: '#FF2A54',      // Rose Red
+  orange: '#00B14F',   // Shopee Green
+  green: '#00B14F',
+  red: '#00B14F',      // Green Theme Primary
 };
 
 const formatMoney = (val: number) => val.toLocaleString('vi-VN') + 'đ';
