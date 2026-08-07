@@ -68,7 +68,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
     <View style={styles.stepContainer}>
       <Ionicons name="shield-checkmark" size={60} color="#D8C690" />
       <Text style={styles.stepTitle}>Kiểm tra điều kiện mở Ví</Text>
-      <Text style={styles.stepDesc}>Hệ thống đang rà soát thông tin tài khoản V-life của bạn...</Text>
+      <Text style={styles.stepDesc}>Hệ thống đang rà soát thông tin tài khoản S-life của bạn...</Text>
 
       <View style={styles.eligibilityListBox}>
         <View style={styles.eligibilityItem}>
@@ -77,7 +77,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
         </View>
         <View style={styles.eligibilityItem}>
           <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-          <Text style={styles.eligibilityText}>Tài khoản V-life hoạt động bình thường</Text>
+          <Text style={styles.eligibilityText}>Tài khoản S-life hoạt động bình thường</Text>
         </View>
         <View style={styles.eligibilityItem}>
           <Ionicons name="checkmark-circle" size={20} color="#10B981" />
@@ -99,7 +99,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
     <View style={styles.stepContainer}>
       <Ionicons name="lock-closed-outline" size={54} color="#D8C690" />
       <Text style={styles.stepTitle}>Minh bạch Quyền Truy cập</Text>
-      <Text style={styles.stepDesc}>Ví điện tử V-life sẽ yêu cầu các quyền sau để bảo vệ tài khoản của bạn:</Text>
+      <Text style={styles.stepDesc}>Ví điện tử S-life sẽ yêu cầu các quyền sau để bảo vệ tài khoản của bạn:</Text>
 
       <View style={styles.permListBox}>
         <View style={styles.permItem}>
@@ -137,7 +137,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
   const renderWelcome = () => (
     <View style={styles.stepContainer}>
       <Ionicons name="wallet" size={72} color="#D8C690" />
-      <Text style={styles.stepTitle}>Ví điện tử V-life</Text>
+      <Text style={styles.stepTitle}>Ví điện tử S-life</Text>
       <Text style={styles.stepDesc}>Thanh toán • Chuyển tiền • Nạp tiền • Rút tiền • Liên kết ngân hàng</Text>
 
       <View style={styles.welcomeFeatureGrid}>
@@ -171,9 +171,9 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
 
       <ScrollView style={styles.termsScrollBox}>
         <Text style={styles.termsText}>
-          1. Quy định chung: Ví điện tử V-life được phát hành và quản lý theo quy định pháp luật về ví điện tử của Ngân hàng Nhà nước.{"\n\n"}
-          2. Liên kết tài khoản: Mỗi tài khoản V-life chỉ được kích hoạt một Ví duy nhất gắn liền với số điện thoại tài khoản.{"\n\n"}
-          3. Xác thực eKYC: Khách hàng có trách nhiệm cung cấp thông tin CCCD chính xác và chính chủ. 1 mã CCCD chỉ được liên kết 1 Ví V-life.{"\n\n"}
+          1. Quy định chung: Ví điện tử S-life được phát hành và quản lý theo quy định pháp luật về ví điện tử của Ngân hàng Nhà nước.{"\n\n"}
+          2. Liên kết tài khoản: Mỗi tài khoản S-life chỉ được kích hoạt một Ví duy nhất gắn liền với số điện thoại tài khoản.{"\n\n"}
+          3. Xác thực eKYC: Khách hàng có trách nhiệm cung cấp thông tin CCCD chính xác và chính chủ. 1 mã CCCD chỉ được liên kết 1 Ví S-life.{"\n\n"}
           4. Bảo mật PIN & OTP: Mã PIN 6 số và mã OTP SMS là mật khẩu giao dịch nhạy cảm. Tuyệt đối không chia sẻ cho bất kỳ ai.
         </Text>
       </ScrollView>
@@ -206,7 +206,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
       <Ionicons name="phone-portrait-outline" size={54} color="#D8C690" />
       <Text style={styles.stepTitle}>Xác nhận số điện thoại</Text>
       <Text style={styles.stepDesc}>
-        Ví điện tử sẽ được kích hoạt bằng số điện thoại của tài khoản V-life hiện tại.
+        Ví điện tử sẽ được kích hoạt bằng số điện thoại của tài khoản S-life hiện tại.
       </Text>
 
       <View style={styles.fixedPhoneBox}>
@@ -216,7 +216,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
       </View>
 
       <Text style={styles.phoneNoticeText}>
-        * Lưu ý: Muốn sử dụng số điện thoại khác, vui lòng thay đổi trong Cài đặt tài khoản V-life trước.
+        * Lưu ý: Muốn sử dụng số điện thoại khác, vui lòng thay đổi trong Cài đặt tài khoản S-life trước.
       </Text>
 
       <TouchableOpacity
@@ -376,7 +376,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
           <Ionicons name="headset-outline" size={60} color="#EF4444" />
           <Text style={styles.stepTitle}>Quét khuôn mặt thất bại 3 lần</Text>
           <Text style={styles.stepDesc}>
-            Vui lòng liên hệ Tổng đài CSKH V-life (1900 1234) hoặc hỗ trợ eKYC trực tiếp tại quầy giao dịch.
+            Vui lòng liên hệ Tổng đài CSKH S-life (1900 1234) hoặc hỗ trợ eKYC trực tiếp tại quầy giao dịch.
           </Text>
           <TouchableOpacity style={styles.primaryButton} onPress={onCancel}>
             <Text style={styles.primaryButtonText}>Quay lại Trang chủ</Text>
@@ -582,7 +582,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
   const renderActivating = () => (
     <View style={styles.stepContainer}>
       <ActivityIndicator size="large" color="#D8C690" />
-      <Text style={[styles.stepTitle, { marginTop: 20 }]}>Đang khởi tạo Ví điện tử V-life...</Text>
+      <Text style={[styles.stepTitle, { marginTop: 20 }]}>Đang khởi tạo Ví điện tử S-life...</Text>
       <Text style={styles.stepDesc}>Thiết lập Wallet Profile (PENDING ➔ ACTIVE)...</Text>
     </View>
   );
@@ -592,7 +592,7 @@ export const WalletActivationWizard: React.FC<WalletActivationWizardProps> = ({ 
     <View style={styles.stepContainer}>
       <Ionicons name="checkmark-done-circle" size={80} color="#10B981" />
       <Text style={styles.stepTitle}>Đăng ký Ví Thành công!</Text>
-      <Text style={styles.stepDesc}>Ví điện tử V-life của bạn đã sẵn sàng sử dụng.</Text>
+      <Text style={styles.stepDesc}>Ví điện tử S-life của bạn đã sẵn sàng sử dụng.</Text>
 
       <View style={styles.successCard}>
         <View style={styles.reviewRow}>

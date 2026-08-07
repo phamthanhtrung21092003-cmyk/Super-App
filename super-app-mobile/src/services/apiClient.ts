@@ -10,7 +10,7 @@ export const setSessionExpiredHandler = (handler: () => void) => {
 
 const appEnv = process.env.EXPO_PUBLIC_APP_ENV || 'dev';
 const devApiUrl = process.env.EXPO_PUBLIC_DEV_API || 'http://192.168.12.109:5000/api/v1';
-const prodApiUrl = process.env.EXPO_PUBLIC_PROD_API || 'https://api.vlife.vn/api/v1';
+const prodApiUrl = process.env.EXPO_PUBLIC_PROD_API || 'https://api.slife.vn/api/v1';
 
 export const getBaseURL = () => {
   if (appEnv === 'production') {

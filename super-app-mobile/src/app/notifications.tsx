@@ -45,7 +45,7 @@ export default function NotificationsScreen() {
         {
           id: 'n-2',
           title: 'Thanh toán thành công',
-          body: 'Đơn #VL202608031002 đã được V-life xác nhận thanh toán.',
+          body: 'Đơn #VL202608031002 đã được S-life xác nhận thanh toán.',
           data: { bookingId: 'b-2' },
           isRead: true,
           createdAt: new Date(Date.now() - 3600000).toISOString(),

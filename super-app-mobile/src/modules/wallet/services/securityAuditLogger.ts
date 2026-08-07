@@ -11,7 +11,7 @@ export interface AuditLogEntry {
   details?: Record<string, any>;
 }
 
-const AUDIT_LOGS_KEY = 'vlife_security_audit_logs';
+const AUDIT_LOGS_KEY = 'slife_security_audit_logs';
 
 export const securityAuditLogger = {
   /**

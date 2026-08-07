@@ -17,7 +17,7 @@ export interface FaceLivenessResult {
   requiresCskhSupport?: boolean;
 }
 
-const REGISTERED_CCCDS_KEY = 'vlife_registered_cccds_list';
+const REGISTERED_CCCDS_KEY = 'slife_registered_cccds_list';
 
 export const ekycService = {
   /**
@@ -39,7 +39,7 @@ export const ekycService = {
     if (isDuplicate) {
       return {
         success: false,
-        errorMessage: 'CCCD này đã được liên kết với một Ví V-life khác.',
+        errorMessage: 'CCCD này đã được liên kết với một Ví S-life khác.',
       };
     }
 

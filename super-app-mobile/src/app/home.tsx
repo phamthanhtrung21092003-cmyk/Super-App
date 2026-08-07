@@ -65,31 +65,31 @@ export default function HomeScreen() {
       {
         id: 'w1',
         title: 'Biến Động Số Dư (+50.000đ)',
-        message: 'Tài khoản Ví V-Life vừa được cộng +50.000đ từ sự kiện liên kết ngân hàng thành công.',
+        message: 'Tài khoản Ví S-Life vừa được cộng +50.000đ từ sự kiện liên kết ngân hàng thành công.',
         time: '10 phút trước',
         detailCode: 'FT202608069482',
-        detailStatus: 'Cộng tiền thành công vào Ví V-Life',
-        fullDesc: 'Tài khoản Ví V-Life của bạn vừa nhận thành công khoản nạp +50.000đ quà tặng liên kết tài khoản ngân hàng Vietcombank. Số dư hiện tại đã được cộng tự động và có thể dùng để thanh toán tất cả dịch vụ.',
+        detailStatus: 'Cộng tiền thành công vào Ví S-Life',
+        fullDesc: 'Tài khoản Ví S-Life của bạn vừa nhận thành công khoản nạp +50.000đ quà tặng liên kết tài khoản ngân hàng Vietcombank. Số dư hiện tại đã được cộng tự động và có thể dùng để thanh toán tất cả dịch vụ.',
         route: '/wallet'
       },
       {
         id: 'w2',
         title: 'Hoàn Tiền Giao Dịch (20%)',
-        message: 'Hoàn tiền +12.000đ cho đơn hàng mua sắm thành công bằng Ví V-Life Cash.',
+        message: 'Hoàn tiền +12.000đ cho đơn hàng mua sắm thành công bằng Ví S-Life Cash.',
         time: '1 giờ trước',
         detailCode: 'CB94827102',
         detailStatus: 'Đã hoàn tiền vào Ví',
-        fullDesc: 'Bạn vừa được hoàn lại 20% (+12.000đ) tổng giá trị đơn hàng mua sắm #VK9482 khi thanh toán qua Ví V-Life Cash.',
+        fullDesc: 'Bạn vừa được hoàn lại 20% (+12.000đ) tổng giá trị đơn hàng mua sắm #VK9482 khi thanh toán qua Ví S-Life Cash.',
         route: '/wallet'
       },
       {
         id: 'w3',
         title: 'Cảnh Báo Bảo Mật',
-        message: 'Tài khoản Ví V-Life của bạn vừa phát sinh giao dịch nạp tiền thành công.',
+        message: 'Tài khoản Ví S-Life của bạn vừa phát sinh giao dịch nạp tiền thành công.',
         time: '2 giờ trước',
         detailCode: 'SEC882194',
         detailStatus: 'Bảo mật an toàn',
-        fullDesc: 'Hệ thống ghi nhận giao dịch nạp tiền +500.000đ thực hiện từ thiết bị đã đăng ký. Nếu đây không phải là bạn, vui lòng liên hệ tổng đài V-Life ngay lập tức.',
+        fullDesc: 'Hệ thống ghi nhận giao dịch nạp tiền +500.000đ thực hiện từ thiết bị đã đăng ký. Nếu đây không phải là bạn, vui lòng liên hệ tổng đài S-Life ngay lập tức.',
         route: '/wallet'
       },
     ],
@@ -111,7 +111,7 @@ export default function HomeScreen() {
         time: '2 giờ trước',
         detailCode: 'SUPER50OFF',
         detailStatus: 'Khả dụng trong Kho Voucher',
-        fullDesc: 'Chúc mừng! Bạn vừa nhận được Voucher giảm 50% (tối đa 100.000đ) áp dụng cho toàn bộ các sản phẩm Thiết Bị Điện Tử & Phụ Kiện Công Nghệ trên sàn Mua Sắm V-Life. Hạn dùng đến 31/08/2026.',
+        fullDesc: 'Chúc mừng! Bạn vừa nhận được Voucher giảm 50% (tối đa 100.000đ) áp dụng cho toàn bộ các sản phẩm Thiết Bị Điện Tử & Phụ Kiện Công Nghệ trên sàn Mua Sắm S-Life. Hạn dùng đến 31/08/2026.',
         route: '/shopping'
       },
     ],
@@ -209,7 +209,7 @@ export default function HomeScreen() {
       id: '1', 
       image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80', 
       tag: 'DEAL HOT 50%', 
-      title: 'Siêu Hội Mua Sắm V-Life',
+      title: 'Siêu Hội Mua Sắm S-Life',
       desc: 'Giảm tới 50% cho tất cả đơn hàng đầu tiên',
       route: '/shopping'
     },
@@ -225,7 +225,7 @@ export default function HomeScreen() {
       id: '3', 
       image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80', 
       tag: 'HOÀN TIỀN 20%', 
-      title: 'Thanh Toán Ví V-Life Cash',
+      title: 'Thanh Toán Ví S-Life Cash',
       desc: 'Hoàn tiền 20% khi gọi xe & đặt đồ ăn',
       route: '/wallet'
     },
@@ -233,7 +233,7 @@ export default function HomeScreen() {
 
   // Core Feature Grid
   const MAIN_FEATURES = [
-    { id: 'wallet', title: 'Ví V-Life', icon: 'wallet', color: '#0EA5E9', gradient: ['#38BDF8', '#0EA5E9', '#0284C7'], route: '/wallet', badge: '3', badgeColor: '#EF4444' },
+    { id: 'wallet', title: 'Ví S-Life', icon: 'wallet', color: '#0EA5E9', gradient: ['#38BDF8', '#0EA5E9', '#0284C7'], route: '/wallet', badge: '3', badgeColor: '#EF4444' },
     { id: 'shopping', title: 'Mua Sắm', icon: 'cart', color: '#F59E0B', gradient: ['#FBBF24', '#F59E0B', '#D97706'], route: '/shopping', badge: '2', badgeColor: '#EF4444' },
     { id: 'video', title: 'Short Video', icon: 'film', color: '#EC4899', gradient: ['#F472B6', '#EC4899', '#DB2777'], route: '/video', badge: '5', badgeColor: '#EF4444' },
     { id: 'social', title: 'Mạng Xã Hội', icon: 'globe', color: '#2563EB', gradient: ['#60A5FA', '#3B82F6', '#1D4ED8'], route: '/social', badge: '3', badgeColor: '#EF4444' },
@@ -276,7 +276,7 @@ export default function HomeScreen() {
   ];
 
   const NOTIFICATIONS = [
-    { id: '1', title: 'Ví V-Life', msg: 'Tài khoản được cộng +50.000đ từ sự kiện liên kết ngân hàng.', time: '10 phút trước' },
+    { id: '1', title: 'Ví S-Life', msg: 'Tài khoản được cộng +50.000đ từ sự kiện liên kết ngân hàng.', time: '10 phút trước' },
     { id: '2', title: 'V-Ride', msg: 'Mã giảm giá 30% chuyến xe V-Ride đã sẵn sàng trong kho voucher.', time: '1 giờ trước' },
     { id: '3', title: 'Mua sắm', msg: 'Đơn hàng mua sắm #VK9482 đã được đóng gói và bàn giao vận chuyển.', time: '3 giờ trước' },
   ];
@@ -568,7 +568,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/wallet')} activeOpacity={0.8}>
               <Ionicons name="wallet-outline" size={22} color="#64748B" />
-              <Text style={[styles.tabTextLight, { fontFamily: theme.fontFamily }]}>Ví V-Life</Text>
+              <Text style={[styles.tabTextLight, { fontFamily: theme.fontFamily }]}>Ví S-Life</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/account')} activeOpacity={0.8}>

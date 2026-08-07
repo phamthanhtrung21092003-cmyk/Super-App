@@ -16,7 +16,7 @@ export const MOCK_USER_PROFILES: UserProfile[] = [
     fullName: 'Nguyễn Văn Demo 🚀',
     phone: '0912345678',
     avatarUrl: 'https://ui-avatars.com/api/?name=Demo+User&background=00c6ff&color=fff&size=512',
-    bio: 'Tôi yêu V-life và thiết kế giao diện di động đẹp!',
+    bio: 'Tôi yêu S-life và thiết kế giao diện di động đẹp!',
     coins: 5000,
     rewardPoints: 200,
     vipTier: 'Đồng'

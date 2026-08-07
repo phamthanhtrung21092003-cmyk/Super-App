@@ -140,7 +140,7 @@ export const WalletSecurityProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       const authResult = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Xác thực sinh trắc học để mở Ví V-life',
+        promptMessage: 'Xác thực sinh trắc học để mở Ví S-life',
         cancelLabel: 'Hủy',
         fallbackLabel: 'Nhập PIN',
       });

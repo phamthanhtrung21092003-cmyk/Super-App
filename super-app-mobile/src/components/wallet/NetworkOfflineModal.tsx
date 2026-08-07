@@ -20,7 +20,7 @@ export const NetworkOfflineModal: React.FC<NetworkOfflineModalProps> = ({ visibl
 
           <Text style={styles.title}>Cần có kết nối Internet</Text>
           <Text style={styles.description}>
-            Ví điện tử V-life yêu cầu kết nối mạng Internet để xác thực token và bảo vệ tài sản của bạn.
+            Ví điện tử S-life yêu cầu kết nối mạng Internet để xác thực token và bảo vệ tài sản của bạn.
           </Text>
 
           <Text style={styles.instruction}>

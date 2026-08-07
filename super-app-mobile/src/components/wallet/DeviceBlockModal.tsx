@@ -30,7 +30,7 @@ export const DeviceBlockModal: React.FC<DeviceBlockModalProps> = ({ visible }) =
 
           <Text style={styles.title}>Không thể mở Ví</Text>
           <Text style={styles.description}>
-            Thiết bị của bạn hiện không đáp ứng tiêu chuẩn bảo mật ngân hàng của V-life.
+            Thiết bị của bạn hiện không đáp ứng tiêu chuẩn bảo mật ngân hàng của S-life.
           </Text>
 
           <View style={styles.violationsBox}>

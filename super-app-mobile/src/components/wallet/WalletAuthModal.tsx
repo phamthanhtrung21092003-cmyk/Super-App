@@ -82,7 +82,7 @@ export const WalletAuthModal: React.FC<WalletAuthModalProps> = ({ visible, onReg
     <Modal visible={visible} animationType="slide" transparent backdropColor="rgba(0,0,0,0.85)">
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Text style={styles.brandTitle}>Ví V-life</Text>
+          <Text style={styles.brandTitle}>Ví S-life</Text>
           <Text style={styles.subTitle}>
             Để bảo vệ tài sản của bạn, hãy xác thực một lần nữa.
           </Text>

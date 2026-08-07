@@ -130,7 +130,7 @@ export default function CheckoutScreen() {
         serviceId,
         startDate,
         endDate,
-        customerName: 'Người dùng V-Life',
+        customerName: 'Người dùng S-Life',
         customerPhone: '0912345678',
         note: name,
       });
@@ -385,7 +385,7 @@ export default function CheckoutScreen() {
               <Ionicons name="checkmark-circle" size={72} color="#10B981" />
             </View>
             <Text style={[styles.successTitle, { color: colors.text }]}>🎉 ĐẶT DỊCH VỤ THÀNH CÔNG</Text>
-            <Text style={styles.successSub}>Backend V-Life đã xác minh thanh toán & xác nhận đơn vị thành công!</Text>
+            <Text style={styles.successSub}>Backend S-Life đã xác minh thanh toán & xác nhận đơn vị thành công!</Text>
 
             <View style={[styles.receiptCard, { backgroundColor: colors.background }]}>
               <View style={styles.receiptRow}>

@@ -1,11 +1,11 @@
 import { deviceBindingService } from './deviceBindingService';
 import { securityAuditLogger } from './securityAuditLogger';
 
-const ACCESS_TOKEN_KEY = 'vlife_wallet_access_token';
-const REFRESH_TOKEN_KEY = 'vlife_wallet_refresh_token';
-const FAILED_ATTEMPTS_KEY = 'vlife_wallet_failed_attempts';
-const LOCKOUT_TIMESTAMP_KEY = 'vlife_wallet_lockout_until';
-const PIN_HASH_SERVER_MOCK_KEY = 'vlife_wallet_server_pin_mock';
+const ACCESS_TOKEN_KEY = 'slife_wallet_access_token';
+const REFRESH_TOKEN_KEY = 'slife_wallet_refresh_token';
+const FAILED_ATTEMPTS_KEY = 'slife_wallet_failed_attempts';
+const LOCKOUT_TIMESTAMP_KEY = 'slife_wallet_lockout_until';
+const PIN_HASH_SERVER_MOCK_KEY = 'slife_wallet_server_pin_mock';
 
 const WEAK_PINS = ['111111', '123456', '654321', '000000', '121212', '999999', '555555'];
 

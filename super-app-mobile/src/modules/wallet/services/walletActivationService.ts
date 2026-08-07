@@ -7,7 +7,7 @@ export type WalletStatus = 'PENDING' | 'ACTIVE' | 'LIMITED' | 'SUSPENDED' | 'BLO
 export interface WalletProfile {
   walletId: string;
   walletNumber: string;
-  walletAlias: string; // V-life Phone Number for MoMo/ZaloPay transfer
+  walletAlias: string; // S-life Phone Number for MoMo/ZaloPay transfer
   status: WalletStatus;
   level: 'Level 1' | 'Level 2' | 'VIP';
   currency: string; // Server Generated (Default VND)
@@ -27,7 +27,7 @@ export interface DraftRegistrationData {
   savedAt: number; // Expiry check (24 hours)
 }
 
-const DRAFT_REGISTRATION_KEY = 'vlife_wallet_draft_registration_v34';
+const DRAFT_REGISTRATION_KEY = 'slife_wallet_draft_registration_v34';
 
 export const walletActivationService = {
   /**

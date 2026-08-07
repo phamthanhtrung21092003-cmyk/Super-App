@@ -58,7 +58,7 @@ const WalletActivationContext = createContext<WalletActivationContextType | unde
 
 export const WalletActivationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentStep, setCurrentStep] = useState<ActivationStep>('ELIGIBILITY_CHECK');
-  const [phone, setPhone] = useState<string>('0987 123 456'); // Default V-life user phone
+  const [phone, setPhone] = useState<string>('0987 123 456'); // Default S-life user phone
   const [ocrData, setOcrData] = useState<OcrResult | null>(null);
   const [createdPin, setCreatedPin] = useState<string>('');
   const [enableBiometric, setEnableBiometric] = useState<boolean>(true);

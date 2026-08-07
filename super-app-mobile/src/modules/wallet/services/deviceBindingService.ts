@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as Device from 'expo-device';
 
-const DEVICE_ID_KEY = 'vlife_secure_device_id';
+const DEVICE_ID_KEY = 'slife_secure_device_id';
 
 export const deviceBindingService = {
   /**

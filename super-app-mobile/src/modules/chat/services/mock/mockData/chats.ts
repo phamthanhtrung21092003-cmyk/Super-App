@@ -46,7 +46,7 @@ const generateMockChats = (): ChatRoom[] => {
     {
       id: 'room_3',
       participantId: 'support_staff',
-      participantName: 'Tổng đài hỗ trợ V-life',
+      participantName: 'Tổng đài hỗ trợ S-life',
       participantAvatar: 'https://ui-avatars.com/api/?name=Support&background=00c6ff&color=fff',
       participantRole: 'support',
       lastMessage: '',
@@ -160,7 +160,7 @@ const generateMockChats = (): ChatRoom[] => {
   // 50 tin nhắn để đạt tổng cộng 210 tin nhắn
   const room3Messages: Message[] = [];
   const supportTexts = [
-    'Xin chào, V-life CSKH có thể hỗ trợ gì cho quý khách?',
+    'Xin chào, S-life CSKH có thể hỗ trợ gì cho quý khách?',
     'Về lỗi thanh toán ví của bạn, chúng tôi đang chuyển bộ phận kỹ thuật kiểm tra.',
     'Hệ thống ghi nhận giao dịch của bạn đã hoàn tất và tiền sẽ hoàn về thẻ sau 3-5 ngày.',
     'Cảm ơn bạn đã phản hồi, chúng tôi sẽ nỗ lực cải thiện dịch vụ.',
@@ -169,7 +169,7 @@ const generateMockChats = (): ChatRoom[] => {
 
   const userSupportTexts = [
     'Chào ad, mình bị lỗi khi liên kết ngân hàng Vietcombank.',
-    'Mình bị trừ tiền tài khoản ngân hàng nhưng ví V-life vẫn chưa nhận được.',
+    'Mình bị trừ tiền tài khoản ngân hàng nhưng ví S-life vẫn chưa nhận được.',
     'Dạ mình đã gửi ảnh chụp màn hình giao dịch rồi ạ.',
     'Ok ad, mình đã hiểu. Cảm ơn ad nhé.',
     'Mình không còn câu hỏi nào. Đánh giá 5 sao cho support nha.'
@@ -190,7 +190,7 @@ const generateMockChats = (): ChatRoom[] => {
     room3Messages.push({
       id: `msg_3_${i}`,
       senderId: isSupport ? 'support_staff' : 'user_id',
-      senderName: isSupport ? 'CSKH V-life' : 'Phạm Thành Trung',
+      senderName: isSupport ? 'CSKH S-life' : 'Phạm Thành Trung',
       text: text + ` (#${i + 1})`,
       timestamp: timeStr,
       isRead: i < 49 ? true : false

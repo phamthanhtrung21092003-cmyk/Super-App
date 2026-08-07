@@ -49,7 +49,7 @@ export default function TransactionsScreen() {
 
     switch (tx.type) {
       case 'TOP_UP':
-        title = 'Nạp tiền ví V-Life';
+        title = 'Nạp tiền ví S-Life';
         icon = 'card-outline';
         color = '#10B981';
         break;
