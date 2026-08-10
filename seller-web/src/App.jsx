@@ -90,6 +90,15 @@ export default function App() {
   const [newProdImage, setNewProdImage] = useState('');
   const [newProdDesc, setNewProdDesc] = useState('');
 
+  // Address Modal States
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    name: '',
+    phone: '',
+    city: '',
+    detail: ''
+  });
+
   // Authentication Verification Handler
   const handleSLifeAuthSubmit = (e) => {
     e.preventDefault();
@@ -444,21 +453,33 @@ export default function App() {
               <div>
                 {wizardStep === 1 && (
                   <div>
-                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>1. THÔNG TIN CƠ BẢN CỬA HÀNG</h3>
-                    <label className="input-label-text">Tên Cửa Hàng (Hiển thị công khai) *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.name} onChange={e => setShopInfo({ ...shopInfo, name: e.target.value })} placeholder="Ví dụ: Minimalist Fashion Store" />
+                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>THÔNG TIN SHOP</h3>
+                    
+                    <label className="input-label-text">Tên Shop *</label>
+                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.name} onChange={e => setShopInfo({ ...shopInfo, name: e.target.value })} placeholder="Ví dụ: Tài khoản thử nghiệm" />
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Tên người dùng / URL Shop *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.username} onChange={e => setShopInfo({ ...shopInfo, username: e.target.value })} placeholder="sshopping.vn/ten_shop" />
+                    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label className="input-label-text" style={{ marginBottom: 0 }}>Địa chỉ lấy hàng *</label>
+                      <button className="nav-btn-secondary" style={{ padding: '4px 10px', fontSize: '12px', border: '1px solid var(--border)' }} onClick={() => setShowAddressModal(true)}>
+                        + Thêm
+                      </button>
+                    </div>
+                    {shopInfo.address && shopInfo.address !== '123 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh' ? (
+                       <div style={{ padding: '10px 14px', background: 'var(--bg-page)', borderRadius: '8px', border: '1px solid var(--border)', marginTop: '8px', fontSize: '13px' }}>
+                          <strong>{shopInfo.addressName || shopInfo.name}</strong> - {shopInfo.addressPhone || shopInfo.phone}<br/>
+                          <span style={{ color: 'var(--text-secondary)' }}>{shopInfo.address}</span>
+                       </div>
+                    ) : (
+                       <div style={{ padding: '12px', background: 'var(--bg-page)', borderRadius: '8px', border: '1px dashed var(--border)', marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                         Chưa có địa chỉ lấy hàng
+                       </div>
+                    )}
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Slogan / Lời chào shop</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.slogan} onChange={e => setShopInfo({ ...shopInfo, slogan: e.target.value })} placeholder="Chất lượng tuyệt hảo..." />
+                    <label className="input-label-text" style={{ marginTop: '14px' }}>Email *</label>
+                    <input type="email" className="stylish-input" style={{ paddingLeft: '16px', background: 'var(--bg-page)' }} value={shopInfo.email || ''} onChange={e => setShopInfo({ ...shopInfo, email: e.target.value })} placeholder="email@example.com" />
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>URL Ảnh Logo Shop (Unsplash)</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.logo} onChange={e => setShopInfo({ ...shopInfo, logo: e.target.value })} placeholder="Link URL logo..." />
-
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>URL Ảnh Bìa (Banner Cover)</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.cover} onChange={e => setShopInfo({ ...shopInfo, cover: e.target.value })} placeholder="Link URL banner..." />
+                    <label className="input-label-text" style={{ marginTop: '14px' }}>Số điện thoại *</label>
+                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px', background: 'var(--bg-page)' }} value={shopInfo.phone} onChange={e => setShopInfo({ ...shopInfo, phone: e.target.value })} placeholder="+84394562659" />
                   </div>
                 )}
 
@@ -832,6 +853,70 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ➕ MODAL THÊM ĐỊA CHỈ MỚI */}
+      {showAddressModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
+          <div style={{ background: '#fff', width: '100%', maxWidth: '500px', borderRadius: '8px', padding: '24px', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>Thêm Địa Chỉ Mới</h2>
+              <button onClick={() => setShowAddressModal(false)} style={{ color: 'var(--text-muted)' }}>X</button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Họ & Tên</label>
+                <input type="text" className="stylish-input" style={{ paddingLeft: '14px', height: '36px', fontSize: '13px' }} value={newAddress.name} onChange={e => setNewAddress({...newAddress, name: e.target.value})} placeholder="Nhập vào" />
+              </div>
+              <div>
+                <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Số điện thoại</label>
+                <input type="text" className="stylish-input" style={{ paddingLeft: '14px', height: '36px', fontSize: '13px' }} value={newAddress.phone} onChange={e => setNewAddress({...newAddress, phone: e.target.value})} placeholder="Nhập vào" />
+              </div>
+            </div>
+
+            <div style={{ marginTop: '14px' }}>
+              <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Tỉnh/Thành phố/Phường/Xã</label>
+              <select className="stylish-input" style={{ paddingLeft: '14px', height: '36px', fontSize: '13px', appearance: 'auto' }} value={newAddress.city} onChange={e => setNewAddress({...newAddress, city: e.target.value})}>
+                <option value="">Chọn</option>
+                <option value="Thành phố Hà Nội">Thành phố Hà Nội</option>
+                <option value="Thành phố Hồ Chí Minh">Thành phố Hồ Chí Minh</option>
+                <option value="Thành phố Đà Nẵng">Thành phố Đà Nẵng</option>
+              </select>
+            </div>
+
+            <div style={{ marginTop: '14px' }}>
+              <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Địa chỉ chi tiết</label>
+              <textarea className="stylish-input" style={{ height: '70px', padding: '12px 14px', fontSize: '13px' }} value={newAddress.detail} onChange={e => setNewAddress({...newAddress, detail: e.target.value})} placeholder="Số nhà, tên đường v.v." />
+            </div>
+
+            {/* Google Map Mockup */}
+            {newAddress.detail && (
+              <div style={{ marginTop: '16px', position: 'relative', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)', height: '160px' }}>
+                <img src="https://i.stack.imgur.com/HILmr.png" alt="Map" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#EF4444', color: '#fff', padding: '6px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'center', maxWidth: '80%' }}>
+                  Vietnam<br/>
+                  <span style={{ fontWeight: 'normal', fontSize: '10px' }}>{newAddress.detail}, {newAddress.city}</span>
+                </div>
+                <div style={{ position: 'absolute', top: 'calc(50% + 20px)', left: '50%', transform: 'translateX(-50%)', color: '#EF4444' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="nav-btn-secondary" style={{ width: '80px', justifyContent: 'center', fontSize: '13px' }} onClick={() => setShowAddressModal(false)}>
+                Hủy
+              </button>
+              <button className="nav-btn-primary" style={{ padding: '8px 24px', background: '#EF4444', color: '#fff', border: 'none', fontSize: '13px' }} onClick={() => {
+                setShopInfo({...shopInfo, address: `${newAddress.detail}, ${newAddress.city}`, addressName: newAddress.name, addressPhone: newAddress.phone});
+                setShowAddressModal(false);
+              }}>
+                Lưu
+              </button>
+            </div>
           </div>
         </div>
       )}
