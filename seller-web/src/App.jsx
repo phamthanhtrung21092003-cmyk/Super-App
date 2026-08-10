@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, HelpCircle, Eye, EyeOff, QrCode, 
   Store, Plus, Trash2, Edit3, ArrowLeft, CheckCircle2, 
@@ -24,9 +24,9 @@ const SLifeIcon = ({ size = 24 }) => (
 
 // PRE-REGISTERED SYSTEM ACCOUNTS DATABASE
 const PRE_REGISTERED_ACCOUNTS = [
-  { phone: '0901234567', password: '123456', ownerName: 'Nguyễn Văn Chủ Shop', shopName: 'S-Shopping Official Store' },
   { phone: '0987654321', password: '123456', ownerName: 'Trần Thị Người Bán', shopName: 'Minimalist Studio' },
-  { phone: 'admin@s-life.vn', password: '123456', ownerName: 'Quản Lý S-Life System', shopName: 'S-Shopping Premium Center' }
+  // Tài khoản S-life trắng (chưa có shop) để test luồng Đăng ký bán hàng
+  { phone: '0888888888', password: '123456', ownerName: 'Người Dùng S-Life', shopName: null }
 ];
 
 // INITIAL PRODUCTS DATA
@@ -51,20 +51,92 @@ export default function App() {
 
   // --- WIZARD STATES ---
   const [wizardStep, setWizardStep] = useState(1);
+  const [useCustomPhone, setUseCustomPhone] = useState(false);
+  const [kycStatus, setKycStatus] = useState('NOT_SUBMITTED'); // NOT_SUBMITTED, PENDING, VERIFIED, REJECTED
+  const [shopNameStatus, setShopNameStatus] = useState(null); // null, 'available', 'unavailable'
+  const [cccdFrontImg, setCccdFrontImg] = useState(null);
+  const [cccdBackImg, setCccdBackImg] = useState(null);
+  const [faceImg, setFaceImg] = useState(null);
+  const [isOcrScanning, setIsOcrScanning] = useState(false);
+  const [ocrSuccess, setOcrSuccess] = useState(false);
+  const [isVerifyingBank, setIsVerifyingBank] = useState(false);
+  const [bankVerifySuccess, setBankVerifySuccess] = useState(false);
+
+  const handleBankAccountChange = (val) => {
+    setShopInfo(prev => ({ ...prev, bankAccount: val, bankStatus: 'Chưa xác minh' }));
+    setBankVerifySuccess(false);
+
+    if (val.trim().length >= 6) {
+      setIsVerifyingBank(true);
+      setTimeout(() => {
+        setIsVerifyingBank(false);
+        setBankVerifySuccess(true);
+        setShopInfo(prev => ({
+          ...prev,
+          bankAccount: val,
+          bankHolder: prev.fullName ? prev.fullName.toUpperCase() : (prev.bankHolder || 'NGUYỄN VĂN A'),
+          bankStatus: 'Đã xác minh'
+        }));
+      }, 750);
+    }
+  };
+
+  const handleCccdUpload = (type, e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      if (type === 'front') setCccdFrontImg(url);
+      if (type === 'back') setCccdBackImg(url);
+      if (type === 'face') setFaceImg(url);
+
+      if (type === 'front' || type === 'back') {
+        setIsOcrScanning(true);
+        setOcrSuccess(false);
+        setTimeout(() => {
+          setIsOcrScanning(false);
+          setOcrSuccess(true);
+          setShopInfo(prev => ({
+            ...prev,
+            fullName: prev.fullName || 'NGUYỄN VĂN A',
+            cccdNumber: prev.cccdNumber || '036203015892',
+            cccdIssueDate: prev.cccdIssueDate || '2022-04-20',
+            bankHolder: prev.fullName || 'NGUYỄN VĂN A'
+          }));
+          setKycStatus('PENDING');
+        }, 900);
+      }
+    }
+  };
+
   const [shopInfo, setShopInfo] = useState({
     name: 'S-Shopping Store của tôi',
     username: 'my_sshopping_store',
     slogan: 'Chất lượng hàng đầu - Phục vụ tận tâm 24/7',
     logo: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300',
     cover: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
-    businessType: 'Hộ kinh doanh cá thể',
-    taxId: '0318928374',
-    licenseNo: 'GPKD-2026/SS-01',
+    
+    // KYC
+    sellerType: 'Cá nhân', // Cá nhân, Hộ kinh doanh, Doanh nghiệp
+    fullName: '',
+    cccdNumber: '',
+    cccdIssueDate: '',
+    cccdIssuePlace: '',
+    taxId: '',
+    licenseNo: '',
+    companyName: '',
+    representative: '',
+
+    // Shipping & Address
     address: '123 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
     phone: '0901234567',
+    email: 'shop@s-life.vn',
+    shippingProviders: ['V-life Delivery', 'GHN'],
+
+    // Payment
     bankName: 'Vietcombank',
     bankAccount: '10123456789',
-    bankHolder: 'NGUYEN VAN A'
+    bankHolder: 'NGUYEN VAN A',
+    bankStatus: 'Chưa xác minh' // Chưa xác minh, Đang xác minh, Đã xác minh, Xác minh thất bại
   });
 
   // --- DASHBOARD STATES ---
@@ -96,8 +168,79 @@ export default function App() {
     name: '',
     phone: '',
     city: '',
+    provinceCode: '',
+    district: '',
+    districtCode: '',
+    ward: '',
+    wardCode: '',
     detail: ''
   });
+
+  const [apiProvinces, setApiProvinces] = useState([]);
+  const [apiWards, setApiWards] = useState([]);
+
+  useEffect(() => {
+    fetch('https://provinces.open-api.vn/api/v2/p/')
+      .then(res => res.json())
+      .then(data => setApiProvinces(data))
+      .catch(e => console.error(e));
+  }, []);
+
+  const handleProvinceChange = (e) => {
+    const code = e.target.value;
+    const pName = e.target.options[e.target.selectedIndex].text;
+    setNewAddress({...newAddress, provinceCode: code, city: pName, wardCode: '', ward: ''});
+    if (code) {
+      fetch(`https://provinces.open-api.vn/api/v2/p/${code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setApiWards(data.wards || []))
+        .catch(e => console.error(e));
+    } else {
+      setApiWards([]);
+    }
+  };
+
+  const handleWardChange = (e) => {
+    const code = e.target.value;
+    const wName = e.target.options[e.target.selectedIndex].text;
+    setNewAddress({...newAddress, wardCode: code, ward: wName});
+  };
+
+  // --- REGISTER S-LIFE STATES ---
+  const [regPhone, setRegPhone] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+
+  const handleSLifeRegisterSubmit = (e) => {
+    e.preventDefault();
+    if (!regPhone || !regPassword) {
+      setAuthError('Vui lòng nhập Số điện thoại và Mật khẩu S-life.');
+      return;
+    }
+    
+    // Giả lập hệ thống tự động lấy Tên từ hồ sơ S-life đã có
+    const slifeName = 'Chủ Shop S-life';
+    let acc = PRE_REGISTERED_ACCOUNTS.find(a => a.phone === regPhone);
+    
+    if (!acc) {
+      // Create new account and add to mock DB
+      acc = { phone: regPhone, password: regPassword, ownerName: slifeName, shopName: null };
+      PRE_REGISTERED_ACCOUNTS.push(acc);
+    } else {
+      if (acc.password !== regPassword) {
+        setAuthError('Mật khẩu S-life không đúng!');
+        return;
+      }
+      if (acc.shopName) {
+        setAuthError('Tài khoản này đã mở Cửa hàng rồi! Vui lòng chuyển sang Đăng nhập.');
+        return;
+      }
+    }
+    
+    // Log them in and take them to wizard
+    setLoggedInUser(acc);
+    setAuthError('');
+    setMode('wizard');
+  };
 
   // Authentication Verification Handler
   const handleSLifeAuthSubmit = (e) => {
@@ -115,6 +258,11 @@ export default function App() {
     );
 
     if (matchedAccount) {
+      if (!matchedAccount.shopName) {
+        setAuthError('Mật khẩu hoặc Số điện thoại/Email S-life không đúng. Vui lòng kiểm tra lại!');
+        return;
+      }
+
       setLoggedInUser(matchedAccount);
       setAuthError('');
       setMode('dashboard');
@@ -124,8 +272,22 @@ export default function App() {
   };
 
   const handleFinishWizard = () => {
-    alert('🎉 Chúc mừng! Cửa hàng S-shopping của bạn đã được khởi tạo thành công với Tài khoản S-life.');
+    setWizardStep(5);
+  };
+
+  const handleGoToDashboard = (showModal = false) => {
+    const updatedUser = { ...loggedInUser, shopName: shopInfo.name };
+    setLoggedInUser(updatedUser);
+    
+    const dbIndex = PRE_REGISTERED_ACCOUNTS.findIndex(acc => acc.phone === loggedInUser.phone);
+    if (dbIndex >= 0) {
+      PRE_REGISTERED_ACCOUNTS[dbIndex].shopName = shopInfo.name;
+    }
+    
     setMode('dashboard');
+    if (showModal) {
+      setShowAddProductModal(true);
+    }
   };
 
   const handleCreateProduct = (e) => {
@@ -204,14 +366,14 @@ export default function App() {
         </div>
 
         <div className="nav-actions">
-          {mode !== 'login' && (
+          {mode !== 'login' && mode !== 'register_slife' && (
             <button className="nav-btn-secondary" onClick={() => { setMode('login'); setSlifePhone(''); setSlifePassword(''); setAuthError(''); }}>
               <LogOut size={16} />
               Đăng Xuất
             </button>
           )}
-          {mode !== 'wizard' && (
-            <button className="nav-btn-secondary" onClick={() => setMode('wizard')}>
+          {mode !== 'wizard' && mode !== 'register_slife' && (
+            <button className="nav-btn-secondary" onClick={() => setMode('register_slife')}>
               <SLifeIcon size={18} />
               Đăng ký Cửa hàng Mới
             </button>
@@ -390,9 +552,9 @@ export default function App() {
                   </p>
 
                   <div className="register-callout-box">
-                    <span>Bạn chưa đăng ký Cửa hàng?</span>
-                    <button type="button" className="register-callout-btn" onClick={() => setMode('wizard')}>
-                      Đăng ký tạo Cửa hàng ngay
+                    <span>Bạn chưa có Tài khoản S-life?</span>
+                    <button type="button" className="register-callout-btn" onClick={() => { setMode('register_slife'); setAuthError(''); }}>
+                      Đăng ký tài khoản S-life ngay
                     </button>
                   </div>
                 </form>
@@ -414,6 +576,62 @@ export default function App() {
       )}
 
       {/* ========================================================================= */}
+      {/* 1.5️⃣ MODE: REGISTER S-LIFE ACCOUNT */}
+      {/* ========================================================================= */}
+      {mode === 'register_slife' && (
+        <main className="login-hero-container">
+          <div className="login-content-grid" style={{ justifyContent: 'center' }}>
+            <div className="login-card-container" style={{ margin: '0 auto', maxWidth: '450px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--primary-light)', padding: '8px 16px', borderRadius: '16px' }}>
+                  <SLifeIcon size={20} />
+                  <span style={{ fontSize: '14px', fontWeight: '900', color: 'var(--primary-dark)' }}>ĐĂNG KÝ BÁN HÀNG BẰNG S-LIFE</span>
+                </div>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>Xác thực tài khoản S-life của bạn để mở Cửa hàng S-shopping</p>
+              </div>
+
+              {authError !== '' && (
+                <div style={{ background: '#FEF2F2', padding: '12px 14px', borderRadius: '12px', border: '1px solid #FECACA', color: '#DC2626', fontSize: '12px', fontWeight: '600', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSLifeRegisterSubmit}>
+                <div className="input-field-group">
+                  <label className="input-label-text">Số điện thoại S-life *</label>
+                  <div className="input-with-icon">
+                    <Smartphone size={18} className="input-icon-prefix" />
+                    <input type="text" className="stylish-input" placeholder="090..." value={regPhone} onChange={(e) => { setRegPhone(e.target.value); setAuthError(''); }} />
+                  </div>
+                </div>
+
+                <div className="input-field-group">
+                  <label className="input-label-text">Mật khẩu S-life *</label>
+                  <div className="input-with-icon">
+                    <Lock size={18} className="input-icon-prefix" />
+                    <input type="password" className="stylish-input" placeholder="Nhập mật khẩu..." value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setAuthError(''); }} />
+                  </div>
+                </div>
+
+                <button type="submit" className="primary-login-btn" style={{ marginTop: '24px' }}>
+                  <SLifeIcon size={20} />
+                  BẮT ĐẦU TẠO CỬA HÀNG
+                </button>
+
+                <div className="register-callout-box" style={{ marginTop: '20px' }}>
+                  <span>Bạn đã có Tài khoản S-life?</span>
+                  <button type="button" className="register-callout-btn" onClick={() => { setMode('login'); setAuthError(''); }}>
+                    Quay lại Đăng nhập
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </main>
+      )}
+
+      {/* ========================================================================= */}
       {/* 2️⃣ MODE: STORE ONBOARDING WIZARD */}
       {/* ========================================================================= */}
       {mode === 'wizard' && (
@@ -421,47 +639,115 @@ export default function App() {
           <div className="wizard-card-box">
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
               <button className="nav-btn-secondary" onClick={() => setMode('login')}>
-                <ArrowLeft size={16} /> Quay lại Đăng nhập
+                <ArrowLeft size={16} /> Hủy đăng ký
               </button>
               <div>
-                <h2 style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text-primary)' }}>ĐĂNG KÝ MỞ CỬA HÀNG BẰNG TÀI KHOẢN S-LIFE</h2>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Tự động liên kết thông tin chủ shop từ hệ sinh thái S-life</p>
+                <h2 style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text-primary)' }}>TẠO CỬA HÀNG S-SHOPPING</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Mở gian hàng kinh doanh trên hệ sinh thái V-life</p>
               </div>
             </div>
 
             {/* Stepper Header */}
+            {wizardStep < 5 && (
             <div className="wizard-progress-bar">
               {[
-                { step: 1, title: 'Thông tin Shop' },
-                { step: 2, title: 'Pháp lý & Thuế' },
-                { step: 3, title: 'Kho & Vận chuyển' },
-                { step: 4, title: 'Ngân hàng đối soát' }
+                { step: 1, title: 'Shop' },
+                { step: 2, title: 'Người bán' },
+                { step: 3, title: 'Vận chuyển' },
+                { step: 4, title: 'Thanh toán' }
               ].map(s => (
                 <div 
                   key={s.step} 
                   className={`wizard-step-node ${wizardStep === s.step ? 'active' : ''}`}
-                  onClick={() => setWizardStep(s.step)}
                 >
-                  <div className="step-number-circle">{s.step}</div>
+                  <div className="step-number-circle">{wizardStep > s.step ? '✓' : s.step}</div>
                   <span className="step-title-text">{s.title}</span>
                 </div>
               ))}
             </div>
+            )}
 
+            {wizardStep === 5 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ width: '80px', height: '80px', background: 'var(--primary-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                  <Sparkles size={40} color="var(--primary)" />
+                </div>
+                <h2 style={{ fontSize: '24px', fontWeight: '900', color: 'var(--primary-dark)', marginBottom: '12px' }}>🎉 Cửa hàng của bạn đã sẵn sàng!</h2>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '300px', margin: '0 auto 32px', textAlign: 'left', background: 'var(--bg-page)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', gap: '8px', color: 'var(--primary)' }}><CheckCircle2 size={18} /> <span style={{ fontSize: '14px', fontWeight: '600' }}>Thông tin Shop</span></div>
+                  <div style={{ display: 'flex', gap: '8px', color: 'var(--primary)' }}><CheckCircle2 size={18} /> <span style={{ fontSize: '14px', fontWeight: '600' }}>Xác minh người bán</span></div>
+                  <div style={{ display: 'flex', gap: '8px', color: 'var(--primary)' }}><CheckCircle2 size={18} /> <span style={{ fontSize: '14px', fontWeight: '600' }}>Địa chỉ lấy hàng</span></div>
+                  <div style={{ display: 'flex', gap: '8px', color: 'var(--primary)' }}><CheckCircle2 size={18} /> <span style={{ fontSize: '14px', fontWeight: '600' }}>Tài khoản nhận tiền</span></div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+                  <button className="primary-login-btn" style={{ width: '300px', padding: '14px', fontSize: '15px' }} onClick={() => handleGoToDashboard(true)}>
+                    + Đăng sản phẩm đầu tiên
+                  </button>
+                  <button className="nav-btn-secondary" style={{ width: '300px', padding: '12px', justifyContent: 'center' }} onClick={() => handleGoToDashboard(false)}>
+                    Hoặc vào Dashboard →
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div className="wizard-split-layout">
               {/* Form Side */}
               <div>
                 {wizardStep === 1 && (
                   <div>
-                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>THÔNG TIN SHOP</h3>
+                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>1. THÔNG TIN CỬA HÀNG</h3>
                     
                     <label className="input-label-text">Tên Shop *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.name} onChange={e => setShopInfo({ ...shopInfo, name: e.target.value })} placeholder="Ví dụ: Tài khoản thử nghiệm" />
+                    <input 
+                      type="text" 
+                      className="stylish-input" 
+                      style={{ paddingLeft: '16px', borderColor: shopNameStatus === 'unavailable' ? 'var(--red)' : shopNameStatus === 'available' ? 'var(--primary)' : 'var(--border)' }} 
+                      value={shopInfo.name} 
+                      onChange={e => {
+                        setShopInfo({ ...shopInfo, name: e.target.value });
+                        if (e.target.value.length > 3) {
+                           setShopNameStatus(e.target.value.toLowerCase().includes('apple') ? 'unavailable' : 'available');
+                        } else {
+                           setShopNameStatus(null);
+                        }
+                      }} 
+                      placeholder="Nhập tên cửa hàng..." 
+                    />
+                    {shopNameStatus === 'available' && <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '600', marginTop: '4px', display: 'block' }}>✅ Tên cửa hàng có thể sử dụng</span>}
+                    {shopNameStatus === 'unavailable' && <span style={{ fontSize: '11px', color: 'var(--red)', fontWeight: '600', marginTop: '4px', display: 'block' }}>❌ Tên cửa hàng vi phạm từ khóa hoặc đã được sử dụng</span>}
+
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label className="input-label-text">Logo Shop</label>
+                        <input type="file" id="upload-logo" style={{ display: 'none' }} accept="image/*" onChange={e => {
+                          if (e.target.files && e.target.files[0]) {
+                            setShopInfo({ ...shopInfo, logo: URL.createObjectURL(e.target.files[0]) });
+                          }
+                        }} />
+                        <button className="nav-btn-secondary" style={{ width: '100%', justifyContent: 'center', border: '1px dashed var(--text-light)', height: '42px' }} onClick={() => document.getElementById('upload-logo').click()}>+ Upload Logo</button>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label className="input-label-text">Ảnh bìa (Banner)</label>
+                        <input type="file" id="upload-banner" style={{ display: 'none' }} accept="image/*" onChange={e => {
+                          if (e.target.files && e.target.files[0]) {
+                            setShopInfo({ ...shopInfo, cover: URL.createObjectURL(e.target.files[0]) });
+                          }
+                        }} />
+                        <button className="nav-btn-secondary" style={{ width: '100%', justifyContent: 'center', border: '1px dashed var(--text-light)', height: '42px' }} onClick={() => document.getElementById('upload-banner').click()}>+ Upload Banner</button>
+                      </div>
+                    </div>
+
+                    <label className="input-label-text" style={{ marginTop: '14px' }}>Mô tả Shop</label>
+                    <textarea className="stylish-input" style={{ height: '60px', padding: '12px 16px' }} value={shopInfo.slogan} onChange={e => setShopInfo({ ...shopInfo, slogan: e.target.value })} placeholder="Mô tả ngắn về cửa hàng của bạn..." />
 
                     <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <label className="input-label-text" style={{ marginBottom: 0 }}>Địa chỉ lấy hàng *</label>
-                      <button className="nav-btn-secondary" style={{ padding: '4px 10px', fontSize: '12px', border: '1px solid var(--border)' }} onClick={() => setShowAddressModal(true)}>
-                        + Thêm
+                      <button className="nav-btn-secondary" style={{ padding: '4px 10px', fontSize: '12px', border: '1px solid var(--border)' }} onClick={() => {
+                        setNewAddress(prev => ({...prev, name: loggedInUser?.ownerName || ''}));
+                        setShowAddressModal(true);
+                      }}>
+                        + Thêm địa chỉ
                       </button>
                     </div>
                     {shopInfo.address && shopInfo.address !== '123 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh' ? (
@@ -475,70 +761,320 @@ export default function App() {
                        </div>
                     )}
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Email *</label>
-                    <input type="email" className="stylish-input" style={{ paddingLeft: '16px', background: 'var(--bg-page)' }} value={shopInfo.email || ''} onChange={e => setShopInfo({ ...shopInfo, email: e.target.value })} placeholder="email@example.com" />
-
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Số điện thoại *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px', background: 'var(--bg-page)' }} value={shopInfo.phone} onChange={e => setShopInfo({ ...shopInfo, phone: e.target.value })} placeholder="+84394562659" />
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label className="input-label-text">Số điện thoại liên hệ *</label>
+                        <input 
+                          type="text" 
+                          className="stylish-input" 
+                          style={{ paddingLeft: '16px', background: 'var(--bg-page)', color: useCustomPhone ? 'var(--text-primary)' : 'var(--text-secondary)' }} 
+                          value={useCustomPhone ? shopInfo.phone : (loggedInUser?.phone || shopInfo.phone)} 
+                          onChange={e => setShopInfo({ ...shopInfo, phone: e.target.value })} 
+                          readOnly={!useCustomPhone}
+                        />
+                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                           <input type="checkbox" id="useCustomPhone" checked={useCustomPhone} onChange={e => {
+                             setUseCustomPhone(e.target.checked);
+                             if (!e.target.checked) setShopInfo({ ...shopInfo, phone: loggedInUser?.phone || shopInfo.phone });
+                           }} style={{ accentColor: 'var(--primary)', width: '14px', height: '14px', cursor: 'pointer' }} />
+                           <label htmlFor="useCustomPhone" style={{ fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer' }}>Dùng số điện thoại khác</label>
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label className="input-label-text">Email liên hệ *</label>
+                        <input type="email" className="stylish-input" style={{ paddingLeft: '16px', background: 'var(--bg-page)' }} value={shopInfo.email} onChange={e => setShopInfo({ ...shopInfo, email: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {wizardStep === 2 && (
                   <div>
-                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>2. THÔNG TIN PHÁP LÝ & THUẾ</h3>
-                    <label className="input-label-text">Loại hình thành lập</label>
-                    <div style={{ display: 'flex', gap: '10px', margin: '10px 0' }}>
-                      {['Cá nhân', 'Hộ kinh doanh', 'Công ty / Doanh nghiệp'].map(t => (
+                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>2. THÔNG TIN NGƯỜI BÁN (KYC)</h3>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <label className="input-label-text" style={{ marginBottom: 0 }}>Loại hình người bán</label>
+                      <span className="status-tag" style={{ background: '#FEF2F2', color: '#DC2626', fontSize: '10px' }}>Trạng thái KYC: {kycStatus}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                      {['Cá nhân', 'Hộ kinh doanh', 'Doanh nghiệp'].map(t => (
                         <button 
                           key={t}
                           type="button"
-                          className={`nav-btn-secondary ${shopInfo.businessType === t ? 'nav-btn-primary' : ''}`}
-                          onClick={() => setShopInfo({ ...shopInfo, businessType: t })}
+                          className={`nav-btn-secondary ${shopInfo.sellerType === t ? 'nav-btn-primary' : ''}`}
+                          style={{ flex: 1, justifyContent: 'center', fontSize: '12px' }}
+                          onClick={() => setShopInfo({ ...shopInfo, sellerType: t })}
                         >
                           {t}
                         </button>
                       ))}
                     </div>
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Mã Số Thuế (MST) *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.taxId} onChange={e => setShopInfo({ ...shopInfo, taxId: e.target.value })} placeholder="Mã số thuế..." />
+                    {/* Hidden Inputs for Photo Upload */}
+                    <input type="file" id="upload-cccd-front" accept="image/*" style={{ display: 'none' }} onChange={e => handleCccdUpload('front', e)} />
+                    <input type="file" id="upload-cccd-back" accept="image/*" style={{ display: 'none' }} onChange={e => handleCccdUpload('back', e)} />
+                    <input type="file" id="upload-cccd-face" accept="image/*" style={{ display: 'none' }} onChange={e => handleCccdUpload('face', e)} />
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Số Giấy phép kinh doanh (GPKD)</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.licenseNo} onChange={e => setShopInfo({ ...shopInfo, licenseNo: e.target.value })} placeholder="Số GPKD..." />
+                    {/* AI OCR Banner Callout */}
+                    <div style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #E0F2FE 100%)', border: '1px solid #A7F3D0', padding: '12px 14px', borderRadius: '12px', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#047857', fontWeight: '700', fontSize: '12px' }}>
+                        <Sparkles size={16} />
+                        <span>TỰ ĐỘNG ĐỌC CĂN CƯỚC CÔNG DÂN (AI OCR)</span>
+                      </div>
+                      <p style={{ fontSize: '11px', color: '#065F46', marginTop: '4px', margin: 0 }}>
+                        Tải lên ảnh CCCD mặt trước & mặt sau. Hệ thống AI sẽ tự động trích xuất Họ tên, Số CCCD và Ngày cấp vào mẫu bên dưới.
+                      </p>
+                    </div>
+
+                    <label className="input-label-text">Ảnh chụp CCCD & Khuôn mặt *</label>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                      {/* Front Card */}
+                      <div 
+                        style={{ flex: 1, height: '80px', border: '1px dashed var(--primary)', borderRadius: '10px', background: 'var(--bg-page)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}
+                        onClick={() => document.getElementById('upload-cccd-front').click()}
+                      >
+                        {cccdFrontImg ? (
+                          <>
+                            <img src={cccdFrontImg} alt="Mặt trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div style={{ position: 'absolute', bottom: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>Mặt trước ✓</div>
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={18} color="var(--primary)" />
+                            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '700', marginTop: '4px' }}>Mặt trước CCCD</span>
+                            <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Chụp / Tải ảnh</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Back Card */}
+                      <div 
+                        style={{ flex: 1, height: '80px', border: '1px dashed var(--primary)', borderRadius: '10px', background: 'var(--bg-page)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}
+                        onClick={() => document.getElementById('upload-cccd-back').click()}
+                      >
+                        {cccdBackImg ? (
+                          <>
+                            <img src={cccdBackImg} alt="Mặt sau" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div style={{ position: 'absolute', bottom: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>Mặt sau ✓</div>
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={18} color="var(--primary)" />
+                            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '700', marginTop: '4px' }}>Mặt sau CCCD</span>
+                            <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Chụp / Tải ảnh</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Portrait Card */}
+                      <div 
+                        style={{ flex: 1, height: '80px', border: '1px dashed var(--text-light)', borderRadius: '10px', background: 'var(--bg-page)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}
+                        onClick={() => document.getElementById('upload-cccd-face').click()}
+                      >
+                        {faceImg ? (
+                          <>
+                            <img src={faceImg} alt="Chân dung" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div style={{ position: 'absolute', bottom: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>Chân dung ✓</div>
+                          </>
+                        ) : (
+                          <>
+                            <User size={18} color="var(--text-muted)" />
+                            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '700', marginTop: '4px' }}>Ảnh chân dung</span>
+                            <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Xác thực mặt</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* OCR Status Feedback */}
+                    {isOcrScanning && (
+                      <div style={{ padding: '10px 14px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px', color: '#1D4ED8', fontSize: '12px', fontWeight: '600' }}>
+                        <RefreshCw size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>⚡ AI đang quét và đọc dữ liệu từ CCCD của bạn...</span>
+                      </div>
+                    )}
+
+                    {ocrSuccess && !isOcrScanning && (
+                      <div style={{ padding: '10px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px', color: '#15803D', fontSize: '12px', fontWeight: '600' }}>
+                        <CheckCircle2 size={16} color="#16A34A" />
+                        <span>✨ AI đã trích xuất & tự động điền Họ tên, Số CCCD và Ngày cấp thành công!</span>
+                      </div>
+                    )}
+
+                    <label className="input-label-text">Họ và tên chủ shop / Đại diện *</label>
+                    <input 
+                      type="text" 
+                      className="stylish-input" 
+                      style={{ paddingLeft: '16px', background: 'var(--bg-page)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} 
+                      value={shopInfo.fullName} 
+                      readOnly 
+                      placeholder="Tự động điền từ ảnh CCCD..." 
+                    />
+
+                    {(shopInfo.sellerType === 'Hộ kinh doanh' || shopInfo.sellerType === 'Doanh nghiệp') && (
+                      <>
+                        <label className="input-label-text" style={{ marginTop: '14px' }}>Tên HKD / Công ty *</label>
+                        <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.companyName} onChange={e => setShopInfo({ ...shopInfo, companyName: e.target.value })} placeholder="Nhập tên tổ chức..." />
+                        
+                        <label className="input-label-text" style={{ marginTop: '14px' }}>Mã số thuế *</label>
+                        <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.taxId} onChange={e => setShopInfo({ ...shopInfo, taxId: e.target.value })} placeholder="Mã số thuế..." />
+                        
+                        <label className="input-label-text" style={{ marginTop: '14px' }}>Upload Giấy phép kinh doanh *</label>
+                        <button className="nav-btn-secondary" style={{ width: '100%', justifyContent: 'center', border: '1px dashed var(--text-light)', height: '42px' }}>+ Tải lên GPKD / ĐKKD</button>
+                      </>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label className="input-label-text">Số CCCD *</label>
+                        <input 
+                          type="text" 
+                          className="stylish-input" 
+                          style={{ paddingLeft: '16px', background: 'var(--bg-page)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} 
+                          value={shopInfo.cccdNumber} 
+                          readOnly 
+                          placeholder="Tự động điền..." 
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label className="input-label-text">Ngày cấp</label>
+                        <input 
+                          type="date" 
+                          className="stylish-input" 
+                          style={{ paddingLeft: '16px', background: 'var(--bg-page)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} 
+                          value={shopInfo.cccdIssueDate} 
+                          readOnly 
+                        />
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic' }}>
+                      🔒 Thông tin Họ tên, Số CCCD và Ngày cấp được tự động trích xuất từ ảnh CCCD và không thể tự chỉnh sửa thủ công.
+                    </p>
                   </div>
                 )}
 
                 {wizardStep === 3 && (
                   <div>
-                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>3. ĐỊA CHỈ KHO & VẬN CHUYỂN</h3>
-                    <label className="input-label-text">Địa chỉ kho nhận/lấy hàng *</label>
-                    <textarea className="stylish-input" style={{ height: '80px', padding: '12px 16px' }} value={shopInfo.address} onChange={e => setShopInfo({ ...shopInfo, address: e.target.value })} placeholder="Địa chỉ chi tiết..." />
+                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>3. ĐỊA CHỈ & VẬN CHUYỂN</h3>
+                    
+                    <label className="input-label-text">Địa chỉ lấy hàng (Default)</label>
+                    <div style={{ padding: '12px 14px', background: 'var(--bg-page)', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '24px' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                         <div>
+                           <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)' }}>{shopInfo.addressName || shopInfo.fullName || 'Kho Hàng'} <span style={{ fontWeight: '400', color: 'var(--text-muted)' }}>| {shopInfo.addressPhone || shopInfo.phone}</span></div>
+                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{shopInfo.address}</div>
+                         </div>
+                         <button style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer' }}>Sửa</button>
+                       </div>
+                    </div>
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Số điện thoại liên hệ kho *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.phone} onChange={e => setShopInfo({ ...shopInfo, phone: e.target.value })} placeholder="090 123 4567" />
-
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Đơn vị vận chuyển hợp tác</label>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-                      {['GHN Express', 'Viettel Post', 'Shopee Express', 'GrabExpress'].map(p => (
-                        <span key={p} style={{ background: 'var(--primary-light)', color: 'var(--primary-dark)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle2 size={14} /> {p}
-                        </span>
-                      ))}
+                    <label className="input-label-text">Đơn vị vận chuyển được hỗ trợ</label>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>V-life sẽ tự động kết nối và phân bổ đơn hàng cho các ĐVVC bạn chọn.</p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {['V-life Delivery', 'GHN', 'Viettel Post', 'J&T Express', 'Ninja Van'].map(provider => {
+                        const isChecked = shopInfo.shippingProviders.includes(provider);
+                        return (
+                          <div key={provider} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '1px solid var(--border)', borderRadius: '12px', cursor: 'pointer' }} onClick={() => {
+                            if (isChecked) {
+                              setShopInfo({ ...shopInfo, shippingProviders: shopInfo.shippingProviders.filter(p => p !== provider) });
+                            } else {
+                              setShopInfo({ ...shopInfo, shippingProviders: [...shopInfo.shippingProviders, provider] });
+                            }
+                          }}>
+                            <div style={{ width: '20px', height: '20px', borderRadius: '6px', border: isChecked ? 'none' : '2px solid var(--text-light)', background: isChecked ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isChecked && <Check size={14} color="#fff" />}
+                            </div>
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{provider}</span>
+                            {provider === 'V-life Delivery' && <span className="status-tag active" style={{ marginLeft: 'auto', fontSize: '10px' }}>Khuyên dùng</span>}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
 
                 {wizardStep === 4 && (
                   <div>
-                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>4. TÀI KHOẢN NGÂN HÀNG ĐỐI SOÁT DOANH THU</h3>
-                    <label className="input-label-text">Tên Ngân Hàng *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.bankName} onChange={e => setShopInfo({ ...shopInfo, bankName: e.target.value })} placeholder="Vietcombank, Techcombank..." />
+                    <h3 style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>4. TÀI KHOẢN NHẬN TIỀN</h3>
+                    
+                    {/* Napas Callout */}
+                    <div style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%)', border: '1px solid #A7F3D0', padding: '12px 14px', borderRadius: '12px', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#047857', fontWeight: '700', fontSize: '12px' }}>
+                        <Zap size={16} />
+                        <span>XÁC MINH TỰ ĐỘNG QUA NAPAS 24/7</span>
+                      </div>
+                      <p style={{ fontSize: '11px', color: '#065F46', marginTop: '4px', margin: 0 }}>
+                        Nhập số tài khoản ngân hàng, hệ thống sẽ tự động tra cứu Napas để xác minh và điền tên chủ tài khoản.
+                      </p>
+                    </div>
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Số Tài Khoản Ngân Hàng *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.bankAccount} onChange={e => setShopInfo({ ...shopInfo, bankAccount: e.target.value })} placeholder="Số tài khoản..." />
+                    <label className="input-label-text">Ngân Hàng *</label>
+                    <select 
+                      className="stylish-input" 
+                      style={{ paddingLeft: '16px', appearance: 'none', background: 'var(--bg-page)' }} 
+                      value={shopInfo.bankName} 
+                      onChange={e => {
+                        const newBank = e.target.value;
+                        setShopInfo({ ...shopInfo, bankName: newBank });
+                        if (shopInfo.bankAccount && shopInfo.bankAccount.length >= 6) {
+                          handleBankAccountChange(shopInfo.bankAccount);
+                        }
+                      }}
+                    >
+                      <option value="Vietcombank">Vietcombank (Ngân hàng TMCP Ngoại thương)</option>
+                      <option value="Techcombank">Techcombank (Ngân hàng Kỹ thương)</option>
+                      <option value="MBBank">MB Bank (Ngân hàng Quân đội)</option>
+                      <option value="ACB">ACB (Ngân hàng Á Châu)</option>
+                      <option value="Vietinbank">VietinBank (Ngân hàng Công thương)</option>
+                      <option value="BIDV">BIDV (Ngân hàng ĐT&PT Việt Nam)</option>
+                      <option value="Agribank">Agribank (Ngân hàng Nông nghiệp)</option>
+                    </select>
 
-                    <label className="input-label-text" style={{ marginTop: '14px' }}>Tên Chủ Tài Khoản (In hoa không dấu) *</label>
-                    <input type="text" className="stylish-input" style={{ paddingLeft: '16px' }} value={shopInfo.bankHolder} onChange={e => setShopInfo({ ...shopInfo, bankHolder: e.target.value })} placeholder="NGUYEN VAN A" />
+                    <label className="input-label-text" style={{ marginTop: '14px' }}>Số Tài Khoản *</label>
+                    <input 
+                      type="text" 
+                      className="stylish-input" 
+                      style={{ paddingLeft: '16px' }} 
+                      value={shopInfo.bankAccount} 
+                      onChange={e => handleBankAccountChange(e.target.value)} 
+                      placeholder="Nhập số tài khoản ngân hàng..." 
+                    />
+
+                    {isVerifyingBank && (
+                      <div style={{ padding: '10px 14px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', color: '#1D4ED8', fontSize: '12px', fontWeight: '600' }}>
+                        <RefreshCw size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>⚡ Đang tra cứu Napas 24/7 để xác minh tên chủ tài khoản...</span>
+                      </div>
+                    )}
+
+                    <label className="input-label-text" style={{ marginTop: '14px' }}>Tên Chủ Tài Khoản *</label>
+                    <input 
+                      type="text" 
+                      className="stylish-input" 
+                      style={{ paddingLeft: '16px', background: 'var(--bg-page)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} 
+                      value={shopInfo.bankHolder || (shopInfo.fullName ? shopInfo.fullName.toUpperCase() : '')} 
+                      readOnly 
+                      placeholder="Tự động tra cứu từ ngân hàng..." 
+                    />
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic' }}>
+                      🔒 Tên chủ tài khoản được Napas 24/7 tự động xác minh khớp 100% với hồ sơ người bán.
+                    </p>
+
+                    <div style={{ marginTop: '16px', padding: '12px', borderRadius: '12px', border: shopInfo.bankStatus === 'Đã xác minh' ? '1px solid var(--primary-light)' : '1px solid #FEF08A', background: shopInfo.bankStatus === 'Đã xác minh' ? 'var(--primary-light)' : '#FEF9C3', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {shopInfo.bankStatus === 'Đã xác minh' ? (
+                        <>
+                          <CheckCircle2 size={16} color="var(--primary)" />
+                          <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary-dark)' }}>✓ Đã xác minh thông qua Napas 24/7</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle size={16} color="#CA8A04" />
+                          <span style={{ fontSize: '12px', fontWeight: '700', color: '#854D0E' }}>⚠️ Trạng thái: {shopInfo.bankStatus} (Hãy nhập đủ số tài khoản)</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -551,11 +1087,11 @@ export default function App() {
 
                   {wizardStep < 4 ? (
                     <button className="nav-btn-primary" style={{ padding: '10px 24px' }} onClick={() => setWizardStep(wizardStep + 1)}>
-                      Tiếp theo &gt;
+                      Tiếp tục &gt;
                     </button>
                   ) : (
                     <button className="nav-btn-primary" style={{ padding: '12px 28px' }} onClick={handleFinishWizard}>
-                      <Sparkles size={16} /> Hoàn Tất & Kích Hoạt Shop
+                      Hoàn Tất Đăng Ký
                     </button>
                   )}
                 </div>
@@ -581,6 +1117,7 @@ export default function App() {
                 </div>
               </div>
             </div>
+            )}
           </div>
         </main>
       )}
@@ -866,25 +1403,26 @@ export default function App() {
               <button onClick={() => setShowAddressModal(false)} style={{ color: 'var(--text-muted)' }}>X</button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Họ & Tên</label>
-                <input type="text" className="stylish-input" style={{ paddingLeft: '14px', height: '36px', fontSize: '13px' }} value={newAddress.name} onChange={e => setNewAddress({...newAddress, name: e.target.value})} placeholder="Nhập vào" />
-              </div>
-              <div>
-                <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Số điện thoại</label>
-                <input type="text" className="stylish-input" style={{ paddingLeft: '14px', height: '36px', fontSize: '13px' }} value={newAddress.phone} onChange={e => setNewAddress({...newAddress, phone: e.target.value})} placeholder="Nhập vào" />
-              </div>
+            <div style={{ marginBottom: '14px' }}>
+              <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Họ & Tên</label>
+              <input type="text" className="stylish-input" style={{ paddingLeft: '14px', height: '36px', fontSize: '13px' }} value={newAddress.name} onChange={e => setNewAddress({...newAddress, name: e.target.value})} placeholder="Nhập vào" />
             </div>
 
-            <div style={{ marginTop: '14px' }}>
-              <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Tỉnh/Thành phố/Phường/Xã</label>
-              <select className="stylish-input" style={{ paddingLeft: '14px', height: '36px', fontSize: '13px', appearance: 'auto' }} value={newAddress.city} onChange={e => setNewAddress({...newAddress, city: e.target.value})}>
-                <option value="">Chọn</option>
-                <option value="Thành phố Hà Nội">Thành phố Hà Nội</option>
-                <option value="Thành phố Hồ Chí Minh">Thành phố Hồ Chí Minh</option>
-                <option value="Thành phố Đà Nẵng">Thành phố Đà Nẵng</option>
-              </select>
+            <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Tỉnh/Thành phố</label>
+                <select className="stylish-input" style={{ paddingLeft: '10px', height: '36px', fontSize: '13px', appearance: 'auto' }} value={newAddress.provinceCode} onChange={handleProvinceChange}>
+                  <option value="">Chọn Tỉnh/Thành</option>
+                  {apiProvinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="input-label-text" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Phường/Xã</label>
+                <select className="stylish-input" style={{ paddingLeft: '10px', height: '36px', fontSize: '13px', appearance: 'auto' }} value={newAddress.wardCode} onChange={handleWardChange} disabled={!newAddress.provinceCode}>
+                  <option value="">Chọn Phường/Xã</option>
+                  {apiWards.map(w => <option key={w.code} value={w.code}>{w.name}</option>)}
+                </select>
+              </div>
             </div>
 
             <div style={{ marginTop: '14px' }}>
@@ -892,16 +1430,26 @@ export default function App() {
               <textarea className="stylish-input" style={{ height: '70px', padding: '12px 14px', fontSize: '13px' }} value={newAddress.detail} onChange={e => setNewAddress({...newAddress, detail: e.target.value})} placeholder="Số nhà, tên đường v.v." />
             </div>
 
-            {/* Google Map Mockup */}
+            {/* Real Interactive Map via Iframe */}
             {newAddress.detail && (
               <div style={{ marginTop: '16px', position: 'relative', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)', height: '160px' }}>
-                <img src="https://i.stack.imgur.com/HILmr.png" alt="Map" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#EF4444', color: '#fff', padding: '6px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'center', maxWidth: '80%' }}>
-                  Vietnam<br/>
-                  <span style={{ fontWeight: 'normal', fontSize: '10px' }}>{newAddress.detail}, {newAddress.city}</span>
-                </div>
-                <div style={{ position: 'absolute', top: 'calc(50% + 20px)', left: '50%', transform: 'translateX(-50%)', color: '#EF4444' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                <iframe 
+                  width="100%" 
+                  height="100%" 
+                  style={{ border: 0 }}
+                  loading="lazy" 
+                  allowFullScreen 
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(`${newAddress.detail}, ${newAddress.ward ? newAddress.ward + ', ' : ''}${newAddress.city}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                />
+                {/* Overlay Crosshair */}
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ background: '#EF4444', color: '#fff', padding: '6px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'center', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Di chuyển bản đồ để chọn vị trí<br/>
+                    <span style={{ fontWeight: 'normal', fontSize: '10px' }}>{newAddress.detail}, {newAddress.city}</span>
+                  </div>
+                  <div style={{ color: '#EF4444', marginTop: '-4px' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                  </div>
                 </div>
               </div>
             )}
@@ -911,7 +1459,8 @@ export default function App() {
                 Hủy
               </button>
               <button className="nav-btn-primary" style={{ padding: '8px 24px', background: '#EF4444', color: '#fff', border: 'none', fontSize: '13px' }} onClick={() => {
-                setShopInfo({...shopInfo, address: `${newAddress.detail}, ${newAddress.city}`, addressName: newAddress.name, addressPhone: newAddress.phone});
+                const fullAddressStr = `${newAddress.detail ? newAddress.detail + ', ' : ''}${newAddress.ward ? newAddress.ward + ', ' : ''}${newAddress.city}`;
+                setShopInfo({...shopInfo, address: fullAddressStr, addressName: newAddress.name, addressPhone: newAddress.phone});
                 setShowAddressModal(false);
               }}>
                 Lưu
