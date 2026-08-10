@@ -5,7 +5,7 @@ import {
   BarChart3, Package, FileText, Settings, LogOut, ChevronRight,
   TrendingUp, Users, RefreshCw, Printer, AlertCircle, Sparkles,
   Search, Bell, ShieldCheck, Truck, Zap, Star, ArrowUpRight, Lock, User, Mail, Heart,
-  Smartphone, ArrowRight, Shield, KeyRound, Check
+  Smartphone, ArrowRight, Shield, KeyRound, Check, AlertTriangle
 } from 'lucide-react';
 
 // Custom S-life Logo SVG Icon (Official Brand Emblem)
@@ -22,6 +22,13 @@ const SLifeIcon = ({ size = 24 }) => (
   </svg>
 );
 
+// PRE-REGISTERED SYSTEM ACCOUNTS DATABASE
+const PRE_REGISTERED_ACCOUNTS = [
+  { phone: '0901234567', password: '123456', ownerName: 'Nguyễn Văn Chủ Shop', shopName: 'S-Shopping Official Store' },
+  { phone: '0987654321', password: '123456', ownerName: 'Trần Thị Người Bán', shopName: 'Minimalist Studio' },
+  { phone: 'admin@s-life.vn', password: '123456', ownerName: 'Quản Lý S-Life System', shopName: 'S-Shopping Premium Center' }
+];
+
 // INITIAL PRODUCTS DATA
 const INITIAL_PRODUCTS = [
   { id: 'p1', name: 'iPhone 15 Pro Max 256GB Titan Tự Nhiên (VN/A)', category: 'Điện thoại', price: 29990000, origPrice: 34990000, stock: 45, sold: 1520, status: 'Đang bán', image: 'https://images.unsplash.com/photo-1696446701796-da61225697cc?w=400', sku: 'APPL-15PM-TITAN' },
@@ -34,11 +41,13 @@ const INITIAL_PRODUCTS = [
 export default function App() {
   const [mode, setMode] = useState('login'); // 'login' | 'wizard' | 'dashboard'
 
-  // --- LOGIN STATES (Pre-filled System Account by Default) ---
+  // --- LOGIN FORM STATES (Blank by default for user testing) ---
   const [loginTab, setLoginTab] = useState('slife');
-  const [slifePhone, setSlifePhone] = useState('0901234567');
-  const [slifePassword, setSlifePassword] = useState('123456');
+  const [slifePhone, setSlifePhone] = useState('');
+  const [slifePassword, setSlifePassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [loggedInUser, setLoggedInUser] = useState(null);
 
   // --- WIZARD STATES ---
   const [wizardStep, setWizardStep] = useState(1);
@@ -81,16 +90,28 @@ export default function App() {
   const [newProdImage, setNewProdImage] = useState('');
   const [newProdDesc, setNewProdDesc] = useState('');
 
-  // Handlers
-  const handleSLifeAuth = (e) => {
-    if (e) e.preventDefault();
-    setMode('dashboard');
-  };
+  // Authentication Verification Handler
+  const handleSLifeAuthSubmit = (e) => {
+    e.preventDefault();
+    setAuthError('');
 
-  const handleQuickSystemLogin = () => {
-    setSlifePhone('0901234567');
-    setSlifePassword('123456');
-    setMode('dashboard');
+    if (!slifePhone.trim() || !slifePassword.trim()) {
+      setAuthError('Vui lòng nhập Số điện thoại/Email và Mật khẩu Tài khoản S-life.');
+      return;
+    }
+
+    // Check credentials against system pre-registered database
+    const matchedAccount = PRE_REGISTERED_ACCOUNTS.find(
+      acc => (acc.phone.toLowerCase() === slifePhone.trim().toLowerCase()) && acc.password === slifePassword.trim()
+    );
+
+    if (matchedAccount) {
+      setLoggedInUser(matchedAccount);
+      setAuthError('');
+      setMode('dashboard');
+    } else {
+      setAuthError('❌ Mật khẩu hoặc Số điện thoại/Email S-life không đúng. Vui lòng nhập đúng SĐT: 0901234567 và Mật khẩu: 123456');
+    }
   };
 
   const handleFinishWizard = () => {
@@ -155,8 +176,8 @@ export default function App() {
       {/* 📣 TOP ANNOUNCEMENT TICKER BANNER */}
       <div className="top-notice-bar">
         <div>
-          <span className="notice-pill">TÀI KHOẢN HỆ THỐNG MẶC ĐỊNH</span>
-          <span>🔑 Đã sẵn sàng Tài khoản Hệ thống S-life: <strong>0901234567</strong> / Pass: <strong>123456</strong> (Vào ngay không cần đăng ký)</span>
+          <span className="notice-pill">XÁC THỰC TÀI KHOẢN S-LIFE</span>
+          <span>🔑 Tài khoản S-life hệ thống mẫu để đăng nhập test: SĐT: <strong>0901234567</strong> | Mật khẩu: <strong>123456</strong></span>
         </div>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <span>Hotline hỗ trợ 24/7: <strong>1900 1234</strong></span>
@@ -175,15 +196,15 @@ export default function App() {
 
         <div className="nav-actions">
           {mode !== 'login' && (
-            <button className="nav-btn-secondary" onClick={() => setMode('login')}>
+            <button className="nav-btn-secondary" onClick={() => { setMode('login'); setSlifePhone(''); setSlifePassword(''); setAuthError(''); }}>
               <LogOut size={16} />
-              Đăng Nhập Khác
+              Đăng Xuất
             </button>
           )}
           {mode !== 'wizard' && (
             <button className="nav-btn-secondary" onClick={() => setMode('wizard')}>
               <SLifeIcon size={18} />
-              Đăng ký Shop mới
+              Đăng ký Cửa hàng Mới
             </button>
           )}
           {mode === 'dashboard' && (
@@ -200,7 +221,7 @@ export default function App() {
       </header>
 
       {/* ========================================================================= */}
-      {/* 1️⃣ MODE: LOGIN & REGISTER EXCLUSIVELY VIA S-LIFE SYSTEM ACCOUNT */}
+      {/* 1️⃣ MODE: LOGIN FORM (WITH REAL CREDENTIAL VERIFICATION FOR TESTING) */}
       {/* ========================================================================= */}
       {mode === 'login' && (
         <main className="login-hero-container">
@@ -209,23 +230,23 @@ export default function App() {
             {/* Left Pitch Column */}
             <div className="hero-left-pitch">
               <div className="hero-badge">
-                <SLifeIcon size={16} /> TÀI KHOẢN HỆ THỐNG ĐÃ ĐƯỢC TẠO SẴN
+                <SLifeIcon size={16} /> ĐĂNG NHẬP BẰNG TÀI KHOẢN S-LIFE HỆ THỐNG
               </div>
               <h1 className="hero-main-title">
                 Bán hàng chuyên nghiệp cùng <span className="hero-title-highlight">S-shopping</span>
               </h1>
               <p className="hero-sub-text">
-                Tài khoản hệ thống S-life đã được tích hợp sẵn. Bạn có thể bấm vào ngay để quản lý Cửa hàng, Kho hàng và Đăng bán sản phẩm mà không cần đăng ký.
+                Nhập Tài khoản S-life hệ thống của bạn để kiểm tra tính năng xác thực đăng nhập và truy cập Kênh Người Bán.
               </p>
 
               {/* Feature Highlights Grid */}
               <div className="features-list-grid">
                 <div className="feature-mini-card">
                   <div className="feature-icon-box">
-                    <Zap size={18} />
+                    <ShieldCheck size={18} />
                   </div>
-                  <span className="feature-title">Vào Ngay 1-Click</span>
-                  <span className="feature-desc">Bấm đăng nhập là vào thẳng Dashboard</span>
+                  <span className="feature-title">Xác Thực S-life Auth</span>
+                  <span className="feature-desc">Kiểm tra mật khẩu & số điện thoại bảo mật</span>
                 </div>
 
                 <div className="feature-mini-card">
@@ -267,32 +288,46 @@ export default function App() {
                 <div style={{ textAlign: 'center' }}>
                   <Store size={72} color="var(--primary)" />
                   <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginTop: '8px' }}>S-SHOPPING SELLER PORTAL</h3>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tài khoản Hệ thống: 0901234567</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Hệ sinh thái Tài khoản S-life</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: S-LIFE EXCLUSIVE LOGIN CARD WITH SYSTEM ACCOUNT */}
+            {/* Right Column: S-LIFE CREDENTIALS TESTING CARD */}
             <div className="login-card-container">
               
-              {/* SYSTEM DEMO ACCOUNT BANNER */}
-              <div style={{ background: 'var(--primary-light)', padding: '14px', borderRadius: '16px', border: '1px solid var(--primary)', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <KeyRound size={18} color="var(--primary-dark)" />
-                  <span style={{ fontSize: '13px', fontWeight: '900', color: 'var(--primary-dark)' }}>TÀI KHOẢN HỆ THỐNG MẶC ĐỊNH</span>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--primary-light)', padding: '8px 16px', borderRadius: '16px' }}>
+                  <SLifeIcon size={20} />
+                  <span style={{ fontSize: '14px', fontWeight: '900', color: 'var(--primary-dark)' }}>ĐĂNG NHẬP TÀI KHOẢN S-LIFE</span>
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <span>SĐT / Tài khoản: <strong>0901234567</strong></span>
+              </div>
+
+              {/* SYSTEM DEMO CREDENTIALS GUIDANCE CARD */}
+              <div style={{ background: '#FEFCE8', padding: '12px 14px', borderRadius: '12px', border: '1px solid #FEF08A', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '800', color: '#854D0E', marginBottom: '4px' }}>
+                  <KeyRound size={15} /> TÀI KHOẢN S-LIFE MẪU ĐỂ BẠN TEST:
+                </div>
+                <div style={{ fontSize: '12px', color: '#713F12', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Số điện thoại: <strong>0901234567</strong></span>
                   <span>Mật khẩu: <strong>123456</strong></span>
                 </div>
               </div>
+
+              {/* AUTH ERROR ALERT NOTICE */}
+              {authError !== '' && (
+                <div style={{ background: '#FEF2F2', padding: '12px', borderRadius: '12px', border: '1px solid #FECACA', color: '#DC2626', fontSize: '12px', fontWeight: '600', marginBottom: '18px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span>{authError}</span>
+                </div>
+              )}
 
               <div className="tab-switcher-row">
                 <button 
                   className={`switcher-tab ${loginTab === 'slife' ? 'active' : ''}`}
                   onClick={() => setLoginTab('slife')}
                 >
-                  Tài khoản S-life Hệ Thống
+                  Nhập mật khẩu S-life
                 </button>
                 <button 
                   className="nav-btn-secondary"
@@ -300,34 +335,35 @@ export default function App() {
                   onClick={() => setLoginTab('qr')}
                 >
                   <QrCode size={16} color="var(--primary)" />
-                  Quét QR Mã Hệ Thống
+                  Quét QR App S-life
                 </button>
               </div>
 
               {loginTab === 'slife' ? (
-                <form onSubmit={handleSLifeAuth}>
+                <form onSubmit={handleSLifeAuthSubmit}>
                   <div className="input-field-group">
-                    <label className="input-label-text">Số điện thoại / Tài khoản S-life hệ thống</label>
+                    <label className="input-label-text">Số điện thoại / Email S-life *</label>
                     <div className="input-with-icon">
                       <Smartphone size={18} className="input-icon-prefix" />
                       <input 
                         type="text" 
                         className="stylish-input" 
-                        placeholder="Nhập SĐT hoặc email S-life..."
+                        placeholder="Nhập SĐT (ví dụ: 0901234567)..."
                         value={slifePhone}
                         onChange={(e) => setSlifePhone(e.target.value)}
+                        autoFocus
                       />
                     </div>
                   </div>
 
                   <div className="input-field-group">
-                    <label className="input-label-text">Mật khẩu S-life</label>
+                    <label className="input-label-text">Mật khẩu S-life *</label>
                     <div className="input-with-icon">
                       <Lock size={18} className="input-icon-prefix" />
                       <input 
                         type={showPassword ? "text" : "password"} 
                         className="stylish-input" 
-                        placeholder="Nhập mật khẩu..."
+                        placeholder="Nhập mật khẩu (ví dụ: 123456)..."
                         value={slifePassword}
                         onChange={(e) => setSlifePassword(e.target.value)}
                       />
@@ -341,21 +377,25 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* ONE-CLICK FAST SYSTEM LOGIN BUTTON */}
-                  <button type="button" className="primary-login-btn" onClick={handleQuickSystemLogin}>
-                    <Zap size={20} />
-                    VÀO NGAY BẰNG TÀI KHOẢN HỆ THỐNG
+                  <button type="submit" className="primary-login-btn">
+                    <SLifeIcon size={20} />
+                    ĐĂNG NHẬP KÊNH NGƯỜI BÁN
                   </button>
 
-                  <button type="submit" className="social-auth-btn" style={{ width: '100%', marginTop: '10px' }}>
-                    <SLifeIcon size={18} />
-                    Đăng nhập tùy chỉnh
-                  </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px' }}>
+                    <a href="#forgot" style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '700' }} onClick={(e) => { e.preventDefault(); alert('🔒 Tính năng khôi phục mật khẩu S-life đã gửi mã OTP xác minh qua SMS số 0901234567.'); }}>
+                      Quên mật khẩu S-life?
+                    </a>
+                  </div>
+
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '20px', lineHeight: '1.5' }}>
+                    Bằng việc đăng nhập bằng Tài khoản S-life, bạn đồng ý với <a href="#terms" style={{ color: 'var(--primary)', fontWeight: '700' }}>Điều khoản dịch vụ S-life</a> & <a href="#privacy" style={{ color: 'var(--primary)', fontWeight: '700' }}>Chính sách bảo mật</a>
+                  </p>
 
                   <div className="register-callout-box">
-                    <span>Hoặc bạn muốn mở thêm Cửa hàng mới?</span>
+                    <span>Bạn chưa đăng ký Cửa hàng?</span>
                     <button type="button" className="register-callout-btn" onClick={() => setMode('wizard')}>
-                      Đăng ký tạo Cửa hàng mới
+                      Đăng ký tạo Cửa hàng ngay
                     </button>
                   </div>
                 </form>
@@ -368,10 +408,6 @@ export default function App() {
                   />
                   <h3 style={{ fontSize: '14px', fontWeight: '800', marginTop: '16px' }}>Quét mã QR bằng App S-life</h3>
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Tài khoản Hệ thống tự động xác thực và đăng nhập Kênh Người Bán.</p>
-                  
-                  <button type="button" className="primary-login-btn" style={{ marginTop: '16px' }} onClick={handleQuickSystemLogin}>
-                    <Zap size={18} /> Vào ngay bằng Tài khoản Hệ thống
-                  </button>
                 </div>
               )}
             </div>
@@ -388,7 +424,7 @@ export default function App() {
           <div className="wizard-card-box">
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
               <button className="nav-btn-secondary" onClick={() => setMode('login')}>
-                <ArrowLeft size={16} /> Quay lại
+                <ArrowLeft size={16} /> Quay lại Đăng nhập
               </button>
               <div>
                 <h2 style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text-primary)' }}>ĐĂNG KÝ MỞ CỬA HÀNG BẰNG TÀI KHOẢN S-LIFE</h2>
