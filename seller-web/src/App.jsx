@@ -182,7 +182,10 @@ export default function App() {
   useEffect(() => {
     fetch('https://provinces.open-api.vn/api/v2/p/')
       .then(res => res.json())
-      .then(data => setApiProvinces(data))
+      .then(data => {
+         const sorted = data.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+         setApiProvinces(sorted);
+      })
       .catch(e => console.error(e));
   }, []);
 
@@ -193,7 +196,10 @@ export default function App() {
     if (code) {
       fetch(`https://provinces.open-api.vn/api/v2/p/${code}?depth=2`)
         .then(res => res.json())
-        .then(data => setApiWards(data.wards || []))
+        .then(data => {
+           const sortedWards = (data.wards || []).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+           setApiWards(sortedWards);
+        })
         .catch(e => console.error(e));
     } else {
       setApiWards([]);
@@ -602,7 +608,7 @@ export default function App() {
                   <label className="input-label-text">Số điện thoại S-life *</label>
                   <div className="input-with-icon">
                     <Smartphone size={18} className="input-icon-prefix" />
-                    <input type="text" className="stylish-input" placeholder="090..." value={regPhone} onChange={(e) => { setRegPhone(e.target.value); setAuthError(''); }} />
+                    <input type="text" className="stylish-input" placeholder="Nhập số điện thoại S-life..." value={regPhone} onChange={(e) => { setRegPhone(e.target.value); setAuthError(''); }} />
                   </div>
                 </div>
 
@@ -1397,7 +1403,7 @@ export default function App() {
       {/* ➕ MODAL THÊM ĐỊA CHỈ MỚI */}
       {showAddressModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
-          <div style={{ background: '#fff', width: '100%', maxWidth: '500px', borderRadius: '8px', padding: '24px', boxShadow: 'var(--shadow-lg)' }}>
+          <div style={{ background: '#fff', width: '100%', maxWidth: '520px', borderRadius: '8px', padding: '24px', boxShadow: 'var(--shadow-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>Thêm Địa Chỉ Mới</h2>
               <button onClick={() => setShowAddressModal(false)} style={{ color: 'var(--text-muted)' }}>X</button>
@@ -1430,40 +1436,96 @@ export default function App() {
               <textarea className="stylish-input" style={{ height: '70px', padding: '12px 14px', fontSize: '13px' }} value={newAddress.detail} onChange={e => setNewAddress({...newAddress, detail: e.target.value})} placeholder="Số nhà, tên đường v.v." />
             </div>
 
-            {/* Real Interactive Map via Iframe */}
-            {newAddress.detail && (
-              <div style={{ marginTop: '16px', position: 'relative', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)', height: '160px' }}>
+            {/* Google Maps Official Interactive Layer (Always visible) */}
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ borderRadius: '8px 8px 0 0', overflow: 'hidden', border: '1px solid var(--border)', borderBottom: 'none', height: '220px' }}>
                 <iframe 
+                  key={`${newAddress.detail}-${newAddress.wardCode}-${newAddress.provinceCode}`}
                   width="100%" 
                   height="100%" 
                   style={{ border: 0 }}
-                  loading="lazy" 
-                  allowFullScreen 
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(`${newAddress.detail}, ${newAddress.ward ? newAddress.ward + ', ' : ''}${newAddress.city}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                  srcDoc={`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset="utf-8" />
+                      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                      <style>
+                        html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #e5e3df; cursor: grab; }
+                        html, body, #map:active { cursor: grabbing; }
+                        .leaflet-popup-content-wrapper { border-radius: 8px; padding: 4px; }
+                        .custom-popup { font-family: system-ui, sans-serif; font-size: 11px; color: #1e293b; line-height: 1.4; }
+                      </style>
+                    </head>
+                    <body>
+                      <div id="map"></div>
+                      <script>
+                        var searchQuery = ${JSON.stringify(`${newAddress.detail ? newAddress.detail + ', ' : ''}${newAddress.ward ? newAddress.ward + ', ' : ''}${newAddress.city ? newAddress.city + ', ' : ''}Việt Nam`)};
+                        var fullAddrStr = ${JSON.stringify(`${newAddress.detail ? newAddress.detail + ', ' : ''}${newAddress.ward ? newAddress.ward + ', ' : ''}${newAddress.city ? newAddress.city : 'Địa chỉ lấy hàng'}`)};
+                        var map = L.map('map', { zoomControl: true }).setView([21.0285, 105.8542], 15);
+                        
+                        // Official Google Maps Tile Layer
+                        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                          maxZoom: 20,
+                          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                          attribution: 'Map data ©2026 Google'
+                        }).addTo(map);
+
+                        var marker = L.marker([21.0285, 105.8542], { draggable: true }).addTo(map);
+                        
+                        function updatePopup(lat, lng) {
+                          marker.bindPopup("<div class='custom-popup'>📍 <strong style='color:#ef4444'>" + fullAddrStr + "</strong><br/><span style='color:#64748b;font-size:10px'>Ấn giữ chuột trái kéo để di chuyển bản đồ hoặc di chuyển ghim đỏ</span></div>").openPopup();
+                        }
+                        updatePopup(21.0285, 105.8542);
+
+                        // Geocode address via Nominatim
+                        fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(searchQuery))
+                          .then(r => r.json())
+                          .then(data => {
+                            if (data && data.length > 0) {
+                              var lat = parseFloat(data[0].lat);
+                              var lon = parseFloat(data[0].lon);
+                              map.setView([lat, lon], 15);
+                              marker.setLatLng([lat, lon]);
+                              updatePopup(lat, lon);
+                            }
+                          })
+                          .catch(e => console.error(e));
+
+                        map.on('click', function(e) {
+                          marker.setLatLng(e.latlng);
+                          updatePopup(e.latlng.lat, e.latlng.lng);
+                        });
+
+                        marker.on('dragend', function(e) {
+                          var coord = marker.getLatLng();
+                          updatePopup(coord.lat, coord.lng);
+                        });
+                      </script>
+                    </body>
+                    </html>
+                  `}
                 />
-                {/* Overlay Crosshair */}
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ background: '#EF4444', color: '#fff', padding: '6px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'center', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    Di chuyển bản đồ để chọn vị trí<br/>
-                    <span style={{ fontWeight: 'normal', fontSize: '10px' }}>{newAddress.detail}, {newAddress.city}</span>
-                  </div>
-                  <div style={{ color: '#EF4444', marginTop: '-4px' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                  </div>
-                </div>
               </div>
-            )}
+              <div style={{ background: '#F8FAFC', border: '1px solid var(--border)', padding: '10px 14px', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  📍 Google Maps: <strong style={{ color: '#EF4444' }}>{newAddress.detail ? newAddress.detail + ', ' : ''}{newAddress.ward ? newAddress.ward + ', ' : ''}{newAddress.city ? newAddress.city : 'Vị trí trên bản đồ'}</strong>
+                </span>
+                <span style={{ fontSize: '10px', color: '#047857', fontWeight: '600' }}>🖱️ Ấn giữ chuột trái & kéo để di chuyển bản đồ</span>
+              </div>
+            </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button className="nav-btn-secondary" style={{ width: '80px', justifyContent: 'center', fontSize: '13px' }} onClick={() => setShowAddressModal(false)}>
                 Hủy
               </button>
-              <button className="nav-btn-primary" style={{ padding: '8px 24px', background: '#EF4444', color: '#fff', border: 'none', fontSize: '13px' }} onClick={() => {
+              <button className="nav-btn-primary" style={{ padding: '10px 24px', background: '#EF4444', color: '#fff', border: 'none', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => {
                 const fullAddressStr = `${newAddress.detail ? newAddress.detail + ', ' : ''}${newAddress.ward ? newAddress.ward + ', ' : ''}${newAddress.city}`;
                 setShopInfo({...shopInfo, address: fullAddressStr, addressName: newAddress.name, addressPhone: newAddress.phone});
                 setShowAddressModal(false);
               }}>
-                Lưu
+                📌 Xác nhận & Lưu vị trí
               </button>
             </div>
           </div>
