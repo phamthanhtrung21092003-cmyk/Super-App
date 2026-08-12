@@ -1,12 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, HelpCircle, Eye, EyeOff, QrCode, 
-  Store, Plus, Trash2, Edit3, ArrowLeft, CheckCircle2, 
-  BarChart3, Package, FileText, Settings, LogOut, ChevronRight,
-  TrendingUp, Users, RefreshCw, Printer, AlertCircle, Sparkles,
-  Search, Bell, ShieldCheck, Truck, Zap, Star, ArrowUpRight, Lock, User, Mail, Heart,
-  Smartphone, ArrowRight, Shield, KeyRound, Check, AlertTriangle
+  Store, Plus, Trash2, ArrowLeft, CheckCircle2, 
+  RefreshCw, Printer, AlertCircle, Sparkles, LogOut, TrendingUp,
+  Search, ShieldCheck, Truck, Zap, Star, Lock, User,
+  Smartphone, KeyRound, Check, AlertTriangle, MessageSquare
 } from 'lucide-react';
+
+import Header from './components/layout/Header';
+import Sidebar from './components/layout/Sidebar';
+import WelcomeBar from './components/dashboard/WelcomeBar';
+import KpiCards from './components/dashboard/KpiCards';
+import PendingActions from './components/dashboard/PendingActions';
+import RevenueChart from './components/dashboard/RevenueChart';
+import RecentOrders from './components/dashboard/RecentOrders';
+import TopProducts from './components/dashboard/TopProducts';
+import InventoryAlerts from './components/dashboard/InventoryAlerts';
+import VideoLivestream from './components/dashboard/VideoLivestream';
+import FinancialOverview from './components/dashboard/FinancialOverview';
+import ShopHealth from './components/dashboard/ShopHealth';
+import PlatformNews from './components/dashboard/PlatformNews';
+import QuickActions from './components/dashboard/QuickActions';
+import OnboardingChecklist from './components/dashboard/OnboardingChecklist';
+import ProductHeader from './components/products/ProductHeader';
+import ProductTabs from './components/products/ProductTabs';
+import ProductMetrics from './components/products/ProductMetrics';
+import ProductFilters from './components/products/ProductFilters';
+import ProductTable from './components/products/ProductTable';
+import ProductForm from './components/product-form/ProductForm';
+import OrderHeader from './components/orders/OrderHeader';
+import OrderTabs from './components/orders/OrderTabs';
+import OrderMetrics from './components/orders/OrderMetrics';
+import OrderFilters from './components/orders/OrderFilters';
+import OrderTable from './components/orders/OrderTable';
+import OrderDetailDrawer from './components/orders/OrderDetailDrawer';
+import InventoryManager from './components/inventory/InventoryManager';
+import sellerService, { MOCK_ORDERS_DEMO } from './data/sellerService';
 
 // Custom S-life Logo SVG Icon (Official Brand Emblem)
 const SLifeIcon = ({ size = 24 }) => (
@@ -139,28 +168,108 @@ export default function App() {
     bankStatus: 'Chưa xác minh' // Chưa xác minh, Đang xác minh, Đã xác minh, Xác minh thất bại
   });
 
-  // --- DASHBOARD STATES ---
-  const [activeTab, setActiveTab] = useState('products');
+  // --- DASHBOARD STATES (PHASE 1) ---
+  const [activeTab, setActiveTab] = useState('home');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [kpiData, setKpiData] = useState(null);
+  const [pendingActions, setPendingActions] = useState([]);
+  const [orderFilter, setOrderFilter] = useState('Tất cả');
+
+  // Active Seller Initial State (pre-populated with orders & products matching screenshot)
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('Tất cả');
+  const [orders, setOrders] = useState(MOCK_ORDERS_DEMO);
 
-  const [orders, setOrders] = useState([
-    { id: 'SS-ORD-901', customer: 'Nguyễn Văn A', items: 'iPhone 15 Pro Max x1', total: 29990000, date: '07/08/2026', status: 'Chờ bàn giao' },
-    { id: 'SS-ORD-902', customer: 'Trần Thị B', items: 'Nước hoa Dior Sauvage x1', total: 3250000, date: '06/08/2026', status: 'Đã giao ĐVVC' },
-    { id: 'SS-ORD-903', customer: 'Phạm Văn C', items: 'Áo thun Essential x2', total: 900000, date: '05/08/2026', status: 'Hoàn thành' }
-  ]);
+  useEffect(() => {
+    sellerService.getKpiMetrics('today', orders, products).then(data => setKpiData(data));
+    sellerService.getPendingActions(orders).then(actions => setPendingActions(actions));
+  }, [orders, products]);
 
-  // Modal Add Product
+  const handleKpiPeriodChange = async (period) => {
+    const data = await sellerService.getKpiMetrics(period, orders, products);
+    setKpiData(data);
+  };
+
+  const handlePendingActionClick = (targetTab, filter) => {
+    if (filter) setOrderFilter(filter);
+    else setOrderFilter('Tất cả');
+    setActiveTab(targetTab);
+  };
+
+  // Product Catalog Module States
   const [showAddProductModal, setShowAddProductModal] = useState(false);
-  const [newProdName, setNewProdName] = useState('');
-  const [newProdPrice, setNewProdPrice] = useState('');
-  const [newProdOrigPrice, setNewProdOrigPrice] = useState('');
-  const [newProdCategory, setNewProdCategory] = useState('Thời trang');
-  const [newProdStock, setNewProdStock] = useState('100');
-  const [newProdVariants, setNewProdVariants] = useState('Đen, Trắng, Xanh, Size M, Size L');
-  const [newProdImage, setNewProdImage] = useState('');
-  const [newProdDesc, setNewProdDesc] = useState('');
+  const [productModuleTab, setProductModuleTab] = useState('all');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('Tất cả danh mục');
+  const [productStatusFilter, setProductStatusFilter] = useState('Tất cả');
+  const [productSortOrder, setProductSortOrder] = useState('newest');
+  const [productViewMode, setProductViewMode] = useState('list');
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+  const [productMetrics, setProductMetrics] = useState({ total: 0, active: 0, hidden: 0, outofstock: 0, draft: 0 });
+
+  useEffect(() => {
+    sellerService.getProductMetrics(products).then(m => setProductMetrics(m));
+  }, [products]);
+
+  const handleSaveProduct = async (formData) => {
+    if (editingProduct) {
+      const updated = await sellerService.updateProduct(products, editingProduct.id, formData);
+      setProducts(updated);
+    } else {
+      const created = await sellerService.createProduct(formData);
+      setProducts([created, ...products]);
+    }
+    setIsProductFormOpen(false);
+    setShowAddProductModal(false);
+    setEditingProduct(null);
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setIsProductFormOpen(true);
+  };
+
+  const handleToggleStatusProduct = async (product) => {
+    const nextStatus = product.status === 'Đang bán' ? 'Tạm ẩn' : 'Đang bán';
+    const updated = await sellerService.updateProductStatus(products, product.id, nextStatus);
+    setProducts(updated);
+  };
+
+  const handleDeleteProduct = async (product) => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" khỏi cửa hàng không?`)) {
+      const updated = await sellerService.deleteProduct(products, product.id);
+      setProducts(updated);
+    }
+  };
+
+  // Order Management Module States
+  const [isDemoOrderState, setIsDemoOrderState] = useState(true);
+  const [orderModuleTab, setOrderModuleTab] = useState('all');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [orderProviderFilter, setOrderProviderFilter] = useState('Tất cả');
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
+  const [orderMetrics, setOrderMetrics] = useState({ total: 0, confirm: 0, pickup: 0, delivering: 0, completed: 0, cancelled: 0, returned: 0 });
+
+  // Resolve active orders list based on demo toggle state
+  const activeOrdersDataset = isDemoOrderState 
+    ? (orders && orders.length > 0 ? orders : MOCK_ORDERS_DEMO)
+    : [];
+
+  useEffect(() => {
+    sellerService.getOrderMetrics(activeOrdersDataset).then(m => setOrderMetrics(m));
+  }, [isDemoOrderState, orders]);
+
+  const handleUpdateSingleOrderStatus = async (orderId, newStatus) => {
+    const targetDataset = orders && orders.length > 0 ? orders : MOCK_ORDERS_DEMO;
+    const updated = await sellerService.updateOrderStatus(targetDataset, orderId, newStatus);
+    setOrders(updated);
+  };
+
+  const handleBulkUpdateOrderStatus = async (orderIds, newStatus) => {
+    const targetDataset = orders && orders.length > 0 ? orders : MOCK_ORDERS_DEMO;
+    const updated = await sellerService.bulkUpdateOrderStatus(targetDataset, orderIds, newStatus);
+    setOrders(updated);
+  };
 
   // Address Modal States
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -282,12 +391,19 @@ export default function App() {
   };
 
   const handleGoToDashboard = (showModal = false) => {
-    const updatedUser = { ...loggedInUser, shopName: shopInfo.name };
+    const userPhone = loggedInUser?.phone;
+    const updatedUser = { 
+      ...(loggedInUser || {}), 
+      shopName: shopInfo.name || 'S-Shopping Store',
+      ownerName: loggedInUser?.ownerName || shopInfo.fullName || 'Chủ Shop'
+    };
     setLoggedInUser(updatedUser);
     
-    const dbIndex = PRE_REGISTERED_ACCOUNTS.findIndex(acc => acc.phone === loggedInUser.phone);
-    if (dbIndex >= 0) {
-      PRE_REGISTERED_ACCOUNTS[dbIndex].shopName = shopInfo.name;
+    if (userPhone) {
+      const dbIndex = PRE_REGISTERED_ACCOUNTS.findIndex(acc => acc.phone === userPhone);
+      if (dbIndex >= 0) {
+        PRE_REGISTERED_ACCOUNTS[dbIndex].shopName = shopInfo.name;
+      }
     }
     
     setMode('dashboard');
@@ -329,12 +445,6 @@ export default function App() {
     alert('✅ Đã đăng bán sản phẩm mới thành công trên S-shopping Kênh Người Bán!');
   };
 
-  const handleDeleteProduct = (id) => {
-    if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi kho hàng?')) {
-      setProducts(products.filter(p => p.id !== id));
-    }
-  };
-
   const handleFulfillOrder = (id) => {
     setOrders(orders.map(o => o.id === id ? { ...o, status: 'Đã giao ĐVVC' } : o));
     alert(`🖨️ Đã in nhãn đơn hàng ${id} và chuyển cho Đơn vị vận chuyển!`);
@@ -342,8 +452,10 @@ export default function App() {
 
   // Filter products
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCat = categoryFilter === 'Tất cả' || p.category === categoryFilter;
+    const q = (productSearchQuery || '').toLowerCase();
+    const cat = productCategoryFilter || 'Tất cả';
+    const matchesSearch = !q || p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q));
+    const matchesCat = cat === 'Tất cả' || cat === 'Tất cả danh mục' || p.category === cat;
     return matchesSearch && matchesCat;
   });
 
@@ -1132,218 +1244,329 @@ export default function App() {
       {/* 3️⃣ MODE: FULL ENTERPRISE DESKTOP DASHBOARD & PRODUCT MANAGER */}
       {/* ========================================================================= */}
       {mode === 'dashboard' && (
-        <div className="app-dashboard-container">
-          {/* Left Sidebar */}
-          <aside className="app-sidebar">
-            <div 
-              className={`sidebar-nav-item ${activeTab === 'products' ? 'active' : ''}`}
-              onClick={() => setActiveTab('products')}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Package size={18} />
-                <span>Kho & Đăng Sản Phẩm</span>
-              </div>
-              <span className="nav-badge-count">{products.length}</span>
-            </div>
+        <div style={{ minHeight: '100vh', background: 'var(--bg-page)' }}>
+          {/* Header Top Bar */}
+          <Header 
+            user={loggedInUser}
+            shopInfo={shopInfo}
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onLogout={() => { setLoggedInUser(null); setMode('login'); }}
+            onNavigateTab={(tab) => {
+              if (tab !== 'orders') setOrderFilter('Tất cả');
+              setActiveTab(tab);
+            }}
+          />
 
-            <div 
-              className={`sidebar-nav-item ${activeTab === 'stats' ? 'active' : ''}`}
-              onClick={() => setActiveTab('stats')}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <BarChart3 size={18} />
-                <span>Thống Kê & Doanh Thu</span>
-              </div>
-            </div>
+          {/* Main Layout Area */}
+          <div className="seller-main-layout">
+            {/* Left Sidebar */}
+            <Sidebar 
+              activeTab={activeTab}
+              onSelectTab={(tab) => {
+                if (tab !== 'orders') setOrderFilter('Tất cả');
+                setActiveTab(tab);
+              }}
+              isCollapsed={isSidebarCollapsed}
+              productCount={products.length}
+              orderCount={activeOrdersDataset.length}
+            />
 
-            <div 
-              className={`sidebar-nav-item ${activeTab === 'orders' ? 'active' : ''}`}
-              onClick={() => setActiveTab('orders')}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <FileText size={18} />
-                <span>Quản Lý Đơn Hàng</span>
-              </div>
-              <span className="nav-badge-count">{orders.length}</span>
-            </div>
+            {/* Main Content Area */}
+            <main className="seller-content-body">
+              
+              {/* TAB 1: TRANG CHỦ DASHBOARD (NEW SELLER EMPTY STATE & ONBOARDING) */}
+              {activeTab === 'home' && (
+                <div>
+                  <WelcomeBar shopInfo={shopInfo} />
+                  
+                  {/* ONBOARDING CHECKLIST CARD FOR FRESH SHOP */}
+                  <OnboardingChecklist 
+                    onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                    onNavigateTab={(tab) => setActiveTab(tab)} 
+                  />
 
-            <div 
-              className={`sidebar-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Settings size={18} />
-                <span>Cấu Hình Cửa Hàng</span>
-              </div>
-            </div>
-          </aside>
+                  <KpiCards kpiData={kpiData} onPeriodChange={handleKpiPeriodChange} />
+                  <PendingActions 
+                    pendingItems={pendingActions} 
+                    onActionClick={handlePendingActionClick}
+                    onNavigateTab={(tab) => setActiveTab(tab)} 
+                  />
 
-          {/* Main Content Area */}
-          <main className="dashboard-main-view">
-            
-            {/* TAB: PRODUCT CATALOG */}
-            {activeTab === 'products' && (
-              <div>
-                <div className="catalog-table-card">
-                  <div className="catalog-table-header">
+                  {/* DASHBOARD TWO COLUMN GRID WITH DYNAMIC DATA & EMPTY STATES */}
+                  <div className="dashboard-two-column-grid">
+                    {/* Left Column: Revenue Chart + Top Products + Video & Livestream + Platform News */}
+                    <div className="dashboard-column-left">
+                      <RevenueChart 
+                        existingOrders={orders} 
+                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                      />
+                      <TopProducts 
+                        existingProducts={products} 
+                        onNavigateToProducts={() => setActiveTab('products')} 
+                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                      />
+                      <VideoLivestream 
+                        existingProducts={products} 
+                        onNavigate={(tab) => setActiveTab(tab)} 
+                      />
+                      <PlatformNews 
+                        onNavigate={(tab) => setActiveTab(tab)} 
+                      />
+                    </div>
+
+                    {/* Right Column: Recent Orders + Inventory Alerts + Finance + Shop Health + Quick Actions */}
+                    <div className="dashboard-column-right">
+                      <RecentOrders 
+                        existingOrders={orders} 
+                        onNavigateToOrders={(tab, filter) => {
+                          if (filter) setOrderFilter(filter);
+                          else setOrderFilter('Tất cả');
+                          setActiveTab(tab);
+                        }} 
+                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                      />
+                      <InventoryAlerts 
+                        existingProducts={products} 
+                        onNavigateToInventory={() => setActiveTab('products')} 
+                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                      />
+                      <FinancialOverview 
+                        existingOrders={orders}
+                        onNavigate={(tab) => setActiveTab(tab)} 
+                      />
+                      <ShopHealth 
+                        existingOrders={orders}
+                        onNavigate={(tab) => setActiveTab(tab)} 
+                      />
+                      <QuickActions 
+                        onNavigate={(tab) => setActiveTab(tab)} 
+                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: PRODUCT CATALOG MANAGEMENT MODULE */}
+              {activeTab === 'products' && (
+                <div>
+                  {isProductFormOpen || showAddProductModal ? (
+                    <ProductForm 
+                      initialData={editingProduct}
+                      onSave={handleSaveProduct}
+                      onCancel={() => {
+                        setIsProductFormOpen(false);
+                        setShowAddProductModal(false);
+                        setEditingProduct(null);
+                      }}
+                    />
+                  ) : (
                     <div>
-                      <h2 style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text-primary)' }}>DANH SÁCH KHO HÀNG SẢN PHẨM ({filteredProducts.length})</h2>
-                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>Quản lý niêm yết giá, biến thể, tồn kho và đăng bán sản phẩm mới</p>
+                      <ProductHeader 
+                        onOpenAddProductModal={() => {
+                          setEditingProduct(null);
+                          setIsProductFormOpen(true);
+                        }} 
+                      />
+
+                      <ProductTabs 
+                        activeTab={productModuleTab}
+                        onSelectTab={setProductModuleTab}
+                        metrics={productMetrics}
+                      />
+
+                      <ProductMetrics metrics={productMetrics} />
+
+                      <ProductFilters 
+                        searchQuery={productSearchQuery}
+                        onSearchChange={setProductSearchQuery}
+                        categoryFilter={productCategoryFilter}
+                        onCategoryChange={setProductCategoryFilter}
+                        statusFilter={productStatusFilter}
+                        onStatusChange={setProductStatusFilter}
+                        sortOrder={productSortOrder}
+                        onSortChange={setProductSortOrder}
+                        viewMode={productViewMode}
+                        onViewModeChange={setProductViewMode}
+                      />
+
+                      <ProductTable 
+                        products={products.filter(p => {
+                          if (productModuleTab === 'active' && p.status !== 'Đang bán') return false;
+                          if (productModuleTab === 'hidden' && p.status !== 'Tạm ẩn') return false;
+                          if (productModuleTab === 'outofstock' && p.stock > 0 && p.status !== 'Hết hàng') return false;
+                          if (productModuleTab === 'draft' && p.status !== 'Bản nháp') return false;
+                          if (productSearchQuery.trim()) {
+                            const q = productSearchQuery.toLowerCase().trim();
+                            const matchName = p.name.toLowerCase().includes(q);
+                            const matchSku = p.sku && p.sku.toLowerCase().includes(q);
+                            if (!matchName && !matchSku) return false;
+                          }
+                          if (productCategoryFilter !== 'Tất cả danh mục' && productCategoryFilter !== 'Tất cả') {
+                            if (p.category !== productCategoryFilter) return false;
+                          }
+                          if (productStatusFilter !== 'Tất cả') {
+                            if (p.status !== productStatusFilter) return false;
+                          }
+                          return true;
+                        })}
+                        onOpenAddProductModal={() => {
+                          setEditingProduct(null);
+                          setIsProductFormOpen(true);
+                        }}
+                        onEditProduct={handleEditProduct}
+                        onToggleStatusProduct={handleToggleStatusProduct}
+                        onDeleteProduct={handleDeleteProduct}
+                      />
                     </div>
+                  )}
+                </div>
+              )}
 
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <div className="input-with-icon" style={{ width: '240px' }}>
-                        <Search size={16} className="input-icon-prefix" />
-                        <input 
-                          type="text" 
-                          className="stylish-input" 
-                          style={{ height: '40px', fontSize: '13px', paddingLeft: '40px' }} 
-                          placeholder="Tìm sản phẩm, SKU..." 
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                      </div>
+              {/* TAB 3: INVENTORY MANAGEMENT MODULE (KHO HÀNG) */}
+              {activeTab === 'inventory' && (
+                <InventoryManager 
+                  existingProducts={products}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                  onOpenAddProductModal={() => {
+                    setActiveTab('products');
+                    setIsProductFormOpen(true);
+                  }}
+                />
+              )}
 
-                      <button className="nav-btn-primary" onClick={() => setShowAddProductModal(true)}>
-                        <Plus size={18} /> + Thêm sản phẩm mới
-                      </button>
+              {/* TAB 3: STATS */}
+              {(activeTab === 'stats' || activeTab === 'analytics') && (
+                <div>
+                  <h2 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '20px' }}>TỔNG QUAN HIỆU SUẤT KINH DOANH S-SHOPPING</h2>
+                  <div className="metrics-row-grid">
+                    <div className="metric-card-box">
+                      <div className="metric-number">148.5M đ</div>
+                      <div className="metric-label-text">Doanh thu tháng này</div>
+                      <span className="metric-trend-pill">📈 +18.4% so với tuần trước</span>
+                    </div>
+                    <div className="metric-card-box">
+                      <div className="metric-number">62 đơn</div>
+                      <div className="metric-label-text">Đơn hàng hoàn tất</div>
+                      <span className="metric-trend-pill">🚀 Đã bàn giao 100%</span>
+                    </div>
+                    <div className="metric-card-box">
+                      <div className="metric-number">18,250</div>
+                      <div className="metric-label-text">Lượt xem gian hàng</div>
+                      <span className="metric-trend-pill">👁️ +3.2k tuần này</span>
+                    </div>
+                    <div className="metric-card-box">
+                      <div className="metric-number" style={{ color: 'var(--primary)' }}>99.2%</div>
+                      <div className="metric-label-text">Tỉ lệ phản hồi Chat</div>
+                      <span className="metric-trend-pill">⚡ Phản hồi trong 2 phút</span>
                     </div>
                   </div>
-
-                  <table className="catalog-table">
-                    <thead>
-                      <tr>
-                        <th>Sản phẩm & SKU</th>
-                        <th>Danh mục</th>
-                        <th>Giá bán</th>
-                        <th>Giá gốc</th>
-                        <th>Kho hàng</th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredProducts.map(p => (
-                        <tr key={p.id}>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                              <img src={p.image} alt={p.name} className="product-row-thumb" />
-                              <div>
-                                <span style={{ fontWeight: '800', color: 'var(--text-primary)', display: 'block' }}>{p.name}</span>
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>SKU: {p.sku}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td><span className="status-tag" style={{ background: 'var(--bg-page)', color: 'var(--text-secondary)' }}>{p.category}</span></td>
-                          <td style={{ fontWeight: '900', color: 'var(--primary)', fontSize: '15px' }}>{p.price.toLocaleString('vi-VN')}đ</td>
-                          <td style={{ textDecoration: 'line-through', color: 'var(--text-light)', fontSize: '13px' }}>{p.origPrice ? p.origPrice.toLocaleString('vi-VN') + 'đ' : '-'}</td>
-                          <td style={{ fontWeight: '800' }}>{p.stock} cái</td>
-                          <td>
-                            <span className={`status-tag ${p.status === 'Đang bán' ? 'active' : 'out'}`}>
-                              {p.status}
-                            </span>
-                          </td>
-                          <td>
-                            <button style={{ color: 'var(--red)', padding: '6px', background: 'var(--red-light)', borderRadius: '8px' }} onClick={() => handleDeleteProduct(p.id)} title="Xóa sản phẩm">
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* TAB: STATS */}
-            {activeTab === 'stats' && (
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '20px' }}>TỔNG QUAN HIỆU SUẤT KINH DOANH S-SHOPPING</h2>
-                <div className="metrics-row-grid">
-                  <div className="metric-card-box">
-                    <div className="metric-number">148.5M đ</div>
-                    <div className="metric-label-text">Doanh thu tháng này</div>
-                    <span className="metric-trend-pill">📈 +18.4% so với tuần trước</span>
-                  </div>
-                  <div className="metric-card-box">
-                    <div className="metric-number">62 đơn</div>
-                    <div className="metric-label-text">Đơn hàng hoàn tất</div>
-                    <span className="metric-trend-pill">🚀 Đã bàn giao 100%</span>
-                  </div>
-                  <div className="metric-card-box">
-                    <div className="metric-number">18,250</div>
-                    <div className="metric-label-text">Lượt xem gian hàng</div>
-                    <span className="metric-trend-pill">👁️ +3.2k tuần này</span>
-                  </div>
-                  <div className="metric-card-box">
-                    <div className="metric-number" style={{ color: 'var(--primary)' }}>99.2%</div>
-                    <div className="metric-label-text">Tỉ lệ phản hồi Chat</div>
-                    <span className="metric-trend-pill">⚡ Phản hồi trong 2 phút</span>
-                  </div>
+              {/* TAB 4: ORDER MANAGEMENT MODULE */}
+              {activeTab === 'orders' && (
+                <div>
+                  <OrderHeader 
+                    totalOrders={activeOrdersDataset.length}
+                    isDemoState={isDemoOrderState}
+                    onToggleDemoState={() => setIsDemoOrderState(!isDemoOrderState)}
+                  />
+
+                  <OrderTabs 
+                    activeTab={orderModuleTab}
+                    onSelectTab={setOrderModuleTab}
+                    metrics={orderMetrics}
+                  />
+
+                  <OrderMetrics metrics={orderMetrics} />
+
+                  <OrderFilters 
+                    searchQuery={orderSearchQuery}
+                    onSearchChange={setOrderSearchQuery}
+                    providerFilter={orderProviderFilter}
+                    onProviderChange={setOrderProviderFilter}
+                    onResetFilters={() => {
+                      setOrderSearchQuery('');
+                      setOrderProviderFilter('Tất cả');
+                    }}
+                  />
+
+                  <OrderTable 
+                    orders={activeOrdersDataset.filter(o => {
+                      // Tab filtering
+                      if (orderModuleTab === 'confirm' && o.status !== 'Chờ xác nhận') return false;
+                      if (orderModuleTab === 'pickup' && o.status !== 'Chờ lấy hàng' && o.status !== 'Chờ đóng gói') return false;
+                      if (orderModuleTab === 'delivering' && o.status !== 'Đang giao' && o.status !== 'Chờ bàn giao') return false;
+                      if (orderModuleTab === 'completed' && o.status !== 'Hoàn thành') return false;
+                      if (orderModuleTab === 'cancelled' && o.status !== 'Đã hủy') return false;
+                      if (orderModuleTab === 'returned' && o.status !== 'Trả hàng/Hoàn tiền' && o.status !== 'Trả hàng') return false;
+
+                      // Search query
+                      if (orderSearchQuery.trim()) {
+                        const q = orderSearchQuery.toLowerCase().trim();
+                        const matchCode = o.code && o.code.toLowerCase().includes(q);
+                        const matchCustName = o.customer?.name ? o.customer.name.toLowerCase().includes(q) : typeof o.customer === 'string' && o.customer.toLowerCase().includes(q);
+                        const matchPhone = o.customer?.phone && o.customer.phone.includes(q);
+                        if (!matchCode && !matchCustName && !matchPhone) return false;
+                      }
+
+                      // Shipping Provider filter
+                      if (orderProviderFilter !== 'Tất cả' && orderProviderFilter !== 'Tất cả vận chuyển') {
+                        if (o.shipping?.provider !== orderProviderFilter && o.shipping?.providerName !== orderProviderFilter) return false;
+                      }
+
+                      return true;
+                    })}
+                    onNavigateToProducts={() => setActiveTab('products')}
+                    onViewOrderDetail={(order) => setSelectedOrderDetail(order)}
+                    onUpdateOrderStatus={handleUpdateSingleOrderStatus}
+                    onBulkUpdateStatus={handleBulkUpdateOrderStatus}
+                  />
+
+                  {/* Right Side Drawer Detail Panel */}
+                  <OrderDetailDrawer 
+                    order={selectedOrderDetail}
+                    onClose={() => setSelectedOrderDetail(null)}
+                    onUpdateStatus={handleUpdateSingleOrderStatus}
+                  />
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* TAB: ORDERS */}
-            {activeTab === 'orders' && (
-              <div className="catalog-table-card">
-                <div className="catalog-table-header">
-                  <h2 style={{ fontSize: '20px', fontWeight: '900' }}>QUẢN LÝ ĐƠN HÀNG KÊNH NGƯỜI BÁN</h2>
-                </div>
-                <table className="catalog-table">
-                  <thead>
-                    <tr>
-                      <th>Mã Đơn</th>
-                      <th>Khách hàng</th>
-                      <th>Sản phẩm</th>
-                      <th>Tổng tiền</th>
-                      <th>Trạng thái</th>
-                      <th>Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map(o => (
-                      <tr key={o.id}>
-                        <td style={{ fontWeight: '800' }}>{o.id}</td>
-                        <td>{o.customer}</td>
-                        <td>{o.items}</td>
-                        <td style={{ fontWeight: '900', color: 'var(--primary)' }}>{o.total.toLocaleString('vi-VN')}đ</td>
-                        <td>
-                          <span className={`status-tag ${o.status === 'Chờ bàn giao' ? 'out' : 'active'}`}>
-                            {o.status}
-                          </span>
-                        </td>
-                        <td>
-                          {o.status === 'Chờ bàn giao' && (
-                            <button className="nav-btn-primary" style={{ fontSize: '11px', padding: '6px 12px' }} onClick={() => handleFulfillOrder(o.id)}>
-                              <Printer size={14} /> In nhãn & Bàn giao
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* TAB: SETTINGS */}
-            {activeTab === 'settings' && (
-              <div className="catalog-table-card" style={{ padding: '32px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '20px' }}>THÔNG TIN GIAN HÀNG CHÍNH THỨC</h2>
-                <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                  <img src={shopInfo.logo} alt="Logo" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary)' }} />
-                  <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '900' }}>{shopInfo.name}</h3>
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{shopInfo.slogan}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '800', marginTop: '6px' }}>MST: {shopInfo.taxId} | GPKD: {shopInfo.licenseNo}</p>
+              {/* TAB 5: SETTINGS */}
+              {activeTab === 'settings' && (
+                <div className="catalog-table-card" style={{ padding: '32px' }}>
+                  <h2 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '20px' }}>THÔNG TIN GIAN HÀNG CHÍNH THỨC</h2>
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                    <img src={shopInfo.logo} alt="Logo" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary)' }} />
+                    <div>
+                      <h3 style={{ fontSize: '18px', fontWeight: '900' }}>{shopInfo.name}</h3>
+                      <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{shopInfo.slogan}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '800', marginTop: '6px' }}>MST: {shopInfo.taxId} | GPKD: {shopInfo.licenseNo}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-          </main>
+              {/* TAB 6: CHAT TIN NHẮN (CONNECTED TO PENDING ACTIONS) */}
+              {activeTab === 'chat' && (
+                <div className="catalog-table-card" style={{ padding: '32px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                    <MessageSquare size={24} style={{ color: 'var(--primary)' }} />
+                    <h2 style={{ fontSize: '20px', fontWeight: '900' }}>TRUNG TÂM TIN NHẮN CHAT SELLER CENTER</h2>
+                  </div>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Quản lý tin nhắn chưa trả lời từ khách hàng mua sắm S-Shopping</p>
+                  
+                  <div style={{ marginTop: '24px', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--primary)' }}>💬 Bạn có 8 tin nhắn chưa trả lời từ khách hàng</span>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Hộp thoại chat trực tiếp sẽ được tích hợp đầy đủ trong Phase tiếp theo.</p>
+                  </div>
+                </div>
+              )}
+
+            </main>
+          </div>
         </div>
       )}
 
