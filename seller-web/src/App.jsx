@@ -4,7 +4,7 @@ import {
   Store, Plus, Trash2, ArrowLeft, CheckCircle2, 
   RefreshCw, Printer, AlertCircle, Sparkles, LogOut, TrendingUp,
   Search, ShieldCheck, Truck, Zap, Star, Lock, User,
-  Smartphone, KeyRound, Check, AlertTriangle, MessageSquare
+  Smartphone, KeyRound, Check, AlertTriangle, MessageSquare, Settings, Wallet
 } from 'lucide-react';
 
 import Header from './components/layout/Header';
@@ -35,7 +35,21 @@ import OrderFilters from './components/orders/OrderFilters';
 import OrderTable from './components/orders/OrderTable';
 import OrderDetailDrawer from './components/orders/OrderDetailDrawer';
 import InventoryManager from './components/inventory/InventoryManager';
-import sellerService, { MOCK_ORDERS_DEMO } from './data/sellerService';
+import ShippingOverview from './components/shipping/ShippingOverview';
+import ShippingFilters from './components/shipping/ShippingFilters';
+import ShippingTable from './components/shipping/ShippingTable';
+import ShippingDetailDrawer from './components/shipping/ShippingDetailDrawer';
+import ShippingProviders from './components/shipping/ShippingProviders';
+import ShippingManager from './components/shipping/ShippingManager';
+import FinanceKpiCards from './components/finance/FinancialOverview';
+import FinanceRevenueChart from './components/finance/RevenueChart';
+import FinanceRevenueSources from './components/finance/RevenueSources';
+import FinanceRecentTransactions from './components/finance/RecentTransactions';
+import FinanceSettlementCard from './components/finance/SettlementCard';
+import FinanceWithdrawModal from './components/finance/WithdrawModal';
+import FinanceManager from './components/finance/FinanceManager';
+import PromotionsManager from './components/promotions/PromotionsManager';
+import sellerService, { MOCK_ORDERS_DEMO, MOCK_SHIPPING_DEMO } from './data/sellerService';
 
 // Custom S-life Logo SVG Icon (Official Brand Emblem)
 const SLifeIcon = ({ size = 24 }) => (
@@ -235,11 +249,15 @@ export default function App() {
     setProducts(updated);
   };
 
-  const handleDeleteProduct = async (product) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" khỏi cửa hàng không?`)) {
-      const updated = await sellerService.deleteProduct(products, product.id);
-      setProducts(updated);
-    }
+  const handleDeleteProduct = async (productOrId) => {
+    const id = typeof productOrId === 'object' ? productOrId.id : productOrId;
+    const updated = await sellerService.deleteProduct(products, id);
+    setProducts(updated);
+  };
+
+  const handleBulkActionProduct = async (action, productIds, extraValue) => {
+    const updated = await sellerService.bulkUpdateProducts(products, productIds, action, extraValue);
+    setProducts(updated);
   };
 
   // Order Management Module States
@@ -269,6 +287,52 @@ export default function App() {
     const targetDataset = orders && orders.length > 0 ? orders : MOCK_ORDERS_DEMO;
     const updated = await sellerService.bulkUpdateOrderStatus(targetDataset, orderIds, newStatus);
     setOrders(updated);
+  };
+
+  // Shipping Module States
+  const [shippingTab, setShippingTab] = useState('all');
+  const [shippingSearchQuery, setShippingSearchQuery] = useState('');
+  const [shippingProviderFilter, setShippingProviderFilter] = useState('Tất cả');
+  const [shippingStatusFilter, setShippingStatusFilter] = useState('Tất cả');
+  const [shippingWarehouseFilter, setShippingWarehouseFilter] = useState('Tất cả');
+  const [selectedShippingDetail, setSelectedShippingDetail] = useState(null);
+  const [shippingOrdersList, setShippingOrdersList] = useState(MOCK_SHIPPING_DEMO);
+  const [shippingOverview, setShippingOverview] = useState({ pendingPickup: 0, pickingUp: 0, delivering: 0, success: 0, failed: 0, total: 0 });
+  const [shippingProvidersList, setShippingProvidersList] = useState([]);
+
+  // Resolve active shipping dataset based on products
+  const isShippingEmpty = !products || products.length === 0;
+
+  useEffect(() => {
+    sellerService.getShippingOverview(shippingOrdersList, isShippingEmpty).then(res => setShippingOverview(res));
+    sellerService.getShippingProviders(isShippingEmpty).then(res => setShippingProvidersList(res));
+  }, [isShippingEmpty, shippingOrdersList]);
+
+  // Finance Module States
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [financeOverviewData, setFinanceOverviewData] = useState(null);
+  const [revenueSourcesData, setRevenueSourcesData] = useState(null);
+  const [recentTransactionsList, setRecentTransactionsList] = useState([]);
+  const [settlementInfoData, setSettlementInfoData] = useState(null);
+
+  useEffect(() => {
+    sellerService.getFinancialOverview(orders).then(res => setFinanceOverviewData(res));
+    sellerService.getRevenueSources().then(res => setRevenueSourcesData(res));
+    sellerService.getRecentTransactions().then(res => setRecentTransactionsList(res));
+    sellerService.getSettlementInfo().then(res => setSettlementInfoData(res));
+  }, [orders]);
+
+  const handleWithdrawSuccess = (numAmount) => {
+    if (financeOverviewData) {
+      const newBal = (financeOverviewData.availableBalance || 18500000) - numAmount;
+      setFinanceOverviewData({
+        ...financeOverviewData,
+        availableBalance: newBal,
+        formattedAvailable: `${newBal.toLocaleString('vi-VN')}đ`
+      });
+    }
+    setShowWithdrawModal(false);
+    alert(`Đã gửi yêu cầu rút ${numAmount.toLocaleString('vi-VN')}đ về tài khoản ngân hàng thành công!`);
   };
 
   // Address Modal States
@@ -1418,6 +1482,7 @@ export default function App() {
                         onEditProduct={handleEditProduct}
                         onToggleStatusProduct={handleToggleStatusProduct}
                         onDeleteProduct={handleDeleteProduct}
+                        onBulkAction={handleBulkActionProduct}
                       />
                     </div>
                   )}
@@ -1532,6 +1597,31 @@ export default function App() {
                     onUpdateStatus={handleUpdateSingleOrderStatus}
                   />
                 </div>
+              )}
+
+              {/* TAB: SHIPPING MANAGEMENT MODULE (VẬN CHUYỂN) */}
+              {activeTab === 'shipping' && (
+                <ShippingManager 
+                  existingOrders={orders}
+                  existingProducts={products}
+                  onNavigateToTab={setActiveTab}
+                />
+              )}
+
+              {/* TAB: FINANCE MANAGEMENT MODULE (TÀI CHÍNH) */}
+              {activeTab === 'finance' && (
+                <FinanceManager 
+                  existingOrders={orders}
+                  onNavigateToTab={setActiveTab}
+                />
+              )}
+
+              {/* TAB: PROMOTIONS / MARKETING MODULE (KHUYẾN MÃI) */}
+              {(activeTab === 'promotions' || activeTab === 'marketing') && (
+                <PromotionsManager 
+                  existingProducts={products}
+                  onNavigateToTab={setActiveTab}
+                />
               )}
 
               {/* TAB 5: SETTINGS */}

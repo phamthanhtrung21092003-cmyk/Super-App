@@ -393,18 +393,186 @@ export const sellerService = {
   // FINANCIAL OVERVIEW
   async getFinancialOverview(existingOrders = []) {
     if (existingOrders && existingOrders.length > 0) {
-      const totalRev = existingOrders.reduce((sum, o) => sum + (o.summary?.total || o.total || 0), 0);
       return Promise.resolve({
-        availableBalance: Math.round(totalRev * 0.9),
-        formattedAvailable: `${Math.round(totalRev * 0.9).toLocaleString('vi-VN')}đ`,
-        pendingReconciliation: Math.round(totalRev * 0.1),
-        formattedPending: `${Math.round(totalRev * 0.1).toLocaleString('vi-VN')}đ`,
-        monthlyRevenue: totalRev,
-        formattedMonthly: `${totalRev.toLocaleString('vi-VN')}đ`,
+        availableBalance: 18500000,
+        formattedAvailable: '18.500.000đ',
+        pendingReconciliation: 5200000,
+        formattedPending: '5.200.000đ',
+        settlementDate: '15/08/2026',
+        monthlyRevenue: 125800000,
+        formattedMonthly: '125.800.000đ',
+        monthlyGrowth: '+18,6%',
+        totalRevenue: 1268400000,
+        formattedTotal: '1.268.400.000đ',
+        commissionRate: 8,
+        formattedCommission: '8%',
         hasBankAccount: true
       });
     }
-    return Promise.resolve({ ...newSellerDb.financialOverview });
+    return Promise.resolve({
+      availableBalance: 18500000,
+      formattedAvailable: '18.500.000đ',
+      pendingReconciliation: 5200000,
+      formattedPending: '5.200.000đ',
+      settlementDate: '15/08/2026',
+      monthlyRevenue: 125800000,
+      formattedMonthly: '125.800.000đ',
+      monthlyGrowth: '+18,6%',
+      totalRevenue: 1268400000,
+      formattedTotal: '1.268.400.000đ',
+      commissionRate: 8,
+      formattedCommission: '8%',
+      hasBankAccount: true
+    });
+  },
+
+  // REVENUE SOURCES BREAKDOWN (DONUT CHART DATA)
+  async getRevenueSources(isNewShopState = false) {
+    if (isNewShopState) {
+      return Promise.resolve({
+        totalAmount: 0,
+        formattedTotal: '0đ',
+        sources: [
+          { id: 'product', name: 'Sản phẩm', percent: 0, amount: 0, formattedAmount: '0đ', color: '#00B14F' },
+          { id: 'livestream', name: 'Livestream', percent: 0, amount: 0, formattedAmount: '0đ', color: '#1877F2' },
+          { id: 'video', name: 'Video', percent: 0, amount: 0, formattedAmount: '0đ', color: '#F97316' },
+          { id: 'other', name: 'Khác', percent: 0, amount: 0, formattedAmount: '0đ', color: '#9333EA' }
+        ]
+      });
+    }
+
+    return Promise.resolve({
+      totalAmount: 125800000,
+      formattedTotal: '125.800.000đ',
+      sources: [
+        { id: 'product', name: 'Sản phẩm', percent: 78.2, amount: 98400000, formattedAmount: '98.400.000đ', color: '#00B14F' },
+        { id: 'livestream', name: 'Livestream', percent: 12.6, amount: 15900000, formattedAmount: '15.900.000đ', color: '#1877F2' },
+        { id: 'video', name: 'Video', percent: 6.3, amount: 7900000, formattedAmount: '7.900.000đ', color: '#F97316' },
+        { id: 'other', name: 'Khác', percent: 2.9, amount: 3600000, formattedAmount: '3.600.000đ', color: '#9333EA' }
+      ]
+    });
+  },
+
+  // RECENT TRANSACTIONS LIST
+  async getRecentTransactions(isNewShopState = false) {
+    if (isNewShopState) {
+      return Promise.resolve([]);
+    }
+
+    return Promise.resolve([
+      {
+        id: 'tx_1',
+        time: '12/08/2026 14:30',
+        content: 'Đơn hàng #VL000128',
+        type: 'Doanh thu đơn hàng',
+        typeCode: 'REVENUE',
+        amount: 458000,
+        isPositive: true,
+        formattedAmount: '+458.000đ',
+        status: 'Thành công',
+        statusClass: 'success'
+      },
+      {
+        id: 'tx_2',
+        time: '12/08/2026 10:15',
+        content: 'Phí vận chuyển #VL000127',
+        type: 'Phí vận chuyển',
+        typeCode: 'SHIPPING_FEE',
+        amount: -32000,
+        isPositive: false,
+        formattedAmount: '-32.000đ',
+        status: 'Thành công',
+        statusClass: 'success'
+      },
+      {
+        id: 'tx_3',
+        time: '11/08/2026 22:10',
+        content: 'Rút tiền về tài khoản ngân hàng',
+        type: 'Rút tiền',
+        typeCode: 'WITHDRAW',
+        amount: -8000000,
+        isPositive: false,
+        formattedAmount: '-8.000.000đ',
+        status: 'Thành công',
+        statusClass: 'success'
+      },
+      {
+        id: 'tx_4',
+        time: '11/08/2026 16:45',
+        content: 'Phí hoa hồng đơn hàng #VL000126',
+        type: 'Phí hoa hồng',
+        typeCode: 'COMMISSION_FEE',
+        amount: -22500,
+        isPositive: false,
+        formattedAmount: '-22.500đ',
+        status: 'Thành công',
+        statusClass: 'success'
+      },
+      {
+        id: 'tx_5',
+        time: '11/08/2026 09:20',
+        content: 'Đối soát doanh thu tuần 32',
+        type: 'Đối soát',
+        typeCode: 'SETTLEMENT',
+        amount: 5200000,
+        isPositive: true,
+        formattedAmount: '+5.200.000đ',
+        status: 'Chờ chuyển',
+        statusClass: 'pending'
+      }
+    ]);
+  },
+
+  // SETTLEMENT CYCLE INFO
+  async getSettlementInfo(isNewShopState = false) {
+    if (isNewShopState) {
+      return Promise.resolve({
+        cycleName: 'Chu kỳ hiện tại (Tuần 33)',
+        dateRange: '05/08/2026 - 11/08/2026',
+        revenue: 0,
+        formattedRevenue: '0đ',
+        fee: 0,
+        formattedFee: '0đ',
+        netAmount: 0,
+        formattedNetAmount: '0đ',
+        payoutDate: '15/08/2026',
+        steps: [
+          { label: 'Đang đối soát', date: '11/08', status: 'current' },
+          { label: 'Đã đối soát', date: '12/08', status: 'upcoming' },
+          { label: 'Chờ chuyển khoản', date: '15/08', status: 'upcoming' },
+          { label: 'Đã chuyển khoản', date: '15/08', status: 'upcoming' }
+        ]
+      });
+    }
+
+    return Promise.resolve({
+      cycleName: 'Chu kỳ hiện tại (Tuần 33)',
+      dateRange: '05/08/2026 - 11/08/2026',
+      revenue: 5200000,
+      formattedRevenue: '5.200.000đ',
+      fee: -520000,
+      formattedFee: '-520.000đ',
+      netAmount: 4680000,
+      formattedNetAmount: '4.680.000đ',
+      payoutDate: '15/08/2026',
+      steps: [
+        { label: 'Đang đối soát', date: '11/08', status: 'completed' },
+        { label: 'Đã đối soát', date: '12/08', status: 'completed' },
+        { label: 'Chờ chuyển khoản', date: '15/08', status: 'current' },
+        { label: 'Đã chuyển khoản', date: '15/08', status: 'upcoming' }
+      ]
+    });
+  },
+
+  // PROCESS WITHDRAWAL MOCK
+  async processWithdrawal(amount) {
+    const num = Number(amount) || 0;
+    return Promise.resolve({
+      success: true,
+      message: `Đã gửi yêu cầu rút ${num.toLocaleString('vi-VN')}đ thành công. Tiền sẽ được chuyển về tài khoản ngân hàng của bạn trong 24h.`,
+      newBalance: 18500000 - num,
+      formattedNewBalance: `${(18500000 - num).toLocaleString('vi-VN')}đ`
+    });
   },
 
   // SHOP HEALTH
@@ -436,17 +604,21 @@ export const sellerService = {
   async getOrderMetrics(ordersList = []) {
     const total = ordersList.length;
     const confirm = ordersList.filter(o => o.status === 'Chờ xác nhận').length;
-    const pickup = ordersList.filter(o => o.status === 'Chờ lấy hàng' || o.status === 'Chờ đóng gói').length;
-    const delivering = ordersList.filter(o => o.status === 'Đang giao' || o.status === 'Chờ bàn giao').length;
+    const packing = ordersList.filter(o => o.status === 'Chờ đóng gói' || o.status === 'Chờ lấy hàng').length;
+    const handover = ordersList.filter(o => o.status === 'Chờ bàn giao').length;
+    const delivering = ordersList.filter(o => o.status === 'Đang giao').length;
+    const delivered = ordersList.filter(o => o.status === 'Đã giao').length;
     const completed = ordersList.filter(o => o.status === 'Hoàn thành').length;
     const cancelled = ordersList.filter(o => o.status === 'Đã hủy').length;
-    const returned = ordersList.filter(o => o.status === 'Trả hàng/Hoàn tiền' || o.status === 'Trả hàng').length;
+    const returned = ordersList.filter(o => o.status === 'Trả hàng/Hoàn tiền' || o.status === 'Trả hàng' || o.status === 'Đã hoàn tiền').length;
 
     return Promise.resolve({
       total,
       confirm,
-      pickup,
+      packing,
+      handover,
       delivering,
+      delivered,
       completed,
       cancelled,
       returned
@@ -455,16 +627,18 @@ export const sellerService = {
 
   // Get Orders Filtered
   async getOrders(ordersList = [], filters = {}) {
-    const { tab = 'all', query = '', provider = 'Tất cả', dateRange = 'all' } = filters;
+    const { tab = 'all', query = '', provider = 'Tất cả' } = filters;
     let list = [...ordersList];
 
     // Status Tab Filtering
     if (tab === 'confirm') list = list.filter(o => o.status === 'Chờ xác nhận');
-    if (tab === 'pickup') list = list.filter(o => o.status === 'Chờ lấy hàng' || o.status === 'Chờ đóng gói');
-    if (tab === 'delivering') list = list.filter(o => o.status === 'Đang giao' || o.status === 'Chờ bàn giao');
+    if (tab === 'packing') list = list.filter(o => o.status === 'Chờ đóng gói' || o.status === 'Chờ lấy hàng');
+    if (tab === 'handover') list = list.filter(o => o.status === 'Chờ bàn giao');
+    if (tab === 'delivering') list = list.filter(o => o.status === 'Đang giao');
+    if (tab === 'delivered') list = list.filter(o => o.status === 'Đã giao');
     if (tab === 'completed') list = list.filter(o => o.status === 'Hoàn thành');
     if (tab === 'cancelled') list = list.filter(o => o.status === 'Đã hủy');
-    if (tab === 'returned') list = list.filter(o => o.status === 'Trả hàng/Hoàn tiền' || o.status === 'Trả hàng');
+    if (tab === 'returned') list = list.filter(o => o.status === 'Trả hàng/Hoàn tiền' || o.status === 'Trả hàng' || o.status === 'Đã hoàn tiền');
 
     // Search Query (Code, Customer name, Phone)
     if (query && query.trim() !== '') {
@@ -579,9 +753,40 @@ export const sellerService = {
     return Promise.resolve(updatedList);
   },
 
-  async updateProductStatus(productsList = [], productId, newStatus) {
-    const updatedList = productsList.map(p => p.id === productId ? { ...p, status: newStatus } : p);
+  async hideProduct(productsList = [], productId) {
+    const updatedList = productsList.map(p => p.id === productId ? { ...p, status: 'Tạm ẩn' } : p);
     return Promise.resolve(updatedList);
+  },
+
+  async showProduct(productsList = [], productId) {
+    const updatedList = productsList.map(p => p.id === productId ? { ...p, status: 'Đang bán' } : p);
+    return Promise.resolve(updatedList);
+  },
+
+  async getProductVariants(productId) {
+    return Promise.resolve([
+      { id: `${productId}_v1`, productId, sku: `${productId}-BLK-S`, name: 'Màu Đen / Size S', price: 129000, stock: 40, sold: 120 },
+      { id: `${productId}_v2`, productId, sku: `${productId}-BLK-M`, name: 'Màu Đen / Size M', price: 129000, stock: 50, sold: 210 },
+      { id: `${productId}_v3`, productId, sku: `${productId}-WHT-L`, name: 'Màu Trắng / Size L', price: 129000, stock: 38, sold: 95 }
+    ]);
+  },
+
+  async bulkUpdateProducts(productsList = [], productIds = [], action, value) {
+    let updated = [...productsList];
+    if (action === 'hide') {
+      updated = updated.map(p => productIds.includes(p.id) ? { ...p, status: 'Tạm ẩn' } : p);
+    } else if (action === 'show') {
+      updated = updated.map(p => productIds.includes(p.id) ? { ...p, status: 'Đang bán' } : p);
+    } else if (action === 'updatePrice' && value) {
+      updated = updated.map(p => productIds.includes(p.id) ? { ...p, price: Number(value) } : p);
+    } else if (action === 'updateStock' && value !== undefined) {
+      updated = updated.map(p => productIds.includes(p.id) ? { ...p, stock: Number(value) } : p);
+    } else if (action === 'delete') {
+      updated = updated.filter(p => !productIds.includes(p.id) || (p.sold && p.sold > 0));
+      // Products with sold > 0 get hidden instead of deleted
+      updated = updated.map(p => (productIds.includes(p.id) && p.sold > 0) ? { ...p, status: 'Tạm ẩn' } : p);
+    }
+    return Promise.resolve(updated);
   },
 
   // Get Top Selling Products
@@ -868,50 +1073,581 @@ export const sellerService = {
     return Promise.resolve(historyLogs);
   },
 
-  // Adjust stock quantity (+, -, or =)
-  async adjustInventory(inventoryList, productId, adjustType, amount, reason) {
-    const qty = parseInt(amount, 10) || 0;
+
+
+  // Receive stock (+) by SKU or productId
+  async receiveInventory(inventoryList, skuOrProductId, quantity, reason = 'Nhập kho bổ sung') {
+    const qty = parseInt(quantity, 10) || 0;
     const updated = inventoryList.map(item => {
-      if (item.productId === productId || item.id === productId) {
-        let newQty = item.quantity;
-        if (adjustType === 'ADD' || adjustType === 'add') newQty += qty;
-        else if (adjustType === 'SUB' || adjustType === 'sub') newQty = Math.max(0, newQty - qty);
-        else if (adjustType === 'SET' || adjustType === 'set') newQty = Math.max(0, qty);
-
-        const availableQuantity = Math.max(0, newQty - item.reservedQuantity);
-        const inventoryValue = newQty * item.costPrice;
-        const statusObj = this.determineStockStatus(newQty);
-
+      if (item.sku === skuOrProductId || item.productId === skuOrProductId || item.id === skuOrProductId) {
+        const physicalStock = (item.physicalStock || item.quantity || 0) + qty;
+        const reservedStock = item.reservedStock || item.reservedQuantity || 0;
+        const availableStock = Math.max(0, physicalStock - reservedStock);
         return {
           ...item,
-          quantity: newQty,
-          availableQuantity,
-          inventoryValue,
-          status: statusObj.label,
-          statusObj
+          physicalStock,
+          quantity: physicalStock,
+          availableStock,
+          availableQuantity: availableStock,
+          updatedAt: new Date().toLocaleDateString('vi-VN')
         };
       }
       return item;
     });
-
     return Promise.resolve(updated);
   },
 
-  // Receive stock (+)
-  async receiveInventory(inventoryList, productId, quantity, warehouseId, notes) {
-    const qty = parseInt(quantity, 10) || 0;
-    return this.adjustInventory(inventoryList, productId, 'ADD', qty, notes || 'Nhập kho');
+  // Adjust stock quantity by SKU
+  async adjustInventory(inventoryList, skuOrProductId, adjustType, amount, reason = 'Điều chỉnh tồn kho') {
+    const qty = parseInt(amount, 10) || 0;
+    const updated = inventoryList.map(item => {
+      if (item.sku === skuOrProductId || item.productId === skuOrProductId || item.id === skuOrProductId) {
+        let physicalStock = item.physicalStock || item.quantity || 0;
+        if (adjustType === 'ADD' || adjustType === 'add') physicalStock += qty;
+        else if (adjustType === 'SUB' || adjustType === 'sub') physicalStock = Math.max(0, physicalStock - qty);
+        else if (adjustType === 'SET' || adjustType === 'set') physicalStock = Math.max(0, qty);
+
+        const reservedStock = item.reservedStock || item.reservedQuantity || 0;
+        const availableStock = Math.max(0, physicalStock - reservedStock);
+        return {
+          ...item,
+          physicalStock,
+          quantity: physicalStock,
+          availableStock,
+          availableQuantity: availableStock,
+          updatedAt: new Date().toLocaleDateString('vi-VN')
+        };
+      }
+      return item;
+    });
+    return Promise.resolve(updated);
   },
 
-  // Issue stock (-)
-  async issueInventory(inventoryList, productId, quantity, warehouseId, reason) {
-    const qty = parseInt(quantity, 10) || 0;
-    const targetItem = inventoryList.find(i => i.productId === productId || i.id === productId);
-    if (targetItem && targetItem.quantity < qty) {
-      return Promise.reject(new Error('Không đủ tồn kho để xuất.'));
+  // Reserve Stock when Order is confirmed
+  async reserveInventory(inventoryList, sku, qty = 1) {
+    const updated = inventoryList.map(item => {
+      if (item.sku === sku) {
+        const reservedStock = (item.reservedStock || 0) + qty;
+        const physicalStock = item.physicalStock || item.quantity || 0;
+        const availableStock = Math.max(0, physicalStock - reservedStock);
+        return { ...item, reservedStock, availableStock };
+      }
+      return item;
+    });
+    return Promise.resolve(updated);
+  },
+
+  // Release Reserved Stock when Order is cancelled
+  async releaseInventory(inventoryList, sku, qty = 1) {
+    const updated = inventoryList.map(item => {
+      if (item.sku === sku) {
+        const reservedStock = Math.max(0, (item.reservedStock || 0) - qty);
+        const physicalStock = item.physicalStock || item.quantity || 0;
+        const availableStock = Math.max(0, physicalStock - reservedStock);
+        return { ...item, reservedStock, availableStock };
+      }
+      return item;
+    });
+    return Promise.resolve(updated);
+  },
+
+  // Commit Stock when Order is completed (Deduct physical & reserved stock)
+  async commitInventory(inventoryList, sku, qty = 1) {
+    const updated = inventoryList.map(item => {
+      if (item.sku === sku) {
+        const physicalStock = Math.max(0, (item.physicalStock || item.quantity || 0) - qty);
+        const reservedStock = Math.max(0, (item.reservedStock || 0) - qty);
+        const availableStock = Math.max(0, physicalStock - reservedStock);
+        const soldQuantity = (item.soldQuantity || 0) + qty;
+        return { ...item, physicalStock, quantity: physicalStock, reservedStock, availableStock, soldQuantity };
+      }
+      return item;
+    });
+    return Promise.resolve(updated);
+  },
+
+  // Get Inventory Transactions Log
+  async getInventoryTransactions() {
+    return Promise.resolve([
+      { id: 'tx_101', time: '13/08/2026 09:30', productName: 'Áo thun nam basic', sku: 'ATB-BLK-M', type: 'Giữ hàng', typeCode: 'RESERVE', qty: -2, before: 130, after: 128, reason: 'Đơn hàng #VL000128', user: 'Hệ thống S-Shopping' },
+      { id: 'tx_102', time: '12/08/2026 14:00', productName: 'Áo thun nam basic', sku: 'ATB-BLK-M', type: 'Nhập kho', typeCode: 'RECEIVE', qty: +50, before: 80, after: 130, reason: 'Nhập hàng từ NCC', user: 'Quản lý Kho' },
+      { id: 'tx_103', time: '11/08/2026 16:20', productName: 'Giày Sneaker Unisex Sport', sku: 'GS-WHT-42', type: 'Điều chỉnh', typeCode: 'ADJUST', qty: -3, before: 45, after: 42, reason: 'Kiểm kê hư hỏng', user: 'Thủ kho' },
+      { id: 'tx_104', time: '10/08/2026 10:15', productName: 'Sạc dự phòng 20000mAh', sku: 'SDP-20K-BLK', type: 'Xuất kho', typeCode: 'ISSUE', qty: -1, before: 15, after: 14, reason: 'Xuất bán đơn #SP250810-01', user: 'Shipper GHN' },
+      { id: 'tx_105', time: '09/08/2026 15:45', productName: 'Áo sơ mi lụa nữ', sku: 'ASM-WHT-S', type: 'Hoàn hàng', typeCode: 'RETURN', qty: +1, before: 12, after: 13, reason: 'Khách hoàn trả đơn #VL000115', user: 'Hệ thống' }
+    ]);
+  },
+
+  // =========================================================================
+  // 🚚 SHIPPING MODULE FACADE API
+  // =========================================================================
+
+  // Calculate 5 Shipping KPI Overview Cards
+  async getShippingOverview(shippingList = [], isNewShopState = false) {
+    if (isNewShopState || !shippingList || shippingList.length === 0) {
+      return Promise.resolve({
+        pendingPickup: 0,
+        pickingUp: 0,
+        delivering: 0,
+        success: 0,
+        failed: 0,
+        total: 0
+      });
     }
-    return this.adjustInventory(inventoryList, productId, 'SUB', qty, reason || 'Xuất kho');
+
+    const pendingPickup = shippingList.filter(s => s.status === 'Chờ lấy hàng').length;
+    const pickingUp = shippingList.filter(s => s.status === 'Đang lấy hàng' || s.status === 'Đã lấy hàng').length;
+    const delivering = shippingList.filter(s => s.status === 'Đang vận chuyển').length;
+    const success = shippingList.filter(s => s.status === 'Đã giao' || s.status === 'Giao thành công').length;
+    const failed = shippingList.filter(s => s.status === 'Giao thất bại').length;
+    const total = shippingList.length;
+
+    return Promise.resolve({
+      pendingPickup,
+      pickingUp,
+      delivering,
+      success,
+      failed,
+      total
+    });
+  },
+
+  // Get Shipping Orders Filtered
+  async getShippingOrders(shippingList = [], filters = {}, isNewShopState = false) {
+    if (isNewShopState) {
+      return Promise.resolve([]);
+    }
+
+    const dataset = shippingList && shippingList.length > 0 ? shippingList : MOCK_SHIPPING_DEMO;
+    const { tab = 'all', query = '', provider = 'Tất cả', status = 'Tất cả', warehouse = 'Tất cả' } = filters;
+    let list = [...dataset];
+
+    // Status Tab Filter
+    if (tab === 'pickup') list = list.filter(s => s.status === 'Chờ lấy hàng');
+    if (tab === 'picked') list = list.filter(s => s.status === 'Đang lấy hàng' || s.status === 'Đã lấy hàng');
+    if (tab === 'delivering') list = list.filter(s => s.status === 'Đang vận chuyển');
+    if (tab === 'delivered') list = list.filter(s => s.status === 'Đã giao' || s.status === 'Giao thành công');
+    if (tab === 'failed') list = list.filter(s => s.status === 'Giao thất bại');
+    if (tab === 'returned') list = list.filter(s => s.status === 'Hoàn trả');
+
+    // Search Query (Order ID, Tracking Code, Customer Name, Phone)
+    if (query && query.trim() !== '') {
+      const q = query.toLowerCase().trim();
+      list = list.filter(s => {
+        const matchOrder = s.orderId && s.orderId.toLowerCase().includes(q);
+        const matchTracking = s.trackingNo && s.trackingNo.toLowerCase().includes(q);
+        const matchCust = s.customer?.name && s.customer.name.toLowerCase().includes(q);
+        const matchPhone = s.customer?.phone && s.customer.phone.includes(q);
+        return matchOrder || matchTracking || matchCust || matchPhone;
+      });
+    }
+
+    // Provider Filter
+    if (provider && provider !== 'Tất cả' && provider !== 'Tất cả đơn vị') {
+      list = list.filter(s => s.provider === provider || s.providerName === provider);
+    }
+
+    // Warehouse Filter
+    if (warehouse && warehouse !== 'Tất cả' && warehouse !== 'Tất cả kho') {
+      list = list.filter(s => s.warehouse === warehouse);
+    }
+
+    return Promise.resolve(list);
+  },
+
+  // Get Shipping Providers List
+  async getShippingProviders(isNewShopState = false) {
+    if (isNewShopState) {
+      return Promise.resolve([
+        { id: 'sp_1', name: 'V-life Delivery', orderCount: 0, successRate: '--%', status: 'Đang hoạt động', iconColor: '#00B14F' },
+        { id: 'sp_2', name: 'GHN', orderCount: 0, successRate: '--%', status: 'Đang hoạt động', iconColor: '#F97316' },
+        { id: 'sp_3', name: 'Viettel Post', orderCount: 0, successRate: '--%', status: 'Đang hoạt động', iconColor: '#16A34A' },
+        { id: 'sp_4', name: 'J&T Express', orderCount: 0, successRate: '--%', status: 'Đang hoạt động', iconColor: '#DC2626' },
+        { id: 'sp_5', name: 'Ninja Van', orderCount: 0, successRate: '--%', status: 'Đang hoạt động', iconColor: '#9333EA' }
+      ]);
+    }
+
+    return Promise.resolve([
+      { id: 'sp_1', name: 'V-life Delivery', orderCount: 18, successRate: '99.1%', status: 'Đang hoạt động', iconColor: '#00B14F' },
+      { id: 'sp_2', name: 'GHN', orderCount: 36, successRate: '98.2%', status: 'Đang hoạt động', iconColor: '#F97316' },
+      { id: 'sp_3', name: 'Viettel Post', orderCount: 22, successRate: '97.6%', status: 'Đang hoạt động', iconColor: '#16A34A' },
+      { id: 'sp_4', name: 'J&T Express', orderCount: 28, successRate: '96.8%', status: 'Đang hoạt động', iconColor: '#DC2626' },
+      { id: 'sp_5', name: 'Ninja Van', orderCount: 14, successRate: '97.0%', status: 'Đang hoạt động', iconColor: '#9333EA' }
+    ]);
+  },
+
+  // Get All Shipments
+  async getShipments(existingOrders = []) {
+    const list = [
+      {
+        id: 'sh_101',
+        orderId: 'VL000128',
+        code: 'VL000128',
+        trackingNo: 'VLX123456789',
+        customerName: 'Nguyễn Văn B',
+        customerPhone: '0901 234 567',
+        address: '123 Nguyễn Huệ, Q.1, TP.HCM',
+        provider: 'V-life Delivery',
+        shippingFee: 25000,
+        cod: 263000,
+        status: 'Đang vận chuyển',
+        estimatedDate: '15/08/2026',
+        items: [{ name: 'Áo thun nam basic', productId: 'p2', sku: 'ATB-BLK-M', variant: 'Đen / M', quantity: 2 }]
+      },
+      {
+        id: 'sh_102',
+        orderId: 'VL000127',
+        code: 'VL000127',
+        trackingNo: 'GHN99887766',
+        customerName: 'Trần Thị C',
+        customerPhone: '0912 999 888',
+        address: '456 Lê Lợi, Q. Long Biên, Hà Nội',
+        provider: 'GHN',
+        shippingFee: 22000,
+        cod: 350000,
+        status: 'Chờ lấy hàng',
+        estimatedDate: '16/08/2026',
+        items: [{ name: 'Giày Sneaker Unisex Sport', productId: 'p1', sku: 'GS-WHT-42', variant: 'Trắng / 42', quantity: 1 }]
+      },
+      {
+        id: 'sh_103',
+        orderId: 'VL000125',
+        code: 'VL000125',
+        trackingNo: 'VTP55443322',
+        customerName: 'Lê Hoàng D',
+        customerPhone: '0988 111 222',
+        address: '789 Nguyễn Văn Linh, Q.7, TP.HCM',
+        provider: 'Viettel Post',
+        shippingFee: 25000,
+        cod: 540000,
+        status: 'Giao thất bại',
+        estimatedDate: '14/08/2026',
+        items: [{ name: 'Sạc dự phòng 20000mAh', productId: 'p3', sku: 'SDP-20K-BLK', variant: 'Đen', quantity: 1 }]
+      }
+    ];
+    return Promise.resolve(list);
+  },
+
+  // Get Carriers list with Active/Inactive toggle
+  async getCarriers() {
+    return Promise.resolve([
+      { id: 'v-life-delivery', name: 'V-life Delivery', active: true, time: '1 - 2 ngày', fee: '20.000đ', desc: 'Dịch vụ giao vận độc quyền hệ sinh thái V-life' },
+      { id: 'ghn', name: 'Giao Hàng Nhanh (GHN)', active: true, time: '2 - 3 ngày', fee: '22.000đ', desc: 'Mạng lưới phủ sóng 63 tỉnh thành' },
+      { id: 'viettel-post', name: 'Viettel Post', active: true, time: '2 - 4 ngày', fee: '25.000đ', desc: 'Tối ưu tuyến đường liên tỉnh & hải đảo' },
+      { id: 'jt-express', name: 'J&T Express', active: false, time: '2 - 3 ngày', fee: '22.000đ', desc: 'Dịch vụ vận chuyển Express chuẩn hóa' }
+    ]);
+  },
+
+  // Get Pickup Addresses list
+  async getPickupAddresses() {
+    return Promise.resolve([
+      { id: 'addr_1', name: 'Kho tổng S-SHOPPING Hà Nội', contactName: 'Nguyễn Văn A', phone: '0988 777 666', address: 'Số 123 Đường Nguyễn Văn Cừ, Phường Bồ Đề, Quận Long Biên, Hà Nội', isDefault: true },
+      { id: 'addr_2', name: 'Kho miền Nam (TP.HCM)', contactName: 'Trần Thị B', phone: '0901 234 567', address: '123 Nguyễn Văn Linh, Phường Tân Phong, Quận 7, TP. Hồ Chí Minh', isDefault: false }
+    ]);
+  },
+
+  // Generate tracking number MOCK
+  generateTrackingNumber(prefix = 'VLX') {
+    return `${prefix}${Math.floor(100000000 + Math.random() * 900000000)}`;
+  },
+
+  // Get Shipping Order Detail by ID
+  async getShippingDetail(shippingList = [], orderId) {
+    const dataset = shippingList && shippingList.length > 0 ? shippingList : MOCK_SHIPPING_DEMO;
+    const found = dataset.find(s => s.id === orderId || s.orderId === orderId || s.trackingNo === orderId);
+    return Promise.resolve(found || null);
+  },
+
+  // =========================================================================
+  // 🎁 PROMOTIONS / MARKETING MODULE FACADE API
+  // =========================================================================
+
+  // Get All Promotions list
+  async getPromotions() {
+    const list = [
+      {
+        id: 'km_101',
+        name: 'Freeship XTRA 8.8',
+        code: 'KM0088',
+        type: 'Miễn phí vận chuyển',
+        badgeText: 'FREESHIP XTRA',
+        time: '08/08/2026 - 12/08/2026',
+        timeSubtext: 'Còn 2 ngày',
+        budget: 2000000,
+        spent: 1450000,
+        status: 'Đang diễn ra',
+        revenue: 32450000,
+        productIds: ['p1', 'p2']
+      },
+      {
+        id: 'km_102',
+        name: 'Giảm giá 20% toàn shop',
+        code: 'KM2008',
+        type: 'Giảm giá sản phẩm',
+        badgeText: '20% OFF',
+        time: '05/08/2026 - 15/08/2026',
+        timeSubtext: 'Đang diễn ra',
+        budget: 3000000,
+        spent: 1890000,
+        status: 'Đang diễn ra',
+        revenue: 28760000,
+        productIds: ['p1', 'p2', 'p3']
+      },
+      {
+        id: 'km_103',
+        name: 'Giảm 50K đơn từ 500K',
+        code: 'KM500K',
+        type: 'Giảm giá đơn hàng',
+        badgeText: 'REDEEM 50K',
+        time: '10/08/2026 - 20/08/2026',
+        timeSubtext: 'Còn 10 ngày',
+        budget: 1500000,
+        spent: 320000,
+        status: 'Đang diễn ra',
+        revenue: 9850000,
+        productIds: ['p3']
+      },
+      {
+        id: 'km_104',
+        name: 'Flash Sale 12.12',
+        code: 'FS1212',
+        type: 'Flash Sale',
+        badgeText: 'FLASH SALE',
+        time: '12/12/2026 - 12/12/2026',
+        timeSubtext: 'Chưa bắt đầu',
+        budget: 5000000,
+        spent: 0,
+        status: 'Sắp diễn ra',
+        revenue: 0,
+        productIds: ['p1']
+      },
+      {
+        id: 'km_105',
+        name: 'Mua 1 tặng 1',
+        code: 'MUA1TANG1',
+        type: 'Mua X tặng Y',
+        badgeText: 'MUA 1 TẶNG 1',
+        time: '01/09/2026 - 10/09/2026',
+        timeSubtext: 'Chưa bắt đầu',
+        budget: 800000,
+        spent: 0,
+        status: 'Sắp diễn ra',
+        revenue: 0,
+        productIds: ['p2']
+      },
+      {
+        id: 'km_106',
+        name: 'Back to school',
+        code: 'BTS2026',
+        type: 'Giảm giá sản phẩm',
+        badgeText: 'BACK SCHOOL',
+        time: '01/08/2026 - 05/08/2026',
+        timeSubtext: 'Đã kết thúc',
+        budget: 1000000,
+        spent: 1000000,
+        status: 'Đã kết thúc',
+        revenue: 15320000,
+        productIds: ['p1', 'p2']
+      },
+      {
+        id: 'km_107',
+        name: 'Tết Sale 2026',
+        code: 'TET2026',
+        type: 'Giảm giá toàn shop',
+        badgeText: 'TẾT SALE',
+        time: '15/01/2026 - 22/01/2026',
+        timeSubtext: 'Đã kết thúc',
+        budget: 2500000,
+        spent: 2500000,
+        status: 'Đã kết thúc',
+        revenue: 46000000,
+        productIds: ['p1', 'p2', 'p3']
+      }
+    ];
+    return Promise.resolve(list);
+  },
+
+  // Calculate Overview metrics
+  async getPromotionOverview(list = []) {
+    const total = list.length || 18;
+    const active = list.filter(p => p.status === 'Đang diễn ra').length;
+    const upcoming = list.filter(p => p.status === 'Sắp diễn ra').length;
+    const ended = list.filter(p => p.status === 'Đã kết thúc').length;
+    const paused = list.filter(p => p.status === 'Tạm dừng').length;
+
+    return Promise.resolve({
+      total,
+      active,
+      upcoming,
+      ended,
+      paused
+    });
   }
 };
 
+// Shipping Demo Dataset
+export const MOCK_SHIPPING_DEMO = [
+  {
+    id: 'shp_1',
+    orderId: '#VL000128',
+    trackingNo: '#GHN8934721',
+    customer: {
+      name: 'Nguyễn Văn Bình',
+      phone: '0909 123 456',
+      address: '123 Nguyễn Huệ, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh'
+    },
+    provider: 'GHN',
+    providerName: 'Giao Hàng Nhanh',
+    warehouse: 'Kho HCM',
+    shippingFee: 25000,
+    totalAmount: 458000,
+    status: 'Đang vận chuyển',
+    estimatedDate: '12/08/2026',
+    timeline: [
+      { step: 'Đơn hàng đã xác nhận', time: '12/08/2026 09:30', done: true },
+      { step: 'Shop đã đóng gói', time: '12/08/2026 10:15', done: true },
+      { step: 'Đã bàn giao cho đơn vị vận chuyển', time: '12/08/2026 11:20', done: true },
+      { step: 'Đang vận chuyển', time: '12/08/2026 14:30', current: true },
+      { step: 'Đang giao đến khách hàng', done: false },
+      { step: 'Giao hàng thành công', done: false }
+    ]
+  },
+  {
+    id: 'shp_2',
+    orderId: '#VL000127',
+    trackingNo: '#JT8837291',
+    customer: {
+      name: 'Trần Minh Anh',
+      phone: '0912 345 678',
+      address: '456 Cầu Giấy, Quận Cầu Giấy, Hà Nội'
+    },
+    provider: 'J&T Express',
+    providerName: 'J&T Express',
+    warehouse: 'Kho Hà Nội',
+    shippingFee: 32000,
+    totalAmount: 580000,
+    status: 'Chờ lấy hàng',
+    estimatedDate: '12/08/2026',
+    timeline: [
+      { step: 'Đơn hàng đã xác nhận', time: '12/08/2026 08:15', done: true },
+      { step: 'Shop đã đóng gói', time: '12/08/2026 09:00', done: true },
+      { step: 'Chờ đơn vị vận chuyển lấy hàng', time: '12/08/2026 09:30', current: true },
+      { step: 'Đang vận chuyển', done: false },
+      { step: 'Giao hàng thành công', done: false }
+    ]
+  },
+  {
+    id: 'shp_3',
+    orderId: '#VL000126',
+    trackingNo: '#VP8834219',
+    customer: {
+      name: 'Lê Hoàng Nam',
+      phone: '0934 567 890',
+      address: '789 Nguyễn Văn Linh, Quận Hải Châu, Đà Nẵng'
+    },
+    provider: 'Viettel Post',
+    providerName: 'Viettel Post',
+    warehouse: 'Kho Đà Nẵng',
+    shippingFee: 28000,
+    totalAmount: 320000,
+    status: 'Đã giao',
+    estimatedDate: '11/08/2026',
+    timeline: [
+      { step: 'Đơn hàng đã xác nhận', time: '10/08/2026 14:00', done: true },
+      { step: 'Shop đã đóng gói', time: '10/08/2026 15:30', done: true },
+      { step: 'Đã bàn giao cho đơn vị vận chuyển', time: '10/08/2026 17:00', done: true },
+      { step: 'Đang vận chuyển', time: '11/08/2026 08:00', done: true },
+      { step: 'Giao hàng thành công', time: '11/08/2026 16:30', done: true, current: true }
+    ]
+  },
+  {
+    id: 'shp_4',
+    orderId: '#VL000125',
+    trackingNo: '#GHN8934720',
+    customer: {
+      name: 'Phạm Thị Lan',
+      phone: '0908 765 432',
+      address: '88 Cách Mạng Tháng 8, Quận 3, TP. Hồ Chí Minh'
+    },
+    provider: 'GHN',
+    providerName: 'Giao Hàng Nhanh',
+    warehouse: 'Kho HCM',
+    shippingFee: 25000,
+    totalAmount: 410000,
+    status: 'Đang lấy hàng',
+    estimatedDate: '13/08/2026',
+    timeline: [
+      { step: 'Đơn hàng đã xác nhận', time: '12/08/2026 10:00', done: true },
+      { step: 'Tài xế đang đến lấy hàng', time: '12/08/2026 11:30', current: true },
+      { step: 'Đang vận chuyển', done: false },
+      { step: 'Giao hàng thành công', done: false }
+    ]
+  },
+  {
+    id: 'shp_5',
+    orderId: '#VL000124',
+    trackingNo: '#NJV7792910',
+    customer: {
+      name: 'Đỗ Quốc Huy',
+      phone: '0978 654 321',
+      address: '22 Võ Văn Ngân, TP. Thủ Đức, TP. Hồ Chí Minh'
+    },
+    provider: 'Ninja Van',
+    providerName: 'Ninja Van',
+    warehouse: 'Kho HCM',
+    shippingFee: 22000,
+    totalAmount: 290000,
+    status: 'Chờ lấy hàng',
+    estimatedDate: '13/08/2026',
+    timeline: [
+      { step: 'Đơn hàng đã xác nhận', time: '12/08/2026 11:00', done: true },
+      { step: 'Shop đã đóng gói', time: '12/08/2026 12:00', done: true },
+      { step: 'Chờ đơn vị vận chuyển lấy hàng', time: '12/08/2026 12:30', current: true }
+    ]
+  },
+  {
+    id: 'shp_6',
+    orderId: '#VL000123',
+    trackingNo: '#GHN8934719',
+    customer: {
+      name: 'Ngô Thanh Tùng',
+      phone: '0987 111 222',
+      address: '15 Trần Duy Hưng, Quận Cầu Giấy, Hà Nội'
+    },
+    provider: 'GHN',
+    providerName: 'Giao Hàng Nhanh',
+    warehouse: 'Kho Hà Nội',
+    shippingFee: 25000,
+    totalAmount: 670000,
+    status: 'Giao thất bại',
+    estimatedDate: '10/08/2026',
+    timeline: [
+      { step: 'Đơn hàng đã xác nhận', time: '09/08/2026 09:00', done: true },
+      { step: 'Đã bàn giao cho vận chuyển', time: '09/08/2026 14:00', done: true },
+      { step: 'Giao không thành công (Khách bận)', time: '10/08/2026 17:00', error: true }
+    ]
+  },
+  {
+    id: 'shp_7',
+    orderId: '#VL000122',
+    trackingNo: '#VTP8820011',
+    customer: {
+      name: 'Hoàng Hải Yến',
+      phone: '0911 222 333',
+      address: '44 Nguyễn Văn Linh, Quận Hải Châu, Đà Nẵng'
+    },
+    provider: 'Viettel Post',
+    providerName: 'Viettel Post',
+    warehouse: 'Kho Đà Nẵng',
+    shippingFee: 28000,
+    totalAmount: 490000,
+    status: 'Đã giao',
+    estimatedDate: '09/08/2026',
+    timeline: [
+      { step: 'Đơn hàng đã xác nhận', time: '08/08/2026 10:00', done: true },
+      { step: 'Giao hàng thành công', time: '09/08/2026 15:00', done: true }
+    ]
+  }
+];
+
 export default sellerService;
+

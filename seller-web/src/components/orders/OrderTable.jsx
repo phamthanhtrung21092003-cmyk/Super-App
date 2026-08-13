@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import OrderRow from './OrderRow';
 import OrderEmptyState from './OrderEmptyState';
 import OrderBulkActions from './OrderBulkActions';
+import OrderConfirmModal from './OrderConfirmModal';
+import OrderCancelModal from './OrderCancelModal';
+import PackingModal from './PackingModal';
+import HandoverModal from './HandoverModal';
+import ReturnRequestModal from './ReturnRequestModal';
+import OrderPrintModal from './OrderPrintModal';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 export default function OrderTable({ 
@@ -14,6 +20,14 @@ export default function OrderTable({
   const [selectedIds, setSelectedIds] = useState([]);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Active Interactive Modal States
+  const [confirmingOrder, setConfirmingOrder] = useState(null);
+  const [cancellingOrder, setCancellingOrder] = useState(null);
+  const [packingOrder, setPackingOrder] = useState(null);
+  const [handoverOrder, setHandoverOrder] = useState(null);
+  const [printingOrder, setPrintingOrder] = useState(null);
+  const [returningOrder, setReturningOrder] = useState(null);
 
   const hasOrders = orders && orders.length > 0;
 
@@ -34,13 +48,15 @@ export default function OrderTable({
   };
 
   const handleBulkConfirmAll = () => {
-    onBulkUpdateStatus(selectedIds, 'Chờ lấy hàng');
-    setSelectedIds([]);
-    alert(`✅ Đã xác nhận hàng loạt ${selectedIds.length} đơn hàng!`);
+    if (window.confirm(`Bạn có chắc muốn xác nhận hàng loạt ${selectedIds.length} đơn hàng đã chọn?`)) {
+      onBulkUpdateStatus(selectedIds, 'Chờ đóng gói');
+      setSelectedIds([]);
+      alert(`✅ Đã xác nhận xử lý thành công ${selectedIds.length} đơn hàng!`);
+    }
   };
 
   const handleBulkPrintAll = () => {
-    alert(`🖨️ Đang in phiếu giao cho ${selectedIds.length} đơn hàng đã chọn.`);
+    alert(`🖨️ Đang gửi lệnh in phiếu giao cho ${selectedIds.length} đơn hàng đã chọn.`);
   };
 
   const handleBulkExportSelected = () => {
@@ -48,7 +64,7 @@ export default function OrderTable({
   };
 
   return (
-    <div className="order-table-card-container">
+    <div className="order-table-card-container" style={{ position: 'relative' }}>
       {hasOrders ? (
         <>
           <div className="table-responsive-wrapper">
@@ -63,8 +79,8 @@ export default function OrderTable({
                     />
                   </th>
                   <th className="col-order-code">Mã đơn hàng</th>
-                  <th className="col-customer">Khách hàng</th>
                   <th className="col-product-item">Sản phẩm</th>
+                  <th className="col-customer">Khách hàng</th>
                   <th className="col-total">Tổng tiền</th>
                   <th className="col-status">Trạng thái</th>
                   <th className="col-shipping">Vận chuyển</th>
@@ -81,7 +97,12 @@ export default function OrderTable({
                     isSelected={selectedIds.includes(order.id)}
                     onToggleSelect={handleToggleSelect}
                     onViewDetail={onViewOrderDetail}
-                    onUpdateStatus={onUpdateOrderStatus}
+                    onConfirmOrder={(ord) => setConfirmingOrder(ord)}
+                    onCancelOrder={(ord) => setCancellingOrder(ord)}
+                    onPackOrder={(ord) => setPackingOrder(ord)}
+                    onHandoverOrder={(ord) => setHandoverOrder(ord)}
+                    onPrintOrder={(ord) => setPrintingOrder(ord)}
+                    onViewReturnOrder={(ord) => setReturningOrder(ord)}
                   />
                 ))}
               </tbody>
@@ -129,6 +150,78 @@ export default function OrderTable({
         </>
       ) : (
         <OrderEmptyState onNavigateToProducts={onNavigateToProducts} />
+      )}
+
+      {/* Interactive Modals */}
+      {confirmingOrder && (
+        <OrderConfirmModal 
+          order={confirmingOrder}
+          onClose={() => setConfirmingOrder(null)}
+          onConfirm={(id) => {
+            onUpdateOrderStatus(id, 'Chờ đóng gói');
+            setConfirmingOrder(null);
+            alert(`✅ Đã xác nhận đơn hàng #${id} thành công! Đơn hàng chuyển sang Chờ đóng gói.`);
+          }}
+        />
+      )}
+
+      {cancellingOrder && (
+        <OrderCancelModal 
+          order={cancellingOrder}
+          onClose={() => setCancellingOrder(null)}
+          onConfirmCancel={(id, reason) => {
+            onUpdateOrderStatus(id, 'Đã hủy', reason);
+            setCancellingOrder(null);
+            alert(`❌ Đã hủy đơn hàng #${id}. Lý do: ${reason}`);
+          }}
+        />
+      )}
+
+      {packingOrder && (
+        <PackingModal 
+          order={packingOrder}
+          onClose={() => setPackingOrder(null)}
+          onCompletePacking={(id) => {
+            onUpdateOrderStatus(id, 'Chờ bàn giao');
+            setPackingOrder(null);
+            alert(`📦 Đã hoàn tất đóng gói đơn hàng #${id}! Đơn hàng sẵn sàng chờ bàn giao cho shipper.`);
+          }}
+        />
+      )}
+
+      {handoverOrder && (
+        <HandoverModal 
+          order={handoverOrder}
+          onClose={() => setHandoverOrder(null)}
+          onConfirmHandover={(id, trackingNo) => {
+            onUpdateOrderStatus(id, 'Đang giao', null, trackingNo);
+            setHandoverOrder(null);
+            alert(`🚚 Đã bàn giao kiện hàng #${id} cho ĐVVC với mã vận đơn ${trackingNo}!`);
+          }}
+        />
+      )}
+
+      {returningOrder && (
+        <ReturnRequestModal 
+          order={returningOrder}
+          onClose={() => setReturningOrder(null)}
+          onApprove={(id) => {
+            onUpdateOrderStatus(id, 'Đã hoàn tiền');
+            setReturningOrder(null);
+            alert(`✅ Đã chấp nhận yêu cầu hoàn tiền cho đơn hàng #${id}.`);
+          }}
+          onReject={(id) => {
+            setReturningOrder(null);
+            alert(`❌ Đã từ chối yêu cầu hoàn tiền của đơn hàng #${id}.`);
+          }}
+        />
+      )}
+
+      {printingOrder && (
+        <OrderPrintModal 
+          order={printingOrder}
+          onClose={() => setPrintingOrder(null)}
+        />
       )}
     </div>
   );

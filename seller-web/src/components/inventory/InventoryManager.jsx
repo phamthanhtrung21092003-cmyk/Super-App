@@ -3,124 +3,157 @@ import sellerService from '../../data/sellerService';
 import InventoryHeader from './InventoryHeader';
 import InventoryKpiCards from './InventoryKpiCards';
 import InventoryFilters from './InventoryFilters';
-import InventoryTabs from './InventoryTabs';
 import InventoryTable from './InventoryTable';
-import AdjustStockModal from './AdjustStockModal';
-import StockHistoryModal from './StockHistoryModal';
-import StockReceiveModal from './StockReceiveModal';
-import StockIssueModal from './StockIssueModal';
-import StockReportModal from './StockReportModal';
+import LowStockAlerts from './LowStockAlerts';
+import InventoryTransactions from './InventoryTransactions';
+import ReceiveInventoryModal from './ReceiveInventoryModal';
+import AdjustInventoryModal from './AdjustInventoryModal';
 
 export default function InventoryManager({ 
   existingProducts = [], 
   onNavigateTab, 
   onOpenAddProductModal 
 }) {
-  // State A (New Shop: 0 products) vs State B (Active Shop with rich data)
-  const [isNewShopState, setIsNewShopState] = useState(false);
-
   // Core Data States
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [transactionsList, setTransactionsList] = useState([]);
   const [stats, setStats] = useState(null);
-  const [warehouses, setWarehouses] = useState([]);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Tất cả');
   const [stockStatusFilter, setStockStatusFilter] = useState('Tất cả');
-  const [warehouseFilter, setWarehouseFilter] = useState('Tất cả');
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'positive' | 'low' | 'out'
 
-  // Modal States
+  // Interactive Modal States
+  const [prefilledSku, setPrefilledSku] = useState('');
+  const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [adjustingItem, setAdjustingItem] = useState(null);
-  const [historyItem, setHistoryItem] = useState(null);
-  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
-  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-  // Load Inventory Data
-  const loadData = async () => {
-    const whList = await sellerService.getWarehouses();
-    setWarehouses(whList);
+  // Load Inventory & Stats
+  useEffect(() => {
+    sellerService.getInventory(existingProducts).then(items => {
+      setInventoryItems(items);
+      sellerService.getInventoryStats(items, existingProducts).then(st => setStats(st));
+    });
 
-    const items = await sellerService.getInventory(existingProducts, isNewShopState);
-    setInventoryItems(items);
+    sellerService.getInventoryTransactions().then(txs => setTransactionsList(txs));
+  }, [existingProducts]);
 
-    const st = await sellerService.getInventoryStats(items);
-    setStats(st);
+  // Recalculate stats when items change
+  const refreshItemsAndStats = (newItems) => {
+    setInventoryItems(newItems);
+    sellerService.getInventoryStats(newItems, existingProducts).then(st => setStats(st));
   };
 
-  useEffect(() => {
-    loadData();
-  }, [existingProducts, isNewShopState]);
+  // Low stock items for alert card
+  const lowStockAlertItems = inventoryItems.filter(i => {
+    const physical = i.physicalStock || i.quantity || 0;
+    const reserved = i.reservedStock || 0;
+    const available = Math.max(0, physical - reserved);
+    return available <= (i.minimumStock || 10);
+  });
 
-  // Recalculate Stats whenever inventoryItems change
-  useEffect(() => {
-    sellerService.getInventoryStats(inventoryItems).then(st => setStats(st));
-  }, [inventoryItems]);
-
-  // Tab Count Metrics
-  const tabCounts = {
-    all: isNewShopState ? 0 : 128,
-    positive: isNewShopState ? 0 : 108,
-    low: isNewShopState ? 0 : 12,
-    out: isNewShopState ? 0 : 8
-  };
-
-  // Filter Items Logic
+  // Filter Items
   const filteredItems = inventoryItems.filter(item => {
-    // 1. Search Query
+    const matchingProduct = existingProducts.find(p => p.id === item.productId) || {};
+    const name = item.productName || matchingProduct.name || item.name || '';
+    const sku = item.sku || '';
+    const pid = item.productId || matchingProduct.id || '';
+
+    // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      const matchName = item.productName.toLowerCase().includes(q);
-      const matchSku = item.sku && item.sku.toLowerCase().includes(q);
-      const matchBarcode = item.barcode && item.barcode.includes(q);
-      if (!matchName && !matchSku && !matchBarcode) return false;
+      const matchName = name.toLowerCase().includes(q);
+      const matchSku = sku.toLowerCase().includes(q);
+      const matchPid = pid.toLowerCase().includes(q);
+      if (!matchName && !matchSku && !matchPid) return false;
     }
 
-    // 2. Category Filter
+    // Category filter
     if (categoryFilter !== 'Tất cả' && categoryFilter !== 'Tất cả danh mục') {
-      if (!item.category.includes(categoryFilter)) return false;
+      const cat = matchingProduct.category || item.category || '';
+      if (cat !== categoryFilter) return false;
     }
 
-    // 3. Stock Status Filter
-    if (stockStatusFilter !== 'Tất cả') {
-      if (item.status !== stockStatusFilter) return false;
-    }
+    // Status filter
+    const physical = item.physicalStock || item.quantity || 0;
+    const reserved = item.reservedStock || 0;
+    const available = Math.max(0, physical - reserved);
+    const minStock = item.minimumStock || 10;
 
-    // 4. Warehouse Filter
-    if (warehouseFilter !== 'Tất cả') {
-      if (item.warehouseId !== warehouseFilter) return false;
-    }
-
-    // 5. Active Tab Status Filter
-    if (activeTab === 'positive' && item.quantity <= 0) return false;
-    if (activeTab === 'low' && (item.quantity <= 0 || item.quantity > sellerService.LOW_STOCK_THRESHOLD)) return false;
-    if (activeTab === 'out' && item.quantity > 0) return false;
+    if (stockStatusFilter === 'Còn hàng' && available <= minStock) return false;
+    if (stockStatusFilter === 'Sắp hết' && (available > minStock || available === 0)) return false;
+    if (stockStatusFilter === 'Hết hàng' && available > 0) return false;
 
     return true;
   });
 
-  // Action Handlers
-  const handleConfirmAdjust = async (productId, adjustType, amount, reason) => {
-    const updated = await sellerService.adjustInventory(inventoryItems, productId, adjustType, amount, reason);
-    setInventoryItems(updated);
+  // Handlers
+  const handleOpenReceive = (sku = '') => {
+    setPrefilledSku(sku);
+    setIsReceiveOpen(true);
+  };
+
+  const handleConfirmReceive = async (productId, sku, quantity, reason, note) => {
+    const updated = await sellerService.receiveInventory(inventoryItems, sku, quantity, reason);
+    refreshItemsAndStats(updated);
+
+    // Add to transaction log
+    const matchingProduct = existingProducts.find(p => p.id === productId) || {};
+    const newTx = {
+      id: `tx_${Date.now()}`,
+      time: new Date().toLocaleString('vi-VN'),
+      productName: matchingProduct.name || 'Sản phẩm mới',
+      sku,
+      type: 'Nhập kho',
+      typeCode: 'RECEIVE',
+      qty: +quantity,
+      before: 128,
+      after: 128 + quantity,
+      reason,
+      user: 'Quản lý Kho'
+    };
+    setTransactionsList([newTx, ...transactionsList]);
+    setIsReceiveOpen(false);
+    alert(`✅ Đã nhập bổ sung +${quantity} sản phẩm vào kho cho SKU ${sku}!`);
+  };
+
+  const handleConfirmAdjust = async (sku, newPhysicalQuantity, reason) => {
+    const updated = await sellerService.adjustInventory(inventoryItems, sku, 'set', newPhysicalQuantity, reason);
+    refreshItemsAndStats(updated);
+
+    // Add to transaction log
+    const item = inventoryItems.find(i => i.sku === sku);
+    const matchingProduct = existingProducts.find(p => p.id === item?.productId) || {};
+    const currentPhys = item?.physicalStock || item?.quantity || 128;
+    const diff = newPhysicalQuantity - currentPhys;
+
+    const newTx = {
+      id: `tx_${Date.now()}`,
+      time: new Date().toLocaleString('vi-VN'),
+      productName: matchingProduct.name || item?.productName || 'Sản phẩm',
+      sku,
+      type: 'Điều chỉnh',
+      typeCode: 'ADJUST',
+      qty: diff,
+      before: currentPhys,
+      after: newPhysicalQuantity,
+      reason,
+      user: 'Thủ kho'
+    };
+    setTransactionsList([newTx, ...transactionsList]);
     setAdjustingItem(null);
+    alert(`✅ Đã điều chỉnh tồn thực tế SKU ${sku} thành ${newPhysicalQuantity} sản phẩm!`);
   };
 
-  const handleConfirmReceive = async (productId, quantity, warehouseId, notes) => {
-    const updated = await sellerService.receiveInventory(inventoryItems, productId, quantity, warehouseId, notes);
-    setInventoryItems(updated);
-    setIsReceiveModalOpen(false);
-  };
-
-  const handleConfirmIssue = async (productId, quantity, warehouseId, reason) => {
-    try {
-      const updated = await sellerService.issueInventory(inventoryItems, productId, quantity, warehouseId, reason);
-      setInventoryItems(updated);
-      setIsIssueModalOpen(false);
-    } catch (err) {
-      alert(err.message || 'Không đủ tồn kho để xuất.');
+  const handleBulkAction = (action, skus, value) => {
+    if (action === 'adjust' && value !== undefined) {
+      let current = [...inventoryItems];
+      skus.forEach(s => {
+        current = current.map(i => i.sku === s ? { ...i, physicalStock: Number(value), availableStock: Math.max(0, Number(value) - (i.reservedStock || 0)) } : i);
+      });
+      refreshItemsAndStats(current);
+      alert(`✅ Đã điều chỉnh hàng loạt ${skus.length} SKU thành ${value} sản phẩm!`);
     }
   };
 
@@ -128,25 +161,38 @@ export default function InventoryManager({
     setSearchQuery('');
     setCategoryFilter('Tất cả');
     setStockStatusFilter('Tất cả');
-    setWarehouseFilter('Tất cả');
-    setActiveTab('all');
   };
 
   return (
     <div className="inventory-module-container" style={{ padding: '24px 32px', background: 'var(--bg-page)', minHeight: '100vh' }}>
       {/* 1. Header Area */}
       <InventoryHeader 
-        onOpenReceiveModal={() => setIsReceiveModalOpen(true)}
-        onOpenIssueModal={() => setIsIssueModalOpen(true)}
-        onOpenReportModal={() => setIsReportModalOpen(true)}
-        isNewShopState={isNewShopState}
-        onToggleShopState={() => setIsNewShopState(!isNewShopState)}
+        onOpenReceiveModal={() => handleOpenReceive()}
+        onOpenAdjustModal={() => {
+          if (inventoryItems.length > 0) setAdjustingItem(inventoryItems[0]);
+        }}
+        onExportReport={() => alert('📥 Đã xuất báo cáo tồn kho định dạng Excel (.xlsx)...')}
       />
 
       {/* 2. KPI Stats Cards */}
-      <InventoryKpiCards stats={stats} />
+      <InventoryKpiCards 
+        stats={stats} 
+        onFilterStatus={(st) => {
+          if (st === 'low') setStockStatusFilter('Sắp hết');
+          else if (st === 'out') setStockStatusFilter('Hết hàng');
+          else setStockStatusFilter('Tất cả');
+        }}
+      />
 
-      {/* 3. Search & Filter Bar */}
+      {/* 3. Low Stock Alerts Card */}
+      {lowStockAlertItems.length > 0 && (
+        <LowStockAlerts 
+          lowStockItems={lowStockAlertItems}
+          onOpenReceive={(sku) => handleOpenReceive(sku)}
+        />
+      )}
+
+      {/* 4. Search & Filter Bar */}
       <InventoryFilters 
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -154,69 +200,40 @@ export default function InventoryManager({
         onCategoryChange={setCategoryFilter}
         stockStatusFilter={stockStatusFilter}
         onStockStatusChange={setStockStatusFilter}
-        warehouseFilter={warehouseFilter}
-        onWarehouseChange={setWarehouseFilter}
-        warehouses={warehouses}
         onResetFilters={handleResetFilters}
-      />
-
-      {/* 4. Status Tabs */}
-      <InventoryTabs 
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
-        counts={tabCounts}
       />
 
       {/* 5. Inventory Data Table */}
       <InventoryTable 
         items={filteredItems}
+        existingProducts={existingProducts}
+        onOpenReceiveModal={(sku) => handleOpenReceive(sku)}
         onOpenAdjustModal={setAdjustingItem}
-        onOpenHistoryModal={setHistoryItem}
         onOpenAddProductModal={onOpenAddProductModal}
-        isNewShopState={isNewShopState}
+        onBulkAction={handleBulkAction}
       />
 
+      {/* 6. Inventory Transactions Log Table */}
+      <InventoryTransactions transactions={transactionsList} />
+
       {/* Modals */}
+      {isReceiveOpen && (
+        <ReceiveInventoryModal 
+          existingProducts={existingProducts}
+          prefilledSku={prefilledSku}
+          onClose={() => setIsReceiveOpen(false)}
+          onConfirmReceive={handleConfirmReceive}
+        />
+      )}
+
       {adjustingItem && (
-        <AdjustStockModal 
+        <AdjustInventoryModal 
           item={adjustingItem}
           onClose={() => setAdjustingItem(null)}
-          onConfirm={handleConfirmAdjust}
-        />
-      )}
-
-      {historyItem && (
-        <StockHistoryModal 
-          item={historyItem}
-          onClose={() => setHistoryItem(null)}
-        />
-      )}
-
-      {isReceiveModalOpen && (
-        <StockReceiveModal 
-          inventoryItems={inventoryItems}
-          warehouses={warehouses}
-          onClose={() => setIsReceiveModalOpen(false)}
-          onConfirm={handleConfirmReceive}
-        />
-      )}
-
-      {isIssueModalOpen && (
-        <StockIssueModal 
-          inventoryItems={inventoryItems}
-          warehouses={warehouses}
-          onClose={() => setIsIssueModalOpen(false)}
-          onConfirm={handleConfirmIssue}
-        />
-      )}
-
-      {isReportModalOpen && (
-        <StockReportModal 
-          stats={stats}
-          inventoryItems={inventoryItems}
-          onClose={() => setIsReportModalOpen(false)}
+          onConfirmAdjust={handleConfirmAdjust}
         />
       )}
     </div>
   );
 }
+

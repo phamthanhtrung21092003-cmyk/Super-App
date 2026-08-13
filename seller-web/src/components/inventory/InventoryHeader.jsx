@@ -1,42 +1,31 @@
 import React from 'react';
-import { ArrowDownLeft, ArrowUpRight, BarChart2, Plus, RefreshCw } from 'lucide-react';
+import { PlusCircle, Sliders, Printer } from 'lucide-react';
 
 export default function InventoryHeader({ 
   onOpenReceiveModal, 
-  onOpenIssueModal, 
-  onOpenReportModal,
-  isNewShopState,
-  onToggleShopState
+  onOpenAdjustModal, 
+  onExportReport 
 }) {
   return (
     <div className="inventory-header-container">
       <div className="inventory-header-title-group">
-        <h1 className="inventory-header-title">Kho hàng</h1>
+        <h1 className="inventory-header-title">KHO HÀNG</h1>
         <p className="inventory-header-subtitle">
-          Quản lý tồn kho sản phẩm và theo dõi xuất nhập kho
+          Quản lý tồn kho, SKU và biến động hàng hóa của cửa hàng
         </p>
       </div>
 
       <div className="inventory-header-actions-group">
-        {/* Test State A / State B Toggle Pill */}
-        <button 
-          className={`state-toggle-pill-btn ${isNewShopState ? 'state-new' : 'state-active'}`}
-          onClick={onToggleShopState}
-          title="Chuyển đổi thử nghiệm giữa Shop mới (0 tồn kho) và Shop có sản phẩm"
-        >
-          <RefreshCw size={13} /> State: {isNewShopState ? 'Shop mới (0 SP)' : 'Shop có dữ liệu'}
+        <button className="nav-btn-secondary" onClick={onOpenAdjustModal}>
+          <Sliders size={16} /> Điều chỉnh tồn kho
         </button>
 
-        <button className="nav-btn-secondary btn-receive-stock" onClick={onOpenReceiveModal}>
-          <ArrowDownLeft size={16} /> Nhập kho
+        <button className="nav-btn-secondary" onClick={onExportReport}>
+          <Printer size={16} /> Xuất báo cáo
         </button>
 
-        <button className="nav-btn-secondary btn-issue-stock" onClick={onOpenIssueModal}>
-          <ArrowUpRight size={16} /> Xuất kho
-        </button>
-
-        <button className="nav-btn-primary btn-report-stock" onClick={onOpenReportModal}>
-          <BarChart2 size={16} /> Báo cáo tồn kho
+        <button className="nav-btn-primary" onClick={onOpenReceiveModal}>
+          <PlusCircle size={16} /> + Nhập kho
         </button>
       </div>
     </div>

@@ -6,13 +6,18 @@ export default function OrderRow({
   isSelected, 
   onToggleSelect, 
   onViewDetail, 
-  onUpdateStatus 
+  onConfirmOrder,
+  onCancelOrder,
+  onPackOrder,
+  onHandoverOrder,
+  onPrintOrder,
+  onViewReturnOrder
 }) {
   const customerName = typeof order.customer === 'object' ? order.customer.name : order.customer;
   const customerPhone = typeof order.customer === 'object' ? order.customer.phone : '';
   const customerCity = typeof order.customer === 'object' ? order.customer.city : '';
 
-  const firstItem = order.items?.[0] || { name: 'Sản phẩm S-Shopping', quantity: 1, price: 0, image: '' };
+  const firstItem = order.items?.[0] || { name: 'Sản phẩm S-Shopping', quantity: 1, price: 0, image: '', productId: 'p2', sku: 'ATB-BLK-M' };
   const extraItemsCount = (order.items?.length || 1) - 1;
 
   const totalAmount = order.summary?.total || order.total || 0;
@@ -20,28 +25,21 @@ export default function OrderRow({
 
   // Badge Color Styles by Status
   let statusBadgeClass = 'order-badge-green';
-  let actionBtnText = 'Xem';
-  let actionBtnPrimary = false;
 
   if (order.status === 'Chờ xác nhận') {
     statusBadgeClass = 'order-badge-orange-alert';
-    actionBtnText = 'Xử lý';
-    actionBtnPrimary = true;
-  } else if (order.status === 'Chờ lấy hàng' || order.status === 'Chờ đóng gói') {
+  } else if (order.status === 'Chờ đóng gói' || order.status === 'Chờ lấy hàng') {
     statusBadgeClass = 'order-badge-blue-soft';
-    actionBtnText = 'Xem';
-  } else if (order.status === 'Đang giao' || order.status === 'Chờ bàn giao') {
+  } else if (order.status === 'Chờ bàn giao') {
     statusBadgeClass = 'order-badge-purple-soft';
-    actionBtnText = 'Xem';
-  } else if (order.status === 'Hoàn thành') {
+  } else if (order.status === 'Đang giao') {
+    statusBadgeClass = 'order-badge-purple-soft';
+  } else if (order.status === 'Hoàn thành' || order.status === 'Đã giao') {
     statusBadgeClass = 'order-badge-green-soft';
-    actionBtnText = 'Xem';
   } else if (order.status === 'Đã hủy') {
     statusBadgeClass = 'order-badge-red-soft';
-    actionBtnText = 'Xem';
   } else if (order.status === 'Trả hàng/Hoàn tiền' || order.status === 'Trả hàng') {
     statusBadgeClass = 'order-badge-yellow-soft';
-    actionBtnText = 'Xem';
   }
 
   return (
@@ -74,26 +72,29 @@ export default function OrderRow({
         </div>
       </td>
 
-      {/* Customer Info */}
-      <td className="col-customer">
-        <div className="customer-info-block">
-          <span className="customer-name">{customerName}</span>
-          {customerPhone && <span className="customer-phone">{customerPhone}</span>}
-          {customerCity && <span className="customer-city">{customerCity}</span>}
-        </div>
-      </td>
-
       {/* Product Info */}
       <td className="col-product-item">
         <div className="order-product-thumb-row">
           <img src={firstItem.image} alt={firstItem.name} className="order-item-thumb" />
           <div className="order-item-details">
             <span className="item-title-name">{firstItem.name}</span>
+            <span className="item-sku-subtag">
+              ID: <strong>{firstItem.productId || 'p2'}</strong> | SKU: <strong>{firstItem.sku || 'ATB-BLK-M'}</strong>
+            </span>
             <span className="item-variant-qty">
               {firstItem.variant ? `${firstItem.variant} ` : ''}x{firstItem.quantity || 1}
-              {extraItemsCount > 0 && <strong className="extra-count-text"> +{extraItemsCount} sản phẩm khác</strong>}
+              {extraItemsCount > 0 && <strong className="extra-count-text"> +{extraItemsCount} SP khác</strong>}
             </span>
           </div>
+        </div>
+      </td>
+
+      {/* Customer Info */}
+      <td className="col-customer">
+        <div className="customer-info-block">
+          <span className="customer-name">{customerName}</span>
+          {customerPhone && <span className="customer-phone">{customerPhone}</span>}
+          {customerCity && <span className="customer-city">{customerCity}</span>}
         </div>
       </td>
 
@@ -137,20 +138,70 @@ export default function OrderRow({
 
       {/* Actions */}
       <td className="col-actions">
-        <div className="order-row-actions">
-          {actionBtnPrimary ? (
+        <div className="order-row-actions" style={{ display: 'flex', gap: '6px' }}>
+          <button 
+            className="nav-btn-secondary action-btn-view"
+            onClick={() => onViewDetail(order)}
+            title="Xem chi tiết đơn hàng"
+          >
+            Xem
+          </button>
+
+          {order.status === 'Chờ xác nhận' && (
+            <>
+              <button 
+                className="nav-btn-primary action-btn-primary"
+                onClick={() => onConfirmOrder(order)}
+                title="Xác nhận xử lý đơn"
+              >
+                <Check size={13} /> Xác nhận
+              </button>
+              <button 
+                className="nav-btn-secondary danger-text-btn"
+                onClick={() => onCancelOrder(order)}
+                title="Hủy đơn"
+              >
+                Hủy
+              </button>
+            </>
+          )}
+
+          {(order.status === 'Chờ đóng gói' || order.status === 'Chờ lấy hàng') && (
             <button 
-              className="nav-btn-primary action-btn-primary"
-              onClick={() => onUpdateStatus(order.id, 'Chờ lấy hàng')}
+              className="nav-btn-primary"
+              onClick={() => onPackOrder(order)}
+              title="Bắt đầu đóng gói"
             >
-              <Check size={14} /> {actionBtnText}
+              Đóng gói
             </button>
-          ) : (
+          )}
+
+          {order.status === 'Chờ bàn giao' && (
+            <>
+              <button 
+                className="nav-btn-primary"
+                onClick={() => onHandoverOrder(order)}
+                title="Bàn giao vận chuyển"
+              >
+                Bàn giao
+              </button>
+              <button 
+                className="nav-btn-secondary"
+                onClick={() => onPrintOrder(order)}
+                title="In nhãn vận chuyển"
+              >
+                In nhãn
+              </button>
+            </>
+          )}
+
+          {order.status === 'Trả hàng/Hoàn tiền' && (
             <button 
-              className="nav-btn-secondary action-btn-view"
-              onClick={() => onViewDetail(order)}
+              className="nav-btn-primary warning-btn"
+              onClick={() => onViewReturnOrder(order)}
+              title="Xem yêu cầu trả hàng"
             >
-              {actionBtnText} <ChevronDown size={14} />
+              Xem yêu cầu
             </button>
           )}
         </div>

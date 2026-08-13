@@ -5,6 +5,7 @@ export default function ProductRow({
   product, 
   isSelected, 
   onToggleSelect, 
+  onViewDetail,
   onEdit, 
   onToggleStatus, 
   onDelete 
@@ -32,8 +33,16 @@ export default function ProductRow({
         <div className="product-info-wrapper">
           <img src={product.image} alt={product.name} className="product-table-thumb" />
           <div className="product-name-block">
-            <span className="product-title-name" title={product.name}>{product.name}</span>
-            <span className="product-category-subtag">{product.category} • {product.variants || 'Mặc định'}</span>
+            <span 
+              className="product-title-name clickable-title" 
+              onClick={() => onViewDetail && onViewDetail(product)}
+              title={product.name}
+            >
+              {product.name}
+            </span>
+            <span className="product-category-subtag">
+              ID: <strong>{product.id}</strong> • {product.category} • {product.variants || 'Mặc định'}
+            </span>
           </div>
         </div>
       </td>
@@ -80,6 +89,14 @@ export default function ProductRow({
       {/* Actions */}
       <td className="col-actions">
         <div className="row-actions-group">
+          <button 
+            className="row-action-btn view-btn"
+            onClick={() => onViewDetail && onViewDetail(product)}
+            title="Xem chi tiết sản phẩm"
+          >
+            <Eye size={15} />
+          </button>
+
           <button 
             className="row-action-btn edit-btn"
             onClick={() => onEdit(product)}

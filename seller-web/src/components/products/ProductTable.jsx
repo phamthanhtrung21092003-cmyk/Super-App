@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import ProductRow from './ProductRow';
 import ProductEmptyState from './ProductEmptyState';
+import ProductBulkActions from './ProductBulkActions';
+import ProductDetail from './ProductDetail';
+import ProductDeleteModal from './ProductDeleteModal';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 export default function ProductTable({ 
@@ -8,11 +11,14 @@ export default function ProductTable({
   onOpenAddProductModal,
   onEditProduct,
   onToggleStatusProduct,
-  onDeleteProduct 
+  onDeleteProduct,
+  onBulkAction
 }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedDetailProduct, setSelectedDetailProduct] = useState(null);
+  const [deletingProduct, setDeletingProduct] = useState(null);
 
   const hasProducts = products && products.length > 0;
 
@@ -32,8 +38,64 @@ export default function ProductTable({
     }
   };
 
+  const handleBulkHide = () => {
+    if (onBulkAction) {
+      onBulkAction('hide', selectedIds);
+      setSelectedIds([]);
+    }
+  };
+
+  const handleBulkShow = () => {
+    if (onBulkAction) {
+      onBulkAction('show', selectedIds);
+      setSelectedIds([]);
+    }
+  };
+
+  const handleBulkUpdatePrice = () => {
+    const newPriceStr = prompt(`Cập nhật giá bán mới cho ${selectedIds.length} sản phẩm đã chọn (VNĐ):`);
+    if (newPriceStr) {
+      const priceVal = Number(newPriceStr.replace(/[^0-9]/g, ''));
+      if (priceVal > 0 && onBulkAction) {
+        onBulkAction('updatePrice', selectedIds, priceVal);
+        setSelectedIds([]);
+      }
+    }
+  };
+
+  const handleBulkUpdateStock = () => {
+    const newStockStr = prompt(`Cập nhật số lượng tồn kho mới cho ${selectedIds.length} sản phẩm đã chọn:`);
+    if (newStockStr !== null) {
+      const stockVal = parseInt(newStockStr, 10);
+      if (!isNaN(stockVal) && onBulkAction) {
+        onBulkAction('updateStock', selectedIds, stockVal);
+        setSelectedIds([]);
+      }
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} sản phẩm đã chọn? Các sản phẩm đã bán sẽ được tự động chuyển sang trạng thái Tạm ẩn.`)) {
+      if (onBulkAction) {
+        onBulkAction('delete', selectedIds);
+        setSelectedIds([]);
+      }
+    }
+  };
+
   return (
-    <div className="product-table-card-container">
+    <div className="product-table-card-container" style={{ position: 'relative' }}>
+      {/* Floating Bulk Action Bar */}
+      <ProductBulkActions 
+        selectedCount={selectedIds.length}
+        onClearSelection={() => setSelectedIds([])}
+        onBulkHide={handleBulkHide}
+        onBulkShow={handleBulkShow}
+        onBulkUpdatePrice={handleBulkUpdatePrice}
+        onBulkUpdateStock={handleBulkUpdateStock}
+        onBulkDelete={handleBulkDelete}
+      />
+
       {hasProducts ? (
         <>
           <div className="table-responsive-wrapper">
@@ -65,9 +127,10 @@ export default function ProductTable({
                     product={product}
                     isSelected={selectedIds.includes(product.id)}
                     onToggleSelect={handleToggleSelect}
+                    onViewDetail={(prod) => setSelectedDetailProduct(prod)}
                     onEdit={onEditProduct}
                     onToggleStatus={onToggleStatusProduct}
-                    onDelete={onDeleteProduct}
+                    onDelete={(prod) => setDeletingProduct(prod)}
                   />
                 ))}
               </tbody>
@@ -106,6 +169,32 @@ export default function ProductTable({
         </>
       ) : (
         <ProductEmptyState onOpenAddProductModal={onOpenAddProductModal} />
+      )}
+
+      {/* Product Detail Drawer */}
+      {selectedDetailProduct && (
+        <ProductDetail 
+          product={selectedDetailProduct}
+          onClose={() => setSelectedDetailProduct(null)}
+          onEdit={onEditProduct}
+          onToggleStatus={onToggleStatusProduct}
+        />
+      )}
+
+      {/* Product Delete Confirmation Modal */}
+      {deletingProduct && (
+        <ProductDeleteModal 
+          product={deletingProduct}
+          onClose={() => setDeletingProduct(null)}
+          onConfirmDelete={(id) => {
+            onDeleteProduct(id);
+            setDeletingProduct(null);
+          }}
+          onConfirmHide={(prod) => {
+            onToggleStatusProduct(prod);
+            setDeletingProduct(null);
+          }}
+        />
       )}
     </div>
   );

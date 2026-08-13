@@ -4,8 +4,10 @@ export default function OrderTabs({ activeTab, onSelectTab, metrics }) {
   const tabs = [
     { id: 'all', label: 'Tất cả', count: metrics?.total || 0 },
     { id: 'confirm', label: 'Chờ xác nhận', count: metrics?.confirm || 0 },
-    { id: 'pickup', label: 'Chờ lấy hàng', count: metrics?.pickup || 0 },
+    { id: 'packing', label: 'Chờ đóng gói', count: metrics?.packing || 0 },
+    { id: 'handover', label: 'Chờ bàn giao', count: metrics?.handover || 0 },
     { id: 'delivering', label: 'Đang giao', count: metrics?.delivering || 0 },
+    { id: 'delivered', label: 'Đã giao', count: metrics?.delivered || 0 },
     { id: 'completed', label: 'Hoàn thành', count: metrics?.completed || 0 },
     { id: 'cancelled', label: 'Đã hủy', count: metrics?.cancelled || 0 },
     { id: 'returned', label: 'Trả hàng/Hoàn tiền', count: metrics?.returned || 0 }
