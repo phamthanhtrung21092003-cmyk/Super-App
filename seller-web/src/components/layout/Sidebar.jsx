@@ -22,7 +22,7 @@ export default function Sidebar({
     { id: 'marketing', label: 'Khuyến mãi', icon: Tag, badge: null, hasSubMenu: true },
     { id: 'video', label: 'Kênh Video', icon: Video, badge: null, hasSubMenu: true },
     { id: 'livestream', label: 'Livestream', icon: Radio, badge: null, hasSubMenu: true },
-    { id: 'analytics', label: 'Phân tích', icon: BarChart3, badge: null, hasSubMenu: true },
+    { id: 'analytics', label: 'Báo cáo', icon: BarChart3, badge: null, hasSubMenu: true },
     { id: 'settings', label: 'Cài đặt Shop', icon: Settings, badge: null, hasSubMenu: true }
   ];
 

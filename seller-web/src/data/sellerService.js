@@ -1481,6 +1481,485 @@ export const sellerService = {
       ended,
       paused
     });
+  },
+
+  // =========================================================================
+  // 🎬 VIDEO CHANNEL / MARKETING MODULE FACADE API
+  // =========================================================================
+
+  // Get All Videos List
+  async getVideos() {
+    const list = [
+      {
+        id: 'V000123',
+        sellerId: 'S001',
+        title: 'Review áo thun nam Basic',
+        type: 'Video ngắn',
+        duration: '02:45',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=300',
+        videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        status: 'PUBLISHED',
+        views: 25840,
+        likes: 2354,
+        clicks: 1890,
+        orders: 86,
+        revenue: 12450000,
+        productCount: 3,
+        productType: 'OWN_PRODUCT',
+        productIds: ['p2'],
+        createdAt: '13/08/2026 10:30'
+      },
+      {
+        id: 'V000124',
+        sellerId: 'S001',
+        title: 'Livestream thời trang công sở mùa thu',
+        type: 'Livestream',
+        duration: '45:00',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300',
+        videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        status: 'PUBLISHED',
+        views: 68750,
+        likes: 3520,
+        clicks: 5240,
+        orders: 210,
+        revenue: 28760000,
+        productCount: 8,
+        productType: 'OWN_PRODUCT',
+        productIds: ['p1', 'p2'],
+        createdAt: '12/08/2026 20:00'
+      },
+      {
+        id: 'V000125',
+        sellerId: 'S001',
+        title: 'Serum dưỡng da mini - Hiệu quả bất ngờ!',
+        type: 'Video ngắn',
+        duration: '01:15',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300',
+        videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        status: 'PUBLISHED',
+        views: 18960,
+        likes: 1896,
+        clicks: 980,
+        orders: 45,
+        revenue: 5240000,
+        productCount: 1,
+        productType: 'OWN_PRODUCT',
+        productIds: ['p3'],
+        createdAt: '12/08/2026 09:15'
+      },
+      {
+        id: 'V000126',
+        sellerId: 'S001',
+        title: 'Review giày sneaker hot trend 2026',
+        type: 'Video dài',
+        duration: '03:20',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300',
+        videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        status: 'PUBLISHED',
+        views: 32140,
+        likes: 2150,
+        clicks: 2100,
+        orders: 98,
+        revenue: 15320000,
+        productCount: 3,
+        productType: 'OWN_PRODUCT',
+        productIds: ['p1'],
+        createdAt: '11/08/2026 16:45'
+      },
+      {
+        id: 'V000127',
+        sellerId: 'S001',
+        title: 'Top 5 bàn phím Gaming đáng mua',
+        type: 'Affiliate',
+        duration: '05:12',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=300',
+        videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        status: 'PUBLISHED',
+        views: 42350,
+        likes: 2890,
+        clicks: 4280,
+        orders: 86,
+        revenue: 12800000,
+        productCount: 2,
+        productType: 'AFFILIATE',
+        productIds: ['P0098'],
+        createdAt: '09/08/2026 08:00'
+      }
+    ];
+    return Promise.resolve(list);
+  },
+
+  // Calculate Video Overview Metrics
+  async getVideoOverview(list = []) {
+    const total = list.length || 24;
+    const own = list.filter(v => v.productType !== 'AFFILIATE').length || 18;
+    const affiliate = list.filter(v => v.productType === 'AFFILIATE' || v.type === 'Affiliate').length || 6;
+    const pending = list.filter(v => v.status === 'PENDING_REVIEW' || v.status === 'Chờ duyệt').length || 2;
+    const published = list.filter(v => v.status === 'PUBLISHED' || v.status === 'Đã đăng').length || 19;
+    const paused = list.filter(v => v.status === 'PAUSED' || v.status === 'Tạm ẩn').length || 2;
+    const rejected = list.filter(v => v.status === 'REJECTED' || v.status === 'Vi phạm').length || 1;
+
+    const totalViews = list.reduce((sum, v) => sum + (v.views || 0), 125800);
+    const totalLikes = list.reduce((sum, v) => sum + (v.likes || 0), 8420);
+    const totalClicks = list.reduce((sum, v) => sum + (v.clicks || 0), 12540);
+    const totalOrders = list.reduce((sum, v) => sum + (v.orders || 0), 428);
+    const totalRevenue = list.reduce((sum, v) => sum + (v.revenue || 0), 85600000);
+    const affiliateCommission = 3250000;
+
+    return Promise.resolve({
+      total,
+      own,
+      affiliate,
+      pending,
+      published,
+      paused,
+      rejected,
+      totalViews,
+      totalLikes,
+      totalClicks,
+      totalOrders,
+      totalRevenue,
+      affiliateCommission
+    });
+  },
+
+  // =========================================================================
+  // 🎙️ LIVESTREAM MODULE FACADE API
+  // =========================================================================
+
+  // Get All Livestreams List
+  async getLivestreams() {
+    const list = [
+      {
+        id: 'LIVE001',
+        sellerId: 'S001',
+        title: 'Top deal cuối tuần - Giảm đến 50%',
+        category: 'Thời trang',
+        description: 'Săn deal đồng giá áo thun & giày sneaker...',
+        hostName: 'MC Linh',
+        duration: '01:25:20',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=300',
+        status: 'LIVE',
+        scheduledAt: '13/08/2026 19:00',
+        startedAt: '13/08/2026 19:00',
+        viewers: 45680,
+        peakViewers: 4820,
+        likes: 18920,
+        orders: 236,
+        revenue: 28450000,
+        pinnedProductId: 'p2',
+        productIds: ['p1', 'p2', 'p3'],
+        createdAt: '13/08/2026 10:00'
+      },
+      {
+        id: 'LIVE002',
+        sellerId: 'S001',
+        title: 'Review đồ gia dụng thông minh',
+        category: 'Gia dụng',
+        description: 'Hướng dẫn sử dụng máy xay sinh tố, nồi chiên...',
+        hostName: 'MC Hoàng',
+        duration: '02:10:45',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300',
+        status: 'LIVE',
+        scheduledAt: '12/08/2026 20:00',
+        startedAt: '12/08/2026 20:00',
+        viewers: 38750,
+        peakViewers: 3950,
+        likes: 14200,
+        orders: 198,
+        revenue: 19850000,
+        pinnedProductId: 'p1',
+        productIds: ['p1', 'p3'],
+        createdAt: '12/08/2026 14:00'
+      },
+      {
+        id: 'LIVE003',
+        sellerId: 'S001',
+        title: 'Siêu sale 8.8 - Bùng nổ ưu đãi',
+        category: 'Tổng hợp',
+        description: 'Xả kho giá gốc...',
+        hostName: 'MC Linh',
+        duration: '01:45:10',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300',
+        status: 'ENDED',
+        scheduledAt: '11/08/2026 20:00',
+        startedAt: '11/08/2026 20:00',
+        viewers: 68420,
+        peakViewers: 6100,
+        likes: 24500,
+        orders: 356,
+        revenue: 42750000,
+        pinnedProductId: 'p2',
+        productIds: ['p1', 'p2'],
+        createdAt: '11/08/2026 09:00'
+      },
+      {
+        id: 'LIVE004',
+        sellerId: 'S001',
+        title: 'Đồ làm đẹp chính hãng giá tốt',
+        category: 'Làm đẹp',
+        description: 'Tặng kèm voucher freeship...',
+        hostName: 'MC Hương',
+        duration: '00:58:30',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300',
+        status: 'ENDED',
+        scheduledAt: '10/08/2026 15:00',
+        startedAt: '10/08/2026 15:00',
+        viewers: 32150,
+        peakViewers: 3100,
+        likes: 11200,
+        orders: 142,
+        revenue: 18620000,
+        pinnedProductId: 'p3',
+        productIds: ['p3'],
+        createdAt: '10/08/2026 10:00'
+      },
+      {
+        id: 'LIVE005',
+        sellerId: 'S001',
+        title: 'Công nghệ mới - Giá cực sốc',
+        category: 'Công nghệ',
+        description: 'Sạc dự phòng chính hãng...',
+        hostName: 'MC Hoàng',
+        duration: '01:45:10',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=300',
+        status: 'ENDED',
+        scheduledAt: '09/08/2026 19:30',
+        startedAt: '09/08/2026 19:30',
+        viewers: 52680,
+        peakViewers: 5400,
+        likes: 19800,
+        orders: 272,
+        revenue: 31250000,
+        pinnedProductId: 'p3',
+        productIds: ['p3'],
+        createdAt: '09/08/2026 12:00'
+      },
+      {
+        id: 'LIVE006',
+        sellerId: 'S001',
+        title: 'Flash Sale 15.8 - Giá hủy diệt',
+        category: 'Tổng hợp',
+        description: 'Hẹn giờ nhận quà...',
+        hostName: 'MC Linh',
+        duration: '02:00:00',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300',
+        status: 'SCHEDULED',
+        scheduledAt: '15/08/2026 20:00',
+        viewers: 0,
+        likes: 0,
+        orders: 0,
+        revenue: 0,
+        productIds: ['p1', 'p2'],
+        createdAt: '14/08/2026 09:00'
+      }
+    ];
+    return Promise.resolve(list);
+  },
+
+  // Calculate Livestream Overview Metrics
+  async getLivestreamOverview(list = []) {
+    const totalSessions = list.length || 28;
+    const liveNowCount = list.filter(l => l.status === 'LIVE' || l.status === 'Đang diễn ra').length || 2;
+    const upcomingCount = list.filter(l => l.status === 'SCHEDULED' || l.status === 'Sắp diễn ra').length || 3;
+    const endedCount = list.filter(l => l.status === 'ENDED' || l.status === 'Đã kết thúc').length || 23;
+    const cancelledCount = list.filter(l => l.status === 'CANCELLED' || l.status === 'Đã hủy').length || 0;
+
+    const totalViews = list.reduce((sum, l) => sum + (l.viewers || l.views || 0), 256450);
+    const totalLikes = list.reduce((sum, l) => sum + (l.likes || 0), 18920);
+    const totalOrders = list.reduce((sum, l) => sum + (l.orders || 0), 1248);
+    const totalRevenue = list.reduce((sum, l) => sum + (l.revenue || 0), 156780000);
+
+    return Promise.resolve({
+      totalSessions,
+      liveNowCount,
+      upcomingCount,
+      endedCount,
+      cancelledCount,
+      totalViews,
+      totalLikes,
+      totalOrders,
+      totalRevenue
+    });
+  },
+
+  // =========================================================================
+  // 📊 REPORTS & ANALYTICS MODULE FACADE API
+  // =========================================================================
+
+  async getReportOverview(period = '7d') {
+    return Promise.resolve({
+      revenue: 156780000,
+      orders: 1248,
+      aov: 125450,
+      visits: 82450,
+      conversion: '2,12%',
+      grossProfit: 62450000,
+      totalCosts: 12450000,
+      margin: '39.9%'
+    });
+  },
+
+  async getReportTopProducts(catalogProducts = []) {
+    if (catalogProducts && catalogProducts.length > 0) {
+      return Promise.resolve(catalogProducts.slice(0, 5));
+    }
+    return Promise.resolve([
+      { id: 'p2', name: 'Áo thun nam Basic', code: 'P00123', revenue: 25450000 },
+      { id: 'p4', name: 'Quần jean slim fit', code: 'P00456', revenue: 18750000 },
+      { id: 'p1', name: 'Giày sneaker A1', code: 'P00789', revenue: 15320000 }
+    ]);
+  },
+
+  async exportReport(format = 'excel') {
+    return Promise.resolve({ success: true, format, downloadUrl: `#/export/report.${format}` });
+  },
+
+  // =========================================================================
+  // ⚙️ SHOP SETTINGS MODULE FACADE API
+  // =========================================================================
+
+  async getShopInformation() {
+    return Promise.resolve({
+      shopName: 'Cửa hàng ABC',
+      displayName: 'Shop ABC Official',
+      phone: '0912 345 678',
+      email: 'shopabc@v-life.vn',
+      desc: 'Chuyên cung cấp các sản phẩm chất lượng, chính hãng với giá tốt nhất. Cam kết đem đến trải nghiệm mua sắm tuyệt vời cho khách hàng.',
+      socialLink: 'https://facebook.com/shopabc',
+      category: 'Thời trang',
+      joinDate: '01/08/2026',
+      status: 'Đang hoạt động',
+      isVerified: true
+    });
+  },
+
+  async updateShopInformation(infoData) {
+    return Promise.resolve({ success: true, updated: infoData });
+  },
+
+  async getWarehouseAddresses() {
+    return Promise.resolve([
+      {
+        id: 'wh_1',
+        name: 'Kho HCM - Tổng kho Miền Nam',
+        address: '123 Nguyễn Văn Cừ, Phường 4, Quận 5, TP. Hồ Chí Minh',
+        contact: 'Nguyễn Văn A',
+        phone: '0912 345 678',
+        isDefault: true,
+        type: 'Kho lấy hàng & Kho trả hàng'
+      }
+    ]);
+  },
+
+  // =========================================================================
+  // 💰 FINANCE MODULE FACADE API
+  // =========================================================================
+
+  async getSellerBalance() {
+    return Promise.resolve({
+      available: 62850000,
+      pending: 35620000,
+      receivable: 5000000
+    });
+  },
+
+  async getTransactions() {
+    return Promise.resolve([
+      {
+        id: 'TX10098',
+        orderId: 'VL000128',
+        time: '13/08/2026 14:30',
+        content: 'Doanh thu đơn hàng #VL000128',
+        type: 'Doanh thu',
+        source: 'Đơn hàng S-Shopping',
+        amount: 458000,
+        fee: 9160,
+        netAmount: 448840,
+        status: 'Hoàn tất'
+      },
+      {
+        id: 'TX10097',
+        orderId: 'VL000127',
+        time: '13/08/2026 10:15',
+        content: 'Phí vận chuyển đơn hàng #VL000127',
+        type: 'Chi phí',
+        source: 'Giao Hàng Nhanh',
+        amount: -32000,
+        fee: 0,
+        netAmount: -32000,
+        status: 'Hoàn tất'
+      },
+      {
+        id: 'TX10096',
+        orderId: 'LIVE006',
+        time: '12/08/2026 21:00',
+        content: 'Doanh thu chốt đơn Livestream Siêu Sale',
+        type: 'Doanh thu',
+        source: 'Livestream Feed',
+        amount: 15600000,
+        fee: 312000,
+        netAmount: 15288000,
+        status: 'Hoàn tất'
+      },
+      {
+        id: 'TX10095',
+        orderId: 'VL000120',
+        time: '11/08/2026 16:20',
+        content: 'Hoàn tiền khách hủy đơn #VL000120',
+        type: 'Hoàn tiền',
+        source: 'Đơn hàng S-Shopping',
+        amount: -520000,
+        fee: 0,
+        netAmount: -520000,
+        status: 'Hoàn tất'
+      },
+      {
+        id: 'TX10094',
+        orderId: 'SETTLE_33',
+        time: '11/08/2026 09:30',
+        content: 'Đối soát số dư bán hàng kỳ tuần 32',
+        type: 'Đối soát',
+        source: 'Ví S-Shopping',
+        amount: 45800000,
+        fee: 0,
+        netAmount: 45800000,
+        status: 'Hoàn tất'
+      },
+      {
+        id: 'TX10093',
+        orderId: 'DEBT_01',
+        time: '10/08/2026 15:00',
+        content: 'Ghi nhận công nợ tạm giữ đơn bảo hành',
+        type: 'Công nợ',
+        source: 'Hệ thống bảo đảm',
+        amount: 5000000,
+        fee: 0,
+        netAmount: 5000000,
+        status: 'Đang giữ'
+      }
+    ]);
+  },
+
+  async getBankAccounts() {
+    return Promise.resolve([
+      {
+        id: 'bank_1',
+        bankName: 'Ngân hàng TMCP Ngoại Thương (Vietcombank)',
+        accountNumberMasked: '9704 **** **** 6868',
+        accountHolder: 'NGUYEN VAN A',
+        isDefault: true,
+        verificationStatus: '🟢 Đã xác minh'
+      },
+      {
+        id: 'bank_2',
+        bankName: 'Ngân hàng TMCP Quân Đội (MB Bank)',
+        accountNumberMasked: '9704 **** **** 9999',
+        accountHolder: 'NGUYEN VAN A',
+        isDefault: false,
+        verificationStatus: '🟢 Đã xác minh'
+      }
+    ]);
   }
 };
 

@@ -3,9 +3,16 @@ import { X, Wallet, AlertCircle, Building2, CheckCircle2 } from 'lucide-react';
 
 export default function WithdrawModal({ 
   availableBalance = 18500000, 
+  balance,
+  bankAccounts = [],
   onClose, 
-  onSuccessWithdraw 
+  onSuccessWithdraw,
+  onConfirmWithdraw
 }) {
+  const currentAvailable = typeof availableBalance === 'number' 
+    ? availableBalance 
+    : (balance?.available !== undefined ? balance.available : 18500000);
+
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,7 +20,7 @@ export default function WithdrawModal({
   const numAmount = Number(withdrawAmount.replace(/[^0-9]/g, '')) || 0;
 
   const handlePercentClick = (percent) => {
-    const calc = Math.floor((availableBalance * percent) / 100);
+    const calc = Math.floor((currentAvailable * percent) / 100);
     setWithdrawAmount(calc.toString());
     setErrorMsg('');
   };
@@ -21,7 +28,7 @@ export default function WithdrawModal({
   const handleAmountChange = (val) => {
     const clean = val.replace(/[^0-9]/g, '');
     setWithdrawAmount(clean);
-    if (Number(clean) > availableBalance) {
+    if (Number(clean) > currentAvailable) {
       setErrorMsg('Số tiền rút vượt quá số dư khả dụng!');
     } else {
       setErrorMsg('');
@@ -34,7 +41,7 @@ export default function WithdrawModal({
       setErrorMsg('Vui lòng nhập số tiền hợp lệ muốn rút.');
       return;
     }
-    if (numAmount > availableBalance) {
+    if (numAmount > currentAvailable) {
       setErrorMsg('Số tiền rút vượt quá số dư khả dụng!');
       return;
     }
@@ -42,7 +49,9 @@ export default function WithdrawModal({
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      if (onSuccessWithdraw) {
+      if (onConfirmWithdraw) {
+        onConfirmWithdraw(numAmount);
+      } else if (onSuccessWithdraw) {
         onSuccessWithdraw(numAmount);
       } else {
         alert(`Đã gửi yêu cầu rút ${numAmount.toLocaleString('vi-VN')}đ về tài khoản ngân hàng thành công!`);

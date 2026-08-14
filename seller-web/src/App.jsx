@@ -41,14 +41,12 @@ import ShippingTable from './components/shipping/ShippingTable';
 import ShippingDetailDrawer from './components/shipping/ShippingDetailDrawer';
 import ShippingProviders from './components/shipping/ShippingProviders';
 import ShippingManager from './components/shipping/ShippingManager';
-import FinanceKpiCards from './components/finance/FinancialOverview';
-import FinanceRevenueChart from './components/finance/RevenueChart';
-import FinanceRevenueSources from './components/finance/RevenueSources';
-import FinanceRecentTransactions from './components/finance/RecentTransactions';
-import FinanceSettlementCard from './components/finance/SettlementCard';
-import FinanceWithdrawModal from './components/finance/WithdrawModal';
 import FinanceManager from './components/finance/FinanceManager';
 import PromotionsManager from './components/promotions/PromotionsManager';
+import VideoManager from './components/video/VideoManager';
+import LivestreamManager from './components/livestream/LivestreamManager';
+import ReportManager from './components/reports/ReportManager';
+import SettingsManager from './components/settings/SettingsManager';
 import sellerService, { MOCK_ORDERS_DEMO, MOCK_SHIPPING_DEMO } from './data/sellerService';
 
 // Custom S-life Logo SVG Icon (Official Brand Emblem)
@@ -1624,19 +1622,37 @@ export default function App() {
                 />
               )}
 
-              {/* TAB 5: SETTINGS */}
+              {/* TAB: VIDEO CHANNEL MODULE (KÊNH VIDEO V-LIFE) */}
+              {activeTab === 'video' && (
+                <VideoManager 
+                  existingProducts={products}
+                  onNavigateToTab={setActiveTab}
+                />
+              )}
+
+              {/* TAB: LIVESTREAM MODULE (LIVESTREAM BÁN HÀNG V-LIFE) */}
+              {activeTab === 'livestream' && (
+                <LivestreamManager 
+                  existingProducts={products}
+                  onNavigateToTab={setActiveTab}
+                />
+              )}
+
+              {/* TAB: REPORTS & ANALYTICS MODULE (BÁO CÁO) */}
+              {(activeTab === 'analytics' || activeTab === 'reports') && (
+                <ReportManager 
+                  existingProducts={products}
+                  existingOrders={orders}
+                  onNavigateToTab={setActiveTab}
+                />
+              )}
+
+              {/* TAB 5: SETTINGS (CÀI ĐẶT SHOP) */}
               {activeTab === 'settings' && (
-                <div className="catalog-table-card" style={{ padding: '32px' }}>
-                  <h2 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '20px' }}>THÔNG TIN GIAN HÀNG CHÍNH THỨC</h2>
-                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                    <img src={shopInfo.logo} alt="Logo" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary)' }} />
-                    <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: '900' }}>{shopInfo.name}</h3>
-                      <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{shopInfo.slogan}</p>
-                      <p style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '800', marginTop: '6px' }}>MST: {shopInfo.taxId} | GPKD: {shopInfo.licenseNo}</p>
-                    </div>
-                  </div>
-                </div>
+                <SettingsManager 
+                  existingProducts={products}
+                  existingOrders={orders}
+                />
               )}
 
               {/* TAB 6: CHAT TIN NHẮN (CONNECTED TO PENDING ACTIONS) */}
