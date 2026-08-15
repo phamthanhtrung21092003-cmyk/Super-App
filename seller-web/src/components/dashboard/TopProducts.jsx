@@ -9,9 +9,9 @@ export default function TopProducts({ existingProducts = [], onNavigateToProduct
     sellerService.getTopSellingProducts(existingProducts, 3).then(data => setTopProducts(data));
   }, [existingProducts]);
 
-  const handleProductClick = () => {
+  const handleProductClick = (product) => {
     if (onNavigateToProducts) {
-      onNavigateToProducts('products');
+      onNavigateToProducts(product || 'products');
     }
   };
 
@@ -23,7 +23,7 @@ export default function TopProducts({ existingProducts = [], onNavigateToProduct
         {topProducts.length > 0 && (
           <button 
             className="link-see-all-btn"
-            onClick={handleProductClick}
+            onClick={() => handleProductClick()}
           >
             Xem tất cả <ArrowUpRight size={14} />
           </button>
@@ -37,11 +37,11 @@ export default function TopProducts({ existingProducts = [], onNavigateToProduct
             <div 
               key={p.productId} 
               className="top-product-item"
-              onClick={handleProductClick}
+              onClick={() => handleProductClick(p)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleProductClick()}
-              title={`Xem sản phẩm ${p.name} trong Kho hàng`}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleProductClick(p)}
+              title={`Xem sản phẩm ${p.name}`}
             >
               <div className="rank-badge-box">
                 <span className={`rank-number rank-${p.rank}`}>{p.rank}</span>

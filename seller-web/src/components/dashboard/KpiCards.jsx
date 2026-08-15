@@ -4,13 +4,24 @@ import {
   Users, ChevronDown 
 } from 'lucide-react';
 
-export default function KpiCards({ kpiData, onPeriodChange }) {
+export default function KpiCards({ kpiData, onPeriodChange, onNavigateTab, onActionClick }) {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
 
   const handleSelectPeriod = (e) => {
     const val = e.target.value;
     setSelectedPeriod(val);
     if (onPeriodChange) onPeriodChange(val);
+  };
+
+  const handleCardClick = (m) => {
+    if (m.hasPeriodSelector) return;
+    if (m.id === 'revenue' && onNavigateTab) onNavigateTab('analytics');
+    if (m.id === 'orders' && onNavigateTab) onNavigateTab('orders');
+    if (m.id === 'pending') {
+      if (onActionClick) onActionClick('orders', 'confirm');
+      else if (onNavigateTab) onNavigateTab('orders');
+    }
+    if (m.id === 'itemsSold' && onNavigateTab) onNavigateTab('products');
   };
 
   const metrics = [
@@ -22,7 +33,8 @@ export default function KpiCards({ kpiData, onPeriodChange }) {
       isPositive: kpiData?.revenue?.isPositive !== false,
       bgColor: '#E6F4EA',
       iconColor: '#00B14F',
-      icon: DollarSign
+      icon: DollarSign,
+      clickable: true
     },
     {
       id: 'orders',
@@ -32,7 +44,8 @@ export default function KpiCards({ kpiData, onPeriodChange }) {
       isPositive: kpiData?.orders?.isPositive !== false,
       bgColor: '#EFF6FF',
       iconColor: '#1877F2',
-      icon: ShoppingBag
+      icon: ShoppingBag,
+      clickable: true
     },
     {
       id: 'pending',
@@ -42,7 +55,8 @@ export default function KpiCards({ kpiData, onPeriodChange }) {
       isPositive: kpiData?.pending?.isPositive !== false,
       bgColor: '#FFF7ED',
       iconColor: '#F97316',
-      icon: ClipboardList
+      icon: ClipboardList,
+      clickable: true
     },
     {
       id: 'itemsSold',
@@ -52,7 +66,8 @@ export default function KpiCards({ kpiData, onPeriodChange }) {
       isPositive: kpiData?.itemsSold?.isPositive !== false,
       bgColor: '#F3E8FF',
       iconColor: '#A855F7',
-      icon: PackageCheck
+      icon: PackageCheck,
+      clickable: true
     },
     {
       id: 'customers',
@@ -73,7 +88,14 @@ export default function KpiCards({ kpiData, onPeriodChange }) {
         const IconComponent = m.icon;
 
         return (
-          <div key={m.id} className="kpi-metric-card">
+          <div 
+            key={m.id} 
+            className={`kpi-metric-card ${m.clickable ? 'is-clickable' : ''}`}
+            onClick={() => handleCardClick(m)}
+            role={m.clickable ? "button" : "region"}
+            tabIndex={m.clickable ? 0 : undefined}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick(m)}
+          >
             {/* Header: Icon + Period selector (if applicable) */}
             <div className="kpi-card-header">
               <div 
@@ -84,7 +106,10 @@ export default function KpiCards({ kpiData, onPeriodChange }) {
               </div>
 
               {m.hasPeriodSelector && (
-                <div className="kpi-period-dropdown-wrapper">
+                <div 
+                  className="kpi-period-dropdown-wrapper" 
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <select 
                     value={selectedPeriod} 
                     onChange={handleSelectPeriod}

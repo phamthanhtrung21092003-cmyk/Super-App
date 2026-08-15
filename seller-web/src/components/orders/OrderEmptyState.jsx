@@ -1,33 +1,35 @@
 import React from 'react';
-import { ClipboardList, Plus, BookOpen } from 'lucide-react';
+import { ShoppingCart, Plus, HelpCircle } from 'lucide-react';
 
 export default function OrderEmptyState({ onNavigateToProducts }) {
   return (
     <div className="order-table-empty-box">
       <div className="empty-illustration-container">
         <div className="empty-box-icon-bg">
-          <ClipboardList size={44} className="clipboard-icon" />
+          <ShoppingCart size={48} className="clipboard-icon" color="#00B14F" />
         </div>
       </div>
 
-      <h3 className="empty-heading-title">Chưa có đơn hàng nào</h3>
+      <h3 className="empty-heading-title">Chưa có đơn hàng</h3>
       <p className="empty-heading-desc">
-        Đơn hàng mới sẽ tự động xuất hiện tại đây khi khách hàng chốt đơn mua sản phẩm của bạn trên S-Shopping.
+        Đơn hàng của khách sẽ xuất hiện tại đây khi Shop bắt đầu có đơn đầu tiên.
       </p>
 
       <div className="empty-actions-row">
         <button 
+          type="button"
           className="nav-btn-primary empty-add-product-btn"
           onClick={onNavigateToProducts}
         >
-          <Plus size={16} /> Đăng sản phẩm đầu tiên
+          <Plus size={16} /> Đăng sản phẩm
         </button>
 
         <button 
+          type="button"
           className="nav-btn-secondary empty-guide-btn"
-          onClick={() => alert('Đang mở Hướng dẫn tối ưu Gian hàng & Bán hàng hiệu quả trên S-Shopping!')}
+          onClick={() => alert('Đang mở Trung tâm Trợ giúp người bán S-SHOPPING.')}
         >
-          <BookOpen size={16} /> Xem hướng dẫn
+          <HelpCircle size={15} /> Tìm hiểu thêm
         </button>
       </div>
     </div>

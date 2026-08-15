@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, TrendingUp, PauseCircle, PackageX, FileText } from 'lucide-react';
 
-export default function ProductMetrics({ metrics }) {
+export default function ProductMetrics({ metrics, onSelectFilter }) {
   const total = metrics?.total || 0;
 
   const getPercent = (count) => {
@@ -11,7 +11,7 @@ export default function ProductMetrics({ metrics }) {
 
   const metricCards = [
     {
-      id: 'total',
+      id: 'all',
       title: 'Tổng sản phẩm',
       count: metrics?.total || 0,
       subtext: total > 0 ? `${total} sản phẩm` : 'Chưa có sản phẩm',
@@ -63,7 +63,15 @@ export default function ProductMetrics({ metrics }) {
         const IconComp = card.icon;
 
         return (
-          <div key={card.id} className="product-mini-kpi-card">
+          <div 
+            key={card.id} 
+            className="product-mini-kpi-card cursor-pointer"
+            onClick={() => onSelectFilter && onSelectFilter(card.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelectFilter && onSelectFilter(card.id)}
+            title={`Lọc danh sách theo ${card.title}`}
+          >
             <div className="mini-card-icon-wrapper" style={{ backgroundColor: card.bgColor, color: card.iconColor }}>
               <IconComp size={18} />
             </div>

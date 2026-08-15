@@ -606,27 +606,6 @@ export default function PremiumHome() {
           </TouchableOpacity>
         </View>
 
-        {/* 🏢 SELLER & ADMIN BANNERS */}
-        <View style={{ paddingHorizontal: 15, gap: 10, marginTop: 15 }}>
-          <TouchableOpacity style={[S.mgmtBanner, { backgroundColor: '#DCFCE7', borderColor: '#00B14F' }]} onPress={() => router.push('/shopping/seller')}>
-            <Ionicons name="business" size={22} color="#00B14F" />
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={[S.mgmtBannerTitle, { color: '#0F172A' }]}>Kênh Người Bán (Seller Center)</Text>
-              <Text style={S.mgmtBannerDesc}>Quản lý sản phẩm, đơn hàng và xem doanh số</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#0F172A" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[S.mgmtBanner, { backgroundColor: 'rgba(15,23,42,0.05)', borderColor: '#64748B' }]} onPress={() => router.push('/shopping/admin')}>
-            <Ionicons name="settings" size={24} color="#64748B" />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[S.mgmtBannerTitle, { color: '#0F172A' }]}>Hệ Thống Admin (Sàn GD)</Text>
-              <Text style={S.mgmtBannerDesc}>Kiểm duyệt, phán quyết tranh chấp và phân tích sàn</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#0F172A" />
-          </TouchableOpacity>
-        </View>
-
         {/* 🤖 AI RECOMMENDATIONS (Giai đoạn 2 & 10) */}
         <View style={S.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 20, marginBottom: 15, gap: 6 }}>

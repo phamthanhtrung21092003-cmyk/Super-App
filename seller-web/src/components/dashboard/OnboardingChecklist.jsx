@@ -1,20 +1,32 @@
 import React from 'react';
 import { 
   Rocket, CheckCircle2, Circle, Plus, 
-  Truck, CreditCard 
+  Truck, CreditCard, ChevronRight, Sparkles, Store
 } from 'lucide-react';
 
 export default function OnboardingChecklist({ 
+  setupData = null,
   onOpenAddProductModal, 
   onNavigateTab 
 }) {
-  const steps = [
-    { id: 1, title: 'Tạo cửa hàng', completed: true },
-    { id: 2, title: 'Hoàn tất thông tin người bán', completed: true },
-    { id: 3, title: 'Thêm địa chỉ lấy hàng', completed: true },
-    { id: 4, title: 'Thiết lập phương thức nhận tiền', completed: true },
+  const completedCount = setupData?.completedCount ?? 4;
+  const totalCount = setupData?.totalCount ?? 7;
+  const progressPercent = setupData?.progressPercent ?? Math.round((completedCount / totalCount) * 100);
+
+  const defaultSteps = [
+    { id: 1, title: 'Thông tin Shop', completed: true },
+    { id: 2, title: 'Xác minh người bán', completed: true },
+    { id: 3, title: 'Địa chỉ lấy hàng', completed: true },
+    { id: 4, title: 'Tài khoản nhận tiền', completed: true },
     { 
       id: 5, 
+      title: 'Thiết lập vận chuyển', 
+      completed: false,
+      actionText: 'Thiết lập',
+      onClick: () => onNavigateTab('shop_setup') 
+    },
+    { 
+      id: 6, 
       title: 'Đăng sản phẩm đầu tiên', 
       completed: false, 
       isPrimary: true,
@@ -22,45 +34,61 @@ export default function OnboardingChecklist({
       onClick: onOpenAddProductModal 
     },
     { 
-      id: 6, 
-      title: 'Thiết lập vận chuyển & giao hàng', 
-      completed: false,
-      actionText: 'Thiết lập',
-      onClick: () => onNavigateTab('shipping') 
-    },
-    { 
       id: 7, 
-      title: 'Đăng Video giới thiệu sản phẩm', 
+      title: 'Kiểm tra & hoàn tất Shop', 
       completed: false,
-      actionText: 'Đăng Video',
-      onClick: () => onNavigateTab('video') 
+      actionText: 'Hoàn tất Shop',
+      onClick: () => onNavigateTab('shop_setup') 
     }
   ];
 
-  const completedCount = steps.filter(s => s.completed).length;
-  const progressPercent = Math.round((completedCount / steps.length) * 100);
+  const stepsToRender = setupData?.steps 
+    ? setupData.steps.map(s => ({
+        id: s.id,
+        title: s.title,
+        completed: s.status === 'COMPLETED',
+        isPrimary: s.key === 'firstProduct',
+        actionText: s.actionText,
+        onClick: s.key === 'firstProduct' ? onOpenAddProductModal : () => onNavigateTab('shop_setup')
+      }))
+    : defaultSteps;
 
   return (
     <div className="dashboard-card onboarding-card-highlight">
       {/* Onboarding Header */}
       <div className="onboarding-header-row">
-        <div className="onboarding-title-group">
+        <div 
+          className="onboarding-title-group cursor-pointer"
+          onClick={() => onNavigateTab('shop_setup')}
+          title="Nhấp để mở trang Hoàn thiện Shop đầy đủ"
+          role="button"
+          tabIndex={0}
+        >
           <div className="rocket-icon-circle">
             <Rocket size={22} className="rocket-icon" />
           </div>
           <div>
-            <h2 className="onboarding-main-heading">🚀 Bắt đầu bán hàng trên S-Shopping</h2>
+            <div className="onboarding-heading-with-btn">
+              <h2 className="onboarding-main-heading">🚀 Hoàn thiện thiết lập Shop</h2>
+              <span className="view-full-setup-link">
+                Chi tiết 7 bước <ChevronRight size={14} />
+              </span>
+            </div>
             <p className="onboarding-sub-heading">
-              Hoàn thành các bước đơn giản dưới đây để bắt đầu đăng bán sản phẩm và nhận đơn hàng đầu tiên.
+              Hoàn thành các bước bên dưới để kích hoạt gian hàng và bắt đầu bán hàng trên S-Shopping V-life.
             </p>
           </div>
         </div>
 
         {/* Progress Bar Badge */}
-        <div className="onboarding-progress-container">
+        <div 
+          className="onboarding-progress-container cursor-pointer"
+          onClick={() => onNavigateTab('shop_setup')}
+          title="Nhấp để mở trang Hoàn thiện Shop"
+        >
           <div className="progress-text-label">
             <span>Tiến độ hoàn tất:</span>
-            <strong>{completedCount}/{steps.length} bước</strong>
+            <strong>{completedCount}/{totalCount} bước</strong>
           </div>
           <div className="progress-track-bg">
             <div 
@@ -68,12 +96,13 @@ export default function OnboardingChecklist({
               style={{ width: `${progressPercent}%` }}
             />
           </div>
+          <span className="progress-percent-sub">{progressPercent}% hoàn thành</span>
         </div>
       </div>
 
       {/* Main Checklist Items */}
       <div className="checklist-items-grid">
-        {steps.map(step => (
+        {stepsToRender.map(step => (
           <div 
             key={step.id} 
             className={`checklist-item-row ${step.completed ? 'completed' : 'pending'} ${step.isPrimary ? 'primary-focus' : ''}`}
@@ -89,6 +118,7 @@ export default function OnboardingChecklist({
 
             {!step.completed && step.actionText && (
               <button 
+                type="button"
                 className={`step-action-btn ${step.isPrimary ? 'primary-cta' : 'secondary-cta'}`}
                 onClick={step.onClick}
               >
@@ -97,7 +127,7 @@ export default function OnboardingChecklist({
             )}
 
             {step.completed && (
-              <span className="step-done-badge">Hoàn thành</span>
+              <span className="step-done-badge">✓ Xong</span>
             )}
           </div>
         ))}
@@ -106,26 +136,23 @@ export default function OnboardingChecklist({
       {/* Big Action CTA Banner */}
       <div className="onboarding-cta-banner">
         <div className="cta-left-text">
-          <strong>Sẵn sàng kinh doanh?</strong> Đăng sản phẩm đầu tiên chỉ trong 2 phút!
+          <Sparkles size={18} color="var(--primary)" />
+          <span><strong>Hoàn tất thiết lập nhanh:</strong> Mở giao diện 7 bước để hoàn thiện toàn bộ thông tin Shop!</span>
         </div>
         <div className="cta-buttons-group">
           <button 
+            type="button"
             className="nav-btn-primary big-add-prod-btn"
+            onClick={() => onNavigateTab('shop_setup')}
+          >
+            <Store size={17} /> Mở trang Hoàn Thiện Shop
+          </button>
+          <button 
+            type="button"
+            className="nav-btn-secondary"
             onClick={onOpenAddProductModal}
           >
-            <Plus size={18} /> Đăng sản phẩm đầu tiên
-          </button>
-          <button 
-            className="nav-btn-secondary"
-            onClick={() => onNavigateTab('shipping')}
-          >
-            <Truck size={16} /> Cấu hình vận chuyển
-          </button>
-          <button 
-            className="nav-btn-secondary"
-            onClick={() => onNavigateTab('finance')}
-          >
-            <CreditCard size={16} /> Tài khoản nhận tiền
+            <Plus size={16} /> + Đăng sản phẩm
           </button>
         </div>
       </div>

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Info, TrendingUp, Plus, BarChart3 } from 'lucide-react';
+import { Info, TrendingUp, Plus, BarChart3, ArrowUpRight } from 'lucide-react';
 import sellerService from '../../data/sellerService';
 
-export default function RevenueChart({ existingOrders = [], onOpenAddProductModal }) {
+export default function RevenueChart({ 
+  existingOrders = [], 
+  onOpenAddProductModal,
+  onNavigateToReports 
+}) {
   const [days, setDays] = useState(7);
   const [chartData, setChartData] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -50,6 +54,15 @@ export default function RevenueChart({ existingOrders = [], onOpenAddProductModa
           <h3>
             Doanh thu <Info size={14} className="info-icon" title="Tổng doanh thu từ các đơn hàng thành công" />
           </h3>
+          {onNavigateToReports && (
+            <button 
+              type="button"
+              className="link-see-all-btn inline-report-btn"
+              onClick={onNavigateToReports}
+            >
+              Báo cáo chi tiết <ArrowUpRight size={13} />
+            </button>
+          )}
         </div>
 
         <div className="chart-filter-pills">

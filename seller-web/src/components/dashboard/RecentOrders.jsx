@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, ShoppingBag, Plus } from 'lucide-react';
 import sellerService from '../../data/sellerService';
 
-export default function RecentOrders({ existingOrders = [], onNavigateToOrders, onOpenAddProductModal }) {
+export default function RecentOrders({ 
+  existingOrders = [], 
+  onNavigateToOrders, 
+  onSelectOrder,
+  onOpenAddProductModal 
+}) {
   const [ordersList, setOrdersList] = useState([]);
 
   useEffect(() => {
@@ -10,7 +15,9 @@ export default function RecentOrders({ existingOrders = [], onNavigateToOrders, 
   }, [existingOrders]);
 
   const handleOrderClick = (order) => {
-    if (onNavigateToOrders) {
+    if (onSelectOrder) {
+      onSelectOrder(order);
+    } else if (onNavigateToOrders) {
       onNavigateToOrders('orders', order.status);
     }
   };
@@ -33,16 +40,30 @@ export default function RecentOrders({ existingOrders = [], onNavigateToOrders, 
       {/* Orders List or Empty State */}
       {ordersList.length > 0 ? (
         <div className="orders-vertical-list">
-          {ordersList.map(item => {
+          {ordersList.map((item, idx) => {
             let statusClass = 'status-tag-default';
             if (item.status === 'Chờ xác nhận') statusClass = 'status-tag-orange';
             if (item.status === 'Đang giao') statusClass = 'status-tag-blue';
-            if (item.status === 'Chờ lấy hàng') statusClass = 'status-tag-purple';
+            if (item.status === 'Chờ lấy hàng' || item.status === 'Chờ đóng gói') statusClass = 'status-tag-purple';
             if (item.status === 'Hoàn thành') statusClass = 'status-tag-green';
+
+            const customerName = typeof item.customer === 'object' 
+              ? (item.customer?.name || item.customer?.fullName || 'Khách hàng') 
+              : (item.customer || 'Khách hàng');
+
+            const avatarUrl = (typeof item.customer === 'object' ? item.customer?.avatar : item.avatar) 
+              || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100`;
+
+            const totalVal = typeof item.total === 'number' 
+              ? item.total 
+              : (item.summary?.totalAmount || parseInt(item.total, 10) || 0);
+
+            const itemsLabel = item.items 
+              || (item.products?.length ? `${item.products.length} sản phẩm` : '1 sản phẩm');
 
             return (
               <div 
-                key={item.id} 
+                key={item.id || item.orderId || `order-${idx}`} 
                 className="order-row-item"
                 onClick={() => handleOrderClick(item)}
                 role="button"
@@ -51,20 +72,20 @@ export default function RecentOrders({ existingOrders = [], onNavigateToOrders, 
                 title={`Xem chi tiết đơn hàng ${item.id}`}
               >
                 <div className="customer-avatar-box">
-                  <img src={item.avatar} alt={item.customer} className="customer-avatar" />
+                  <img src={avatarUrl} alt={customerName} className="customer-avatar" />
                 </div>
 
                 <div className="order-details-col">
-                  <span className="order-code-text">{item.id}</span>
-                  <span className="customer-name-text">{item.customer}</span>
+                  <span className="order-code-text">{item.code || item.id}</span>
+                  <span className="customer-name-text">{customerName}</span>
                 </div>
 
                 <div className="order-item-count-col">
-                  <span className="item-count-text">{item.items}</span>
+                  <span className="item-count-text">{itemsLabel}</span>
                 </div>
 
                 <div className="order-price-col">
-                  <span className="order-total-price">{item.total.toLocaleString('vi-VN')}đ</span>
+                  <span className="order-total-price">{(totalVal || 0).toLocaleString('vi-VN')}đ</span>
                 </div>
 
                 <div className="order-status-col">

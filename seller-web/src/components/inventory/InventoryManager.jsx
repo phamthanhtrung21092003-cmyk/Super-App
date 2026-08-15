@@ -11,6 +11,8 @@ import AdjustInventoryModal from './AdjustInventoryModal';
 
 export default function InventoryManager({ 
   existingProducts = [], 
+  initialStatusFilter = 'Tất cả',
+  initialSearchQuery = '',
   onNavigateTab, 
   onOpenAddProductModal 
 }) {
@@ -20,20 +22,35 @@ export default function InventoryManager({
   const [stats, setStats] = useState(null);
 
   // Search & Filter States
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [categoryFilter, setCategoryFilter] = useState('Tất cả');
-  const [stockStatusFilter, setStockStatusFilter] = useState('Tất cả');
+  const [stockStatusFilter, setStockStatusFilter] = useState(initialStatusFilter || 'Tất cả');
+  const [warehouseFilter, setWarehouseFilter] = useState('Tất cả');
+  const [stockRangeFilter, setStockRangeFilter] = useState('Tất cả');
 
   // Interactive Modal States
   const [prefilledSku, setPrefilledSku] = useState('');
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [adjustingItem, setAdjustingItem] = useState(null);
 
-  // Load Inventory & Stats
+  // Sync initial status and search filter if changed from props
+  useEffect(() => {
+    if (initialStatusFilter) {
+      setStockStatusFilter(initialStatusFilter);
+    }
+  }, [initialStatusFilter]);
+
+  useEffect(() => {
+    if (initialSearchQuery !== undefined && initialSearchQuery !== null) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
+
+  // Load Inventory & Stats from Single Source of Truth
   useEffect(() => {
     sellerService.getInventory(existingProducts).then(items => {
       setInventoryItems(items);
-      sellerService.getInventoryStats(items, existingProducts).then(st => setStats(st));
+      sellerService.getInventoryStats(items).then(st => setStats(st));
     });
 
     sellerService.getInventoryTransactions().then(txs => setTransactionsList(txs));
@@ -42,25 +59,23 @@ export default function InventoryManager({
   // Recalculate stats when items change
   const refreshItemsAndStats = (newItems) => {
     setInventoryItems(newItems);
-    sellerService.getInventoryStats(newItems, existingProducts).then(st => setStats(st));
+    sellerService.getInventoryStats(newItems).then(st => setStats(st));
   };
 
-  // Low stock items for alert card
+  // Low stock items for alert card (Threshold <= 5)
   const lowStockAlertItems = inventoryItems.filter(i => {
-    const physical = i.physicalStock || i.quantity || 0;
-    const reserved = i.reservedStock || 0;
-    const available = Math.max(0, physical - reserved);
-    return available <= (i.minimumStock || 10);
+    const physical = i.physicalStock ?? i.quantity ?? 0;
+    return physical <= 5;
   });
 
-  // Filter Items
+  // Filter Items (Requirement 6, 7 & 12)
   const filteredItems = inventoryItems.filter(item => {
     const matchingProduct = existingProducts.find(p => p.id === item.productId) || {};
     const name = item.productName || matchingProduct.name || item.name || '';
     const sku = item.sku || '';
     const pid = item.productId || matchingProduct.id || '';
 
-    // Search query
+    // 1. Search query (productId, productName, SKU)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchName = name.toLowerCase().includes(q);
@@ -69,24 +84,35 @@ export default function InventoryManager({
       if (!matchName && !matchSku && !matchPid) return false;
     }
 
-    // Category filter
+    // 2. Category filter
     if (categoryFilter !== 'Tất cả' && categoryFilter !== 'Tất cả danh mục') {
       const cat = matchingProduct.category || item.category || '';
       if (cat !== categoryFilter) return false;
     }
 
-    // Status filter
-    const physical = item.physicalStock || item.quantity || 0;
-    const reserved = item.reservedStock || 0;
-    const available = Math.max(0, physical - reserved);
-    const minStock = item.minimumStock || 10;
+    // 3. Status filter (Threshold: 5)
+    const physical = item.physicalStock ?? item.quantity ?? 0;
+    if (stockStatusFilter === 'Còn hàng' && physical <= 5) return false;
+    if (stockStatusFilter === 'Sắp hết' && (physical > 5 || physical === 0)) return false;
+    if (stockStatusFilter === 'Hết hàng' && physical > 0) return false;
 
-    if (stockStatusFilter === 'Còn hàng' && available <= minStock) return false;
-    if (stockStatusFilter === 'Sắp hết' && (available > minStock || available === 0)) return false;
-    if (stockStatusFilter === 'Hết hàng' && available > 0) return false;
+    // 4. Warehouse filter
+    if (warehouseFilter !== 'Tất cả' && warehouseFilter !== 'Tất cả kho') {
+      if (item.warehouse !== warehouseFilter) return false;
+    }
+
+    // 5. Stock Range filter
+    if (stockRangeFilter === 'under10' && physical >= 10) return false;
+    if (stockRangeFilter === '10to50' && (physical < 10 || physical > 50)) return false;
+    if (stockRangeFilter === 'above50' && physical <= 50) return false;
 
     return true;
   });
+
+  // Categories list for dropdown
+  const uniqueCategories = Array.from(
+    new Set(existingProducts.map(p => p.category).filter(Boolean))
+  );
 
   // Handlers
   const handleOpenReceive = (sku = '') => {
@@ -95,65 +121,78 @@ export default function InventoryManager({
   };
 
   const handleConfirmReceive = async (productId, sku, quantity, reason, note) => {
-    const updated = await sellerService.receiveInventory(inventoryItems, sku, quantity, reason);
+    const updated = await sellerService.receiveInventory(inventoryItems, sku || productId, quantity, reason);
     refreshItemsAndStats(updated);
 
     // Add to transaction log
     const matchingProduct = existingProducts.find(p => p.id === productId) || {};
+    const item = inventoryItems.find(i => i.sku === sku || i.productId === productId);
+    const beforeQty = item ? (item.physicalStock ?? item.quantity ?? 100) : 100;
+
     const newTx = {
       id: `tx_${Date.now()}`,
       time: new Date().toLocaleString('vi-VN'),
-      productName: matchingProduct.name || 'Sản phẩm mới',
-      sku,
+      productName: matchingProduct.name || 'Sản phẩm',
+      sku: sku || matchingProduct.sku || `SKU-${productId}`,
       type: 'Nhập kho',
       typeCode: 'RECEIVE',
       qty: +quantity,
-      before: 128,
-      after: 128 + quantity,
-      reason,
+      before: beforeQty,
+      after: beforeQty + Number(quantity),
+      reason: reason || 'Nhập kho bổ sung',
       user: 'Quản lý Kho'
     };
     setTransactionsList([newTx, ...transactionsList]);
     setIsReceiveOpen(false);
-    alert(`✅ Đã nhập bổ sung +${quantity} sản phẩm vào kho cho SKU ${sku}!`);
   };
 
-  const handleConfirmAdjust = async (sku, newPhysicalQuantity, reason) => {
-    const updated = await sellerService.adjustInventory(inventoryItems, sku, 'set', newPhysicalQuantity, reason);
+  const handleConfirmAdjust = async (skuOrPid, newPhysicalQuantity, reason) => {
+    const updated = await sellerService.adjustInventory(inventoryItems, skuOrPid, 'set', newPhysicalQuantity, reason);
     refreshItemsAndStats(updated);
 
     // Add to transaction log
-    const item = inventoryItems.find(i => i.sku === sku);
+    const item = inventoryItems.find(i => i.sku === skuOrPid || i.productId === skuOrPid || i.id === skuOrPid);
     const matchingProduct = existingProducts.find(p => p.id === item?.productId) || {};
-    const currentPhys = item?.physicalStock || item?.quantity || 128;
+    const currentPhys = item ? (item.physicalStock ?? item.quantity ?? 100) : 100;
     const diff = newPhysicalQuantity - currentPhys;
 
     const newTx = {
       id: `tx_${Date.now()}`,
       time: new Date().toLocaleString('vi-VN'),
       productName: matchingProduct.name || item?.productName || 'Sản phẩm',
-      sku,
+      sku: item?.sku || skuOrPid,
       type: 'Điều chỉnh',
       typeCode: 'ADJUST',
       qty: diff,
       before: currentPhys,
       after: newPhysicalQuantity,
-      reason,
+      reason: reason || 'Kiểm kê thực tế',
       user: 'Thủ kho'
     };
     setTransactionsList([newTx, ...transactionsList]);
     setAdjustingItem(null);
-    alert(`✅ Đã điều chỉnh tồn thực tế SKU ${sku} thành ${newPhysicalQuantity} sản phẩm!`);
   };
 
   const handleBulkAction = (action, skus, value) => {
     if (action === 'adjust' && value !== undefined) {
       let current = [...inventoryItems];
       skus.forEach(s => {
-        current = current.map(i => i.sku === s ? { ...i, physicalStock: Number(value), availableStock: Math.max(0, Number(value) - (i.reservedStock || 0)) } : i);
+        current = current.map(i => {
+          if (i.sku === s || i.productId === s) {
+            const phys = Number(value);
+            const res = i.reservedStock || 0;
+            return {
+              ...i,
+              physicalStock: phys,
+              quantity: phys,
+              availableStock: Math.max(0, phys - res),
+              availableQuantity: Math.max(0, phys - res)
+            };
+          }
+          return i;
+        });
       });
       refreshItemsAndStats(current);
-      alert(`✅ Đã điều chỉnh hàng loạt ${skus.length} SKU thành ${value} sản phẩm!`);
     }
   };
 
@@ -161,26 +200,23 @@ export default function InventoryManager({
     setSearchQuery('');
     setCategoryFilter('Tất cả');
     setStockStatusFilter('Tất cả');
+    setWarehouseFilter('Tất cả');
+    setStockRangeFilter('Tất cả');
   };
 
   return (
     <div className="inventory-module-container" style={{ padding: '24px 32px', background: 'var(--bg-page)', minHeight: '100vh' }}>
-      {/* 1. Header Area */}
+      {/* 1. Header Area (Requirement 4) */}
       <InventoryHeader 
         onOpenReceiveModal={() => handleOpenReceive()}
-        onOpenAdjustModal={() => {
-          if (inventoryItems.length > 0) setAdjustingItem(inventoryItems[0]);
-        }}
-        onExportReport={() => alert('📥 Đã xuất báo cáo tồn kho định dạng Excel (.xlsx)...')}
+        onExportReport={() => alert(`📥 Đã xuất báo cáo tồn kho cho ${inventoryItems.length} sản phẩm định dạng Excel (.xlsx)...`)}
       />
 
-      {/* 2. KPI Stats Cards */}
+      {/* 2. 4 KPI Stats Cards (Requirement 5) */}
       <InventoryKpiCards 
         stats={stats} 
         onFilterStatus={(st) => {
-          if (st === 'low') setStockStatusFilter('Sắp hết');
-          else if (st === 'out') setStockStatusFilter('Hết hàng');
-          else setStockStatusFilter('Tất cả');
+          setStockStatusFilter(st);
         }}
       />
 
@@ -192,18 +228,23 @@ export default function InventoryManager({
         />
       )}
 
-      {/* 4. Search & Filter Bar */}
+      {/* 4. Search & Filter Bar (Requirement 6 & 7) */}
       <InventoryFilters 
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        categoryFilter={categoryFilter}
-        onCategoryChange={setCategoryFilter}
         stockStatusFilter={stockStatusFilter}
         onStockStatusChange={setStockStatusFilter}
+        categoryFilter={categoryFilter}
+        onCategoryChange={setCategoryFilter}
+        warehouseFilter={warehouseFilter}
+        onWarehouseChange={setWarehouseFilter}
+        stockRangeFilter={stockRangeFilter}
+        onStockRangeChange={setStockRangeFilter}
+        categories={uniqueCategories}
         onResetFilters={handleResetFilters}
       />
 
-      {/* 5. Inventory Data Table */}
+      {/* 5. Inventory Data Table & Empty State (Requirement 8, 9, 13 & 19) */}
       <InventoryTable 
         items={filteredItems}
         existingProducts={existingProducts}
@@ -216,7 +257,7 @@ export default function InventoryManager({
       {/* 6. Inventory Transactions Log Table */}
       <InventoryTransactions transactions={transactionsList} />
 
-      {/* Modals */}
+      {/* Modals: Nhập kho (Requirement 10) & Điều chỉnh (Requirement 11) */}
       {isReceiveOpen && (
         <ReceiveInventoryModal 
           existingProducts={existingProducts}
@@ -236,4 +277,3 @@ export default function InventoryManager({
     </div>
   );
 }
-

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, ChevronRight } from 'lucide-react';
+import { Megaphone, ChevronRight, ArrowUpRight } from 'lucide-react';
 import sellerService from '../../data/sellerService';
 
 export default function PlatformNews({ onNavigate }) {
@@ -10,7 +10,7 @@ export default function PlatformNews({ onNavigate }) {
   }, []);
 
   const handleNewsClick = () => {
-    if (onNavigate) onNavigate('settings');
+    if (onNavigate) onNavigate('notifications');
   };
 
   return (
@@ -19,6 +19,13 @@ export default function PlatformNews({ onNavigate }) {
         <h3 className="card-title-heading">
           <Megaphone size={16} className="text-primary-icon" /> Thông báo từ V-life
         </h3>
+        <button 
+          type="button" 
+          className="link-see-all-btn" 
+          onClick={() => onNavigate && onNavigate('notifications')}
+        >
+          Xem tất cả <ArrowUpRight size={14} />
+        </button>
       </div>
 
       <div className="news-list-container">

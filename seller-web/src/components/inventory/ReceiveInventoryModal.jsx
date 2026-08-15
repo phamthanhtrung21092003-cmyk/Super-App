@@ -1,19 +1,28 @@
 import React, { useState } from 'react';
-import { PlusCircle, Package, X } from 'lucide-react';
+import { PlusCircle, X } from 'lucide-react';
 
 export default function ReceiveInventoryModal({ 
   existingProducts = [], 
-  prefilledSku,
+  prefilledSku = '',
   onClose, 
   onConfirmReceive 
 }) {
-  const [selectedProductId, setSelectedProductId] = useState(existingProducts[0]?.id || 'p2');
-  const [selectedSku, setSelectedSku] = useState(prefilledSku || existingProducts[0]?.sku || 'ATB-BLK-M');
+  const initialProduct = existingProducts.find(p => p.sku === prefilledSku) || existingProducts[0] || {};
+  const [selectedProductId, setSelectedProductId] = useState(initialProduct.id || 'p1');
+  const [selectedSku, setSelectedSku] = useState(prefilledSku || initialProduct.sku || 'SKU-001');
   const [quantity, setQuantity] = useState('50');
-  const [reason, setReason] = useState('Nhập hàng từ nhà cung cấp');
   const [note, setNote] = useState('');
+  const [reason, setReason] = useState('Nhập hàng từ nhà cung cấp');
 
   const numQty = parseInt(quantity, 10) || 0;
+
+  const handleProductChange = (pId) => {
+    setSelectedProductId(pId);
+    const prod = existingProducts.find(p => p.id === pId);
+    if (prod) {
+      setSelectedSku(prod.sku || `SKU-${pId}`);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -30,47 +39,33 @@ export default function ReceiveInventoryModal({
         <div className="modal-header-bar">
           <div className="header-title-group">
             <PlusCircle size={20} className="header-icon-green" />
-            <h3 className="modal-title">Tạo phiếu Nhập kho</h3>
+            <h3 className="modal-title">Nhập kho</h3>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form-body">
+          {/* 1. Chọn sản phẩm */}
           <div className="form-group-field">
-            <label className="field-label">Chọn sản phẩm nhập kho (*):</label>
+            <label className="field-label">Chọn sản phẩm (*):</label>
             <select 
               className="modal-select-control"
               value={selectedProductId}
-              onChange={(e) => {
-                const pId = e.target.value;
-                setSelectedProductId(pId);
-                const prod = existingProducts.find(p => p.id === pId);
-                if (prod) setSelectedSku(prod.sku || `SKU-${pId}`);
-              }}
+              onChange={(e) => handleProductChange(e.target.value)}
             >
               {existingProducts.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.name} (Product ID: {p.id})
+                  {p.name} (SKU: {p.sku || `SKU-${p.id}`} | ID: {p.id})
                 </option>
               ))}
             </select>
           </div>
 
+          {/* 2. Số lượng nhập */}
           <div className="form-group-field">
-            <label className="field-label">Mã SKU phân loại (*):</label>
-            <input 
-              type="text"
-              className="modal-input-control"
-              value={selectedSku}
-              onChange={(e) => setSelectedSku(e.target.value)}
-              placeholder="VD: ATB-BLK-M"
-            />
-          </div>
-
-          <div className="form-group-field">
-            <label className="field-label">Số lượng nhập bổ sung (*):</label>
+            <label className="field-label">Số lượng nhập (*):</label>
             <div className="quantity-input-wrapper">
               <input 
                 type="number"
@@ -78,11 +73,13 @@ export default function ReceiveInventoryModal({
                 className="modal-input-control"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
+                placeholder="Nhập số lượng..."
               />
               <span className="qty-unit-tag">sản phẩm</span>
             </div>
           </div>
 
+          {/* 3. Lý do */}
           <div className="form-group-field">
             <label className="field-label">Lý do nhập kho:</label>
             <select 
@@ -91,18 +88,19 @@ export default function ReceiveInventoryModal({
               onChange={(e) => setReason(e.target.value)}
             >
               <option value="Nhập hàng từ nhà cung cấp">Nhập hàng từ nhà cung cấp</option>
-              <option value="Hàng hoàn trả về kho">Hàng hoàn trả về kho</option>
               <option value="Nhập bổ sung kiểm kê">Nhập bổ sung kiểm kê</option>
+              <option value="Hàng hoàn trả về kho">Hàng hoàn trả về kho</option>
               <option value="Khác">Khác</option>
             </select>
           </div>
 
+          {/* 4. Ghi chú */}
           <div className="form-group-field">
             <label className="field-label">Ghi chú (Tùy chọn):</label>
             <textarea 
               rows={2}
               className="modal-textarea-control"
-              placeholder="Nhập mã phiếu giao hàng hoặc ghi chú..."
+              placeholder="Nhập số hóa đơn hoặc ghi chú..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />

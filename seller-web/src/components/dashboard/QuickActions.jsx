@@ -1,14 +1,14 @@
 import React from 'react';
-import { Plus, Truck, CreditCard, Video, Radio, BookOpen } from 'lucide-react';
+import { Plus, ShoppingBag, Video, Radio, Tag, BarChart3 } from 'lucide-react';
 
 export default function QuickActions({ onNavigate, onOpenAddProductModal }) {
   const actions = [
     { id: 'add_prod', title: '+ Đăng sản phẩm', icon: Plus, bgColor: '#F0FDF4', iconColor: '#00B14F', action: onOpenAddProductModal, isHighlight: true },
-    { id: 'shipping_setup', title: 'Thiết lập vận chuyển', icon: Truck, bgColor: '#EFF6FF', iconColor: '#1877F2', action: () => onNavigate('shipping') },
-    { id: 'payment_setup', title: 'Thiết lập thanh toán', icon: CreditCard, bgColor: '#FFF7ED', iconColor: '#F97316', action: () => onNavigate('finance') },
+    { id: 'orders_mgmt', title: 'Quản lý đơn', icon: ShoppingBag, bgColor: '#EFF6FF', iconColor: '#1877F2', action: () => onNavigate('orders') },
     { id: 'post_video', title: 'Đăng Video', icon: Video, bgColor: '#F3E8FF', iconColor: '#A855F7', action: () => onNavigate('video') },
     { id: 'create_live', title: 'Tạo Livestream', icon: Radio, bgColor: '#FEF2F2', iconColor: '#EF4444', action: () => onNavigate('livestream') },
-    { id: 'seller_guide', title: 'Xem hướng dẫn', icon: BookOpen, bgColor: '#E0F2FE', iconColor: '#0284C7', action: () => onNavigate('settings') }
+    { id: 'create_voucher', title: 'Tạo Voucher', icon: Tag, bgColor: '#FFF7ED', iconColor: '#F97316', action: () => onNavigate('marketing') },
+    { id: 'view_reports', title: 'Xem doanh thu', icon: BarChart3, bgColor: '#E0F2FE', iconColor: '#0284C7', action: () => onNavigate('analytics') }
   ];
 
   return (

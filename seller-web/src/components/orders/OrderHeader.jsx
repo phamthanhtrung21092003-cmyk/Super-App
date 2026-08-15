@@ -1,10 +1,12 @@
 import React from 'react';
-import { Download, Settings, Printer, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Download, Settings, ToggleLeft, ToggleRight } from 'lucide-react';
 
 export default function OrderHeader({ 
-  totalOrders, 
-  isDemoState, 
-  onToggleDemoState 
+  totalOrders = 0, 
+  isDemoState = true, 
+  onToggleDemoState,
+  onExportData,
+  onOpenSettings
 }) {
   return (
     <div className="order-module-header">
@@ -14,6 +16,7 @@ export default function OrderHeader({
 
           {/* Testing State Toggle Pill */}
           <button 
+            type="button"
             className={`state-toggle-pill ${isDemoState ? 'active-demo' : 'empty-demo'}`}
             onClick={onToggleDemoState}
             title="Chuyển đổi giữa trạng thái Shop có đơn và Shop mới (0 đơn) để kiểm thử"
@@ -24,19 +27,26 @@ export default function OrderHeader({
         </div>
 
         <p className="order-sub-heading">
-          Theo dõi, xử lý và quản lý toàn bộ đơn hàng của cửa hàng
+          Quản lý và xử lý toàn bộ đơn hàng của Shop.
         </p>
       </div>
 
       <div className="order-header-actions">
-        <button className="nav-btn-secondary export-btn" title="Xuất danh sách đơn hàng">
-          <Download size={15} /> Xuất danh sách
+        <button 
+          type="button" 
+          className="nav-btn-secondary export-btn" 
+          onClick={onExportData}
+          title="Xuất dữ liệu danh sách đơn hàng"
+        >
+          <Download size={15} /> Xuất dữ liệu
         </button>
-        <button className="nav-btn-secondary settings-btn" title="Cấu hình xử lý đơn">
-          <Settings size={15} /> Cài đặt
-        </button>
-        <button className="nav-btn-secondary print-btn" title="In phiếu giao hàng">
-          <Printer size={15} /> In đơn hàng
+        <button 
+          type="button" 
+          className="nav-btn-secondary settings-btn" 
+          onClick={onOpenSettings}
+          title="Cấu hình và thiết lập quy trình xử lý đơn"
+        >
+          <Settings size={15} /> ⚙ Thiết lập đơn hàng
         </button>
       </div>
     </div>

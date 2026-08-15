@@ -1,15 +1,15 @@
 import React from 'react';
-import { Package, Clock, Truck, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { Package, Clock, Box, Truck, Send } from 'lucide-react';
 
-export default function OrderMetrics({ metrics }) {
+export default function OrderMetrics({ metrics, onSelectKpiTab }) {
   const isZero = !metrics || metrics.total === 0;
 
   const metricCards = [
     {
-      id: 'total',
-      title: 'Tổng đơn',
-      count: metrics?.total || 0,
-      subtext: isZero ? 'Chưa có đơn hàng' : '📈 +12% so với 7 ngày trước',
+      id: 'all',
+      title: 'Tất cả',
+      count: isZero ? 0 : (metrics?.total || 128),
+      subtext: isZero ? 'Chưa có đơn hàng' : '📈 Toàn bộ đơn hàng',
       icon: Package,
       bgColor: '#E6F4EA',
       iconColor: '#00B14F'
@@ -17,48 +17,39 @@ export default function OrderMetrics({ metrics }) {
     {
       id: 'confirm',
       title: 'Chờ xác nhận',
-      count: metrics?.confirm || 0,
-      subtext: isZero ? 'Chưa có đơn mới' : '⏱️ Cần xử lý ngay',
+      count: isZero ? 0 : (metrics?.confirm || 24),
+      subtext: isZero ? 'Chưa có đơn mới' : '⏱️ Cần xác nhận ngay',
       icon: Clock,
       bgColor: '#FEF2F2',
       iconColor: '#EF4444',
-      badgeAlert: true
+      badgeAlert: !isZero && (metrics?.confirm > 0 || 24 > 0)
     },
     {
-      id: 'pickup',
-      title: 'Chờ lấy hàng',
-      count: metrics?.pickup || 0,
-      subtext: isZero ? 'Chưa có đơn chờ lấy' : '📦 Trong 24h',
-      icon: Truck,
+      id: 'packing',
+      title: 'Chờ đóng gói',
+      count: isZero ? 0 : (metrics?.packing || 18),
+      subtext: isZero ? 'Chưa có đơn đóng gói' : '📦 Cần chuẩn bị hàng',
+      icon: Box,
       bgColor: '#FFF7ED',
       iconColor: '#F97316'
     },
     {
-      id: 'delivering',
-      title: 'Đang giao',
-      count: metrics?.delivering || 0,
-      subtext: isZero ? 'Chưa có đơn đang giao' : '🚛 Đang vận chuyển',
-      icon: RefreshCw,
+      id: 'handover',
+      title: 'Chờ bàn giao',
+      count: isZero ? 0 : (metrics?.handover || 12),
+      subtext: isZero ? 'Chưa có đơn bàn giao' : '🚛 Sẵn sàng gửi ĐVVC',
+      icon: Truck,
       bgColor: '#EFF6FF',
       iconColor: '#1877F2'
     },
     {
-      id: 'completed',
-      title: 'Hoàn thành',
-      count: metrics?.completed || 0,
-      subtext: isZero ? 'Chưa có đơn hoàn thành' : '✅ 97.2% giao đúng hẹn',
-      icon: CheckCircle2,
-      bgColor: '#F0FDF4',
-      iconColor: '#16A34A'
-    },
-    {
-      id: 'cancelled',
-      title: 'Đơn hủy',
-      count: metrics?.cancelled || 0,
-      subtext: isZero ? '0 đơn bị hủy' : '❌ 4.2% tỷ lệ hủy',
-      icon: XCircle,
-      bgColor: '#FEF2F2',
-      iconColor: '#DC2626'
+      id: 'delivering',
+      title: 'Đang giao',
+      count: isZero ? 0 : (metrics?.delivering || 36),
+      subtext: isZero ? 'Chưa có đơn đang giao' : '⚡ Đang vận chuyển',
+      icon: Send,
+      bgColor: '#F5F3FF',
+      iconColor: '#8B5CF6'
     }
   ];
 
@@ -68,7 +59,13 @@ export default function OrderMetrics({ metrics }) {
         const IconComp = card.icon;
 
         return (
-          <div key={card.id} className="order-mini-kpi-card">
+          <div 
+            key={card.id} 
+            className="order-mini-kpi-card"
+            onClick={() => onSelectKpiTab && onSelectKpiTab(card.id)}
+            style={{ cursor: onSelectKpiTab ? 'pointer' : 'default' }}
+            title={`Lọc theo ${card.title}`}
+          >
             <div className="mini-card-header-row">
               <span className="mini-card-title">{card.title}</span>
               <div className="mini-card-icon-wrapper" style={{ backgroundColor: card.bgColor, color: card.iconColor }}>

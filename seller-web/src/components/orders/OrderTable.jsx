@@ -8,7 +8,7 @@ import PackingModal from './PackingModal';
 import HandoverModal from './HandoverModal';
 import ReturnRequestModal from './ReturnRequestModal';
 import OrderPrintModal from './OrderPrintModal';
-import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Package, Clock, Eye, CheckCircle2, Box, Truck, ShieldAlert } from 'lucide-react';
 
 export default function OrderTable({ 
   orders = [], 
@@ -48,26 +48,26 @@ export default function OrderTable({
   };
 
   const handleBulkConfirmAll = () => {
-    if (window.confirm(`Bạn có chắc muốn xác nhận hàng loạt ${selectedIds.length} đơn hàng đã chọn?`)) {
-      onBulkUpdateStatus(selectedIds, 'Chờ đóng gói');
-      setSelectedIds([]);
-      alert(`✅ Đã xác nhận xử lý thành công ${selectedIds.length} đơn hàng!`);
-    }
+    onBulkUpdateStatus(selectedIds, 'Chờ đóng gói');
+    setSelectedIds([]);
   };
 
   const handleBulkPrintAll = () => {
-    alert(`🖨️ Đang gửi lệnh in phiếu giao cho ${selectedIds.length} đơn hàng đã chọn.`);
+    if (orders.length > 0) {
+      setPrintingOrder(orders.find(o => selectedIds.includes(o.id)) || orders[0]);
+    }
   };
 
   const handleBulkExportSelected = () => {
-    alert(`📥 Đã xuất dữ liệu Excel cho ${selectedIds.length} đơn hàng.`);
+    alert(`📥 Đã xuất dữ liệu cho ${selectedIds.length} đơn hàng đã chọn.`);
   };
 
   return (
-    <div className="order-table-card-container" style={{ position: 'relative' }}>
+    <div className="order-table-card-container">
       {hasOrders ? (
         <>
-          <div className="table-responsive-wrapper">
+          {/* Desktop & Tablet Table */}
+          <div className="table-responsive-wrapper desktop-order-table-view">
             <table className="order-data-table">
               <thead>
                 <tr>
@@ -78,13 +78,13 @@ export default function OrderTable({
                       onChange={handleSelectAll}
                     />
                   </th>
-                  <th className="col-order-code">Mã đơn hàng</th>
+                  <th className="col-order-code">Mã đơn</th>
                   <th className="col-product-item">Sản phẩm</th>
                   <th className="col-customer">Khách hàng</th>
-                  <th className="col-total">Tổng tiền</th>
-                  <th className="col-status">Trạng thái</th>
+                  <th className="col-total-amount">Tổng tiền</th>
+                  <th className="col-payment">Thanh toán</th>
                   <th className="col-shipping">Vận chuyển</th>
-                  <th className="col-date">Ngày đặt ▼</th>
+                  <th className="col-status">Trạng thái</th>
                   <th className="col-actions">Thao tác</th>
                 </tr>
               </thead>
@@ -102,11 +102,63 @@ export default function OrderTable({
                     onPackOrder={(ord) => setPackingOrder(ord)}
                     onHandoverOrder={(ord) => setHandoverOrder(ord)}
                     onPrintOrder={(ord) => setPrintingOrder(ord)}
-                    onViewReturnOrder={(ord) => setReturningOrder(ord)}
+                    onProcessReturn={(ord) => setReturningOrder(ord)}
                   />
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View (Requirement 17) */}
+          <div className="mobile-order-cards-view">
+            {orders.map(order => {
+              const firstItem = order.items?.[0] || { name: 'Sản phẩm', price: 0, image: '' };
+              const custName = typeof order.customer === 'object' ? order.customer.name : order.customer;
+              const totalMoney = order.summary?.total || order.total || 0;
+
+              return (
+                <div 
+                  key={order.id} 
+                  className="mobile-order-card"
+                  onClick={() => onViewOrderDetail(order)}
+                >
+                  <div className="mobile-card-top-row">
+                    <span className="mobile-order-code">{order.code || `#${order.id}`}</span>
+                    <span className="mobile-order-status-tag">{order.status}</span>
+                  </div>
+
+                  <div className="mobile-card-product-row">
+                    <img src={firstItem.image} alt={firstItem.name} className="mobile-prod-thumb" />
+                    <div className="mobile-prod-info">
+                      <h4 className="mobile-prod-name">{firstItem.name}</h4>
+                      <span className="mobile-prod-meta">
+                        {firstItem.variant ? `${firstItem.variant} • ` : ''}x{firstItem.quantity || 1}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mobile-card-footer-row">
+                    <div className="mobile-cust-info">
+                      <span className="mobile-cust-name">{custName}</span>
+                      <span className="mobile-order-date">{order.date}</span>
+                    </div>
+                    <div className="mobile-price-action">
+                      <span className="mobile-total-price">{Number(totalMoney).toLocaleString('vi-VN')}đ</span>
+                      <button 
+                        type="button" 
+                        className="mobile-btn-detail"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewOrderDetail(order);
+                        }}
+                      >
+                        Chi tiết
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Floating Bulk Actions Bar */}
@@ -125,11 +177,11 @@ export default function OrderTable({
             </div>
 
             <div className="pagination-controls-group">
-              <button className="page-nav-btn" disabled>
+              <button type="button" className="page-nav-btn" disabled>
                 <ChevronLeft size={16} />
               </button>
-              <button className="page-number-btn active">1</button>
-              <button className="page-nav-btn" disabled>
+              <button type="button" className="page-number-btn active">1</button>
+              <button type="button" className="page-nav-btn" disabled>
                 <ChevronRight size={16} />
               </button>
 
@@ -160,7 +212,6 @@ export default function OrderTable({
           onConfirm={(id) => {
             onUpdateOrderStatus(id, 'Chờ đóng gói');
             setConfirmingOrder(null);
-            alert(`✅ Đã xác nhận đơn hàng #${id} thành công! Đơn hàng chuyển sang Chờ đóng gói.`);
           }}
         />
       )}
@@ -172,7 +223,6 @@ export default function OrderTable({
           onConfirmCancel={(id, reason) => {
             onUpdateOrderStatus(id, 'Đã hủy', reason);
             setCancellingOrder(null);
-            alert(`❌ Đã hủy đơn hàng #${id}. Lý do: ${reason}`);
           }}
         />
       )}
@@ -184,7 +234,6 @@ export default function OrderTable({
           onCompletePacking={(id) => {
             onUpdateOrderStatus(id, 'Chờ bàn giao');
             setPackingOrder(null);
-            alert(`📦 Đã hoàn tất đóng gói đơn hàng #${id}! Đơn hàng sẵn sàng chờ bàn giao cho shipper.`);
           }}
         />
       )}
@@ -196,7 +245,6 @@ export default function OrderTable({
           onConfirmHandover={(id, trackingNo) => {
             onUpdateOrderStatus(id, 'Đang giao', null, trackingNo);
             setHandoverOrder(null);
-            alert(`🚚 Đã bàn giao kiện hàng #${id} cho ĐVVC với mã vận đơn ${trackingNo}!`);
           }}
         />
       )}
@@ -206,13 +254,11 @@ export default function OrderTable({
           order={returningOrder}
           onClose={() => setReturningOrder(null)}
           onApprove={(id) => {
-            onUpdateOrderStatus(id, 'Đã hoàn tiền');
+            onUpdateOrderStatus(id, 'Hoàn thành');
             setReturningOrder(null);
-            alert(`✅ Đã chấp nhận yêu cầu hoàn tiền cho đơn hàng #${id}.`);
           }}
           onReject={(id) => {
             setReturningOrder(null);
-            alert(`❌ Đã từ chối yêu cầu hoàn tiền của đơn hàng #${id}.`);
           }}
         />
       )}

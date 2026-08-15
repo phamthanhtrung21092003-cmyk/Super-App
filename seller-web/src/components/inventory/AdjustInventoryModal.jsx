@@ -6,11 +6,11 @@ export default function AdjustInventoryModal({
   onClose, 
   onConfirmAdjust 
 }) {
-  const currentPhysical = item?.physicalStock || item?.quantity || 128;
-  const currentReserved = item?.reservedStock || item?.reservedQuantity || 12;
+  const currentPhysical = item?.physicalStock ?? item?.quantity ?? 100;
+  const currentReserved = item?.reservedStock ?? item?.reservedQuantity ?? 5;
 
   const [newPhysicalStr, setNewPhysicalStr] = useState(currentPhysical.toString());
-  const [reason, setReason] = useState('Kiểm kê thực tế');
+  const [reason, setReason] = useState('Kiểm kê');
   const [customNote, setCustomNote] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -23,7 +23,7 @@ export default function AdjustInventoryModal({
     setNewPhysicalStr(val);
     const num = parseInt(val, 10) || 0;
     if (num < currentReserved) {
-      setErrorMsg(`Tồn kho mới (${num}) không thể nhỏ hơn số lượng hàng đang giữ cho đơn hàng (${currentReserved})!`);
+      setErrorMsg(`Tồn kho mới (${num}) không thể nhỏ hơn số lượng hàng đang giữ cho đơn (${currentReserved})!`);
     } else {
       setErrorMsg('');
     }
@@ -32,11 +32,11 @@ export default function AdjustInventoryModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newPhysical < currentReserved) {
-      setErrorMsg(`Tồn kho mới (${newPhysical}) không thể nhỏ hơn số lượng hàng đang giữ cho đơn hàng (${currentReserved})!`);
+      setErrorMsg(`Tồn kho mới (${newPhysical}) không thể nhỏ hơn số lượng hàng đang giữ cho đơn (${currentReserved})!`);
       return;
     }
     const finalReason = reason === 'Khác' ? (customNote || 'Khác') : reason;
-    onConfirmAdjust(item.sku || item.id, newPhysical, finalReason);
+    onConfirmAdjust(item.sku || item.productId || item.id, newPhysical, finalReason);
   };
 
   return (
@@ -45,9 +45,9 @@ export default function AdjustInventoryModal({
         <div className="modal-header-bar">
           <div className="header-title-group">
             <Sliders size={20} className="header-icon-green" />
-            <h3 className="modal-title">Điều chỉnh tồn kho SKU: {item.sku}</h3>
+            <h3 className="modal-title">Điều chỉnh tồn kho</h3>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
@@ -60,10 +60,10 @@ export default function AdjustInventoryModal({
             </div>
             <div className="summary-row">
               <span className="lbl">Product ID / SKU:</span>
-              <code>{item.productId || 'p2'} / {item.sku || 'ATB-BLK-M'}</code>
+              <code>{item.productId || 'p1'} / {item.sku || 'SKU-001'}</code>
             </div>
             <div className="summary-row">
-              <span className="lbl">Tồn thực tế hiện tại:</span>
+              <span className="lbl">Tồn kho hiện tại:</span>
               <strong>{currentPhysical} sản phẩm</strong>
             </div>
             <div className="summary-row">
@@ -73,13 +73,14 @@ export default function AdjustInventoryModal({
           </div>
 
           <div className="form-group-field">
-            <label className="field-label">Tồn kho thực tế mới (*):</label>
+            <label className="field-label">Số lượng mới (*):</label>
             <input 
               type="number"
               min="0"
               className="modal-input-control"
               value={newPhysicalStr}
               onChange={(e) => handleStockChange(e.target.value)}
+              placeholder="Nhập số lượng tồn kho mới..."
             />
           </div>
 
@@ -97,6 +98,7 @@ export default function AdjustInventoryModal({
             </div>
           )}
 
+          {/* 5 Lý do (Requirement 11) */}
           <div className="form-group-field">
             <label className="field-label">Lý do điều chỉnh (*):</label>
             <select 
@@ -104,10 +106,10 @@ export default function AdjustInventoryModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             >
-              <option value="Kiểm kê thực tế">Kiểm kê thực tế</option>
-              <option value="Hàng bị hư hỏng">Hàng bị hư hỏng / hỏng hóc</option>
-              <option value="Thất thoát / Mất hàng">Thất thoát / Mất hàng</option>
-              <option value="Sai lệch hệ thống">Sai lệch hệ thống</option>
+              <option value="Kiểm kê">Kiểm kê</option>
+              <option value="Hàng hỏng">Hàng hỏng</option>
+              <option value="Hàng thất lạc">Hàng thất lạc</option>
+              <option value="Nhập bổ sung">Nhập bổ sung</option>
               <option value="Khác">Khác</option>
             </select>
           </div>

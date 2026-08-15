@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
-  Home, Package, FileText, Warehouse, Truck, 
-  Wallet, Tag, Video, Radio, BarChart3, Settings, 
+  Home, Package, FileText, Warehouse, MessageSquare, Truck, 
+  Wallet, Tag, Video, Radio, BarChart3, Settings, Store,
   ChevronRight, ArrowRight
 } from 'lucide-react';
 
@@ -10,13 +10,17 @@ export default function Sidebar({
   onSelectTab, 
   isCollapsed,
   productCount = 0,
-  orderCount = 0
+  orderCount = 0,
+  unreadMessageCount = 8,
+  setupProgressBadge = null
 }) {
   const menuItems = [
     { id: 'home', label: 'Trang chủ', icon: Home, badge: null },
+    { id: 'shop_setup', label: 'Hoàn thiện Shop', icon: Store, badge: setupProgressBadge, hasSubMenu: false },
     { id: 'products', label: 'Sản phẩm', icon: Package, badge: productCount > 0 ? productCount : null, hasSubMenu: true },
     { id: 'orders', label: 'Đơn hàng', icon: FileText, badge: orderCount > 0 ? orderCount : null, hasSubMenu: true },
     { id: 'inventory', label: 'Kho hàng', icon: Warehouse, badge: null, hasSubMenu: true },
+    { id: 'messages', label: 'Tin nhắn', icon: MessageSquare, badge: unreadMessageCount > 0 ? unreadMessageCount : null, hasSubMenu: false },
     { id: 'shipping', label: 'Vận chuyển', icon: Truck, badge: null, hasSubMenu: true },
     { id: 'finance', label: 'Tài chính', icon: Wallet, badge: null, hasSubMenu: true },
     { id: 'marketing', label: 'Khuyến mãi', icon: Tag, badge: null, hasSubMenu: true },

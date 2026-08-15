@@ -49,11 +49,11 @@ export default function PendingActions({ pendingItems = [], onActionClick, onNav
     {
       id: 'unread_chats',
       title: 'Tin nhắn chưa trả lời',
-      count: 0,
+      count: 8,
       bgColor: '#F0FDF4',
       iconColor: '#00B14F',
-      targetTab: 'chat',
-      orderFilter: null,
+      targetTab: 'messages',
+      orderFilter: 'unread',
       icon: MessageSquare
     }
   ];
@@ -81,12 +81,12 @@ export default function PendingActions({ pendingItems = [], onActionClick, onNav
 
       {totalCount > 0 ? (
         <div className="pending-actions-grid">
-          {itemsToRender.map(item => {
+          {itemsToRender.map((item, index) => {
             const IconComp = item.icon || ShoppingCart;
 
             return (
               <div 
-                key={item.id} 
+                key={item.id ? `${item.id}-${index}` : `pending-act-${index}`} 
                 className="action-card-item"
                 onClick={() => handleClick(item)}
                 role="button"

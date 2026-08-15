@@ -1,57 +1,49 @@
 import React from 'react';
-import { Package, Layers, Box, AlertTriangle, XCircle } from 'lucide-react';
+import { Package, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 
 export default function InventoryKpiCards({ stats, onFilterStatus }) {
+  const isZero = !stats || stats.totalProducts === 0;
+
   const cards = [
     {
       id: 'total_products',
       title: 'Tổng sản phẩm',
-      value: `${stats?.totalProducts || 128} sản phẩm`,
-      subtitle: 'Sản phẩm có trong Catalog',
+      value: isZero ? 0 : (stats?.totalProducts || 48),
+      subtitle: isZero ? 'Chưa có sản phẩm' : 'Sản phẩm trong Catalog',
       icon: Package,
       iconColor: '#00B14F',
       bgColor: '#E6F4EA',
-      statusFilter: 'all'
+      statusFilter: 'Tất cả'
     },
     {
-      id: 'total_sku',
-      title: 'Tổng SKU',
-      value: `${stats?.totalSku || 356} SKU`,
-      subtitle: 'Mã biến thể phân loại',
-      icon: Layers,
-      iconColor: '#1877F2',
-      bgColor: '#EFF6FF',
-      statusFilter: 'all'
-    },
-    {
-      id: 'total_quantity',
-      title: 'Tổng tồn kho',
-      value: `${(stats?.totalQuantity || 12580).toLocaleString('vi-VN')} sản phẩm`,
-      subtitle: 'Tồn thực tế trong kho',
-      icon: Box,
-      iconColor: '#9333EA',
-      bgColor: '#F3E8FF',
-      statusFilter: 'all'
+      id: 'in_stock',
+      title: 'Đang còn hàng',
+      value: isZero ? 0 : (stats?.inStockCount || 41),
+      subtitle: isZero ? 'Chưa có hàng' : 'Tồn kho an toàn (> 5)',
+      icon: CheckCircle2,
+      iconColor: '#16A34A',
+      bgColor: '#F0FDF4',
+      statusFilter: 'Còn hàng'
     },
     {
       id: 'low_stock',
       title: 'Sắp hết hàng',
-      value: `${stats?.lowStockCount || 18} sản phẩm`,
-      subtitle: 'Tồn kho <= 10 sản phẩm',
+      value: isZero ? 0 : (stats?.lowStockCount || 5),
+      subtitle: isZero ? '0 cảnh báo' : 'Tồn kho <= 5 sản phẩm',
       icon: AlertTriangle,
       iconColor: '#F97316',
       bgColor: '#FFF7ED',
-      statusFilter: 'low'
+      statusFilter: 'Sắp hết'
     },
     {
       id: 'out_of_stock',
       title: 'Hết hàng',
-      value: `${stats?.outOfStockCount || 5} sản phẩm`,
-      subtitle: 'Tồn kho khả dụng = 0',
+      value: isZero ? 0 : (stats?.outOfStockCount || 2),
+      subtitle: isZero ? '0 sản phẩm' : 'Tồn kho = 0 sản phẩm',
       icon: XCircle,
       iconColor: '#EF4444',
       bgColor: '#FEF2F2',
-      statusFilter: 'out'
+      statusFilter: 'Hết hàng'
     }
   ];
 
@@ -65,6 +57,7 @@ export default function InventoryKpiCards({ stats, onFilterStatus }) {
             key={card.id} 
             className="inventory-kpi-card clickable-card"
             onClick={() => onFilterStatus && onFilterStatus(card.statusFilter)}
+            title={`Lọc danh sách theo ${card.title}`}
           >
             <div className="kpi-icon-circle" style={{ backgroundColor: card.bgColor, color: card.iconColor }}>
               <IconComp size={20} />

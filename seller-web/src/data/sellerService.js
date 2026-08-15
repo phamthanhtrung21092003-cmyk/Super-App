@@ -8,13 +8,14 @@
 export const MOCK_ORDERS_DEMO = [
   {
     id: 'ord_1',
-    code: '#SP250811-0286',
-    date: '11/08 10:30',
+    code: '#VL000123',
+    date: '15/08/2026 10:30',
     status: 'Chờ xác nhận',
     hasNewChat: true,
     countdownTimer: '12:30:45',
+    warehouse: 'Kho Tổng Hà Nội',
     customer: {
-      name: 'Nguyễn Thị Lan',
+      name: 'Nguyễn Văn B',
       phone: '0901 234 567',
       address: '123 Nguyễn Văn Linh, Quận Long Biên, Hà Nội',
       city: 'Hà Nội'
@@ -22,43 +23,38 @@ export const MOCK_ORDERS_DEMO = [
     items: [
       {
         productId: 'p1',
-        name: 'Áo thun nam Basic',
+        name: 'Áo thun Basic Nam Cotton 100%',
         variant: 'Trắng - M',
-        price: 199000,
-        quantity: 2,
-        total: 398000,
-        image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300'
-      },
-      {
-        productId: 'p2',
-        name: 'Mũ lưỡi trai Be',
-        variant: 'Be',
-        price: 129000,
+        sku: 'ATB-WHT-M',
+        price: 299000,
         quantity: 1,
-        total: 129000,
-        image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=300'
+        total: 299000,
+        image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300'
       }
     ],
     summary: {
-      subtotal: 527000,
-      shippingFee: 15000,
-      discount: -20000,
-      total: 522000,
-      paymentMethod: 'Ví V-life',
-      paymentStatus: 'Chờ xác nhận'
+      subtotal: 299000,
+      shippingFee: 25000,
+      discount: -25000,
+      total: 299000,
+      paymentMethod: 'COD',
+      paymentStatus: 'Chưa thanh toán'
     },
     shipping: {
-      provider: 'GHN',
-      providerName: 'Giao Hàng Nhanh',
+      provider: 'Viettel Post',
+      providerName: 'Viettel Post',
       service: 'Giao tiêu chuẩn',
-      trackingNo: 'GHN123456789VN'
+      trackingNo: 'VTP882910394VN'
     }
   },
   {
     id: 'ord_2',
-    code: '#SP250811-0285',
-    date: '11/08 09:15',
-    status: 'Chờ lấy hàng',
+    code: '#VL000124',
+    date: '15/08/2026 09:15',
+    status: 'Chờ đóng gói',
+    hasNewChat: false,
+    countdownTimer: '08:45:10',
+    warehouse: 'Kho Tổng TP.HCM',
     customer: {
       name: 'Trần Văn Minh',
       phone: '0987 654 321',
@@ -67,35 +63,78 @@ export const MOCK_ORDERS_DEMO = [
     },
     items: [
       {
-        productId: 'p3',
-        name: 'Chuột Logitech G102',
-        variant: 'Đen',
-        price: 550000,
+        productId: 'p2',
+        name: 'Chuột Gaming Không Dây Ergonomic',
+        variant: 'Đen nhám',
+        sku: 'MS-G102-BLK',
+        price: 450000,
         quantity: 1,
-        total: 550000,
+        total: 450000,
         image: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=300'
       }
     ],
     summary: {
-      subtotal: 550000,
+      subtotal: 450000,
       shippingFee: 20000,
       discount: 0,
-      total: 570000,
-      paymentMethod: 'Thanh toán online',
+      total: 470000,
+      paymentMethod: 'Ví V-life',
+      paymentStatus: 'Đã thanh toán'
+    },
+    shipping: {
+      provider: 'GHN',
+      providerName: 'Giao Hàng Nhanh',
+      service: 'Giao siêu tốc',
+      trackingNo: 'GHN992837411VN'
+    }
+  },
+  {
+    id: 'ord_3',
+    code: '#VL000125',
+    date: '14/08/2026 18:40',
+    status: 'Chờ bàn giao',
+    hasNewChat: true,
+    warehouse: 'Kho Tổng Hà Nội',
+    customer: {
+      name: 'Phạm Hồng Nhung',
+      phone: '0912 888 999',
+      address: '78 Phố Huế, Quận Hai Bà Trưng, Hà Nội',
+      city: 'Hà Nội'
+    },
+    items: [
+      {
+        productId: 'p3',
+        name: 'Mũ lưỡi trai phong cách Vintage',
+        variant: 'Be đậm',
+        sku: 'CAP-VTG-BE',
+        price: 129000,
+        quantity: 2,
+        total: 258000,
+        image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=300'
+      }
+    ],
+    summary: {
+      subtotal: 258000,
+      shippingFee: 15000,
+      discount: -15000,
+      total: 258000,
+      paymentMethod: 'Ví V-life',
       paymentStatus: 'Đã thanh toán'
     },
     shipping: {
       provider: 'J&T',
       providerName: 'J&T Express',
-      service: 'Giao nhanh',
-      trackingNo: 'JT987654321VN'
+      service: 'Giao nhanh 24h',
+      trackingNo: 'JT773829104VN'
     }
   },
   {
-    id: 'ord_3',
-    code: '#SP250811-0284',
-    date: '10/08 20:10',
+    id: 'ord_4',
+    code: '#VL000126',
+    date: '14/08/2026 14:20',
     status: 'Đang giao',
+    hasNewChat: false,
+    warehouse: 'Kho Đà Nẵng',
     customer: {
       name: 'Lê Thu Hà',
       phone: '0966 112 233',
@@ -105,19 +144,20 @@ export const MOCK_ORDERS_DEMO = [
     items: [
       {
         productId: 'p4',
-        name: 'Balo laptop 15.6 inch',
-        variant: 'Xám',
-        price: 299000,
+        name: 'Balo Laptop Chống Nước 15.6 inch',
+        variant: 'Xám Titan',
+        sku: 'BALO-156-GRY',
+        price: 399000,
         quantity: 1,
-        total: 299000,
+        total: 399000,
         image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300'
       }
     ],
     summary: {
-      subtotal: 299000,
-      shippingFee: 25000,
+      subtotal: 399000,
+      shippingFee: 30000,
       discount: 0,
-      total: 324000,
+      total: 429000,
       paymentMethod: 'COD',
       paymentStatus: 'Thanh toán khi nhận hàng'
     },
@@ -129,12 +169,14 @@ export const MOCK_ORDERS_DEMO = [
     }
   },
   {
-    id: 'ord_4',
-    code: '#SP250811-0283',
-    date: '10/08 16:20',
+    id: 'ord_5',
+    code: '#VL000127',
+    date: '13/08/2026 11:30',
     status: 'Hoàn thành',
+    hasNewChat: false,
+    warehouse: 'Kho Tổng TP.HCM',
     customer: {
-      name: 'Nguyễn Hoàng',
+      name: 'Nguyễn Hoàng Long',
       phone: '0909 888 777',
       address: '321 3 Tháng 2, Quận Ninh Kiều, Cần Thơ',
       city: 'Cần Thơ'
@@ -142,8 +184,9 @@ export const MOCK_ORDERS_DEMO = [
     items: [
       {
         productId: 'p5',
-        name: 'Tai nghe Bluetooth True Wireless',
-        variant: 'Trắng',
+        name: 'Tai nghe Bluetooth True Wireless Bass Boost',
+        variant: 'Trắng Pearl',
+        sku: 'EAR-TWS-WHT',
         price: 450000,
         quantity: 1,
         total: 450000,
@@ -152,8 +195,8 @@ export const MOCK_ORDERS_DEMO = [
     ],
     summary: {
       subtotal: 450000,
-      shippingFee: 15000,
-      discount: -15000,
+      shippingFee: 20000,
+      discount: -20000,
       total: 450000,
       paymentMethod: 'Ví V-life',
       paymentStatus: 'Đã thanh toán'
@@ -166,48 +209,12 @@ export const MOCK_ORDERS_DEMO = [
     }
   },
   {
-    id: 'ord_5',
-    code: '#SP250811-0282',
-    date: '10/08 14:10',
-    status: 'Hoàn thành',
-    customer: {
-      name: 'Phạm Thị Mai',
-      phone: '0388 999 666',
-      address: '159 Trần Phú, Quận Ngô Quyền, Hải Phòng',
-      city: 'Hải Phòng'
-    },
-    items: [
-      {
-        productId: 'p6',
-        name: 'Áo hoodie nữ Premium Oversize',
-        variant: 'Hồng - L',
-        price: 349000,
-        quantity: 1,
-        total: 349000,
-        image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=300'
-      }
-    ],
-    summary: {
-      subtotal: 349000,
-      shippingFee: 20000,
-      discount: 0,
-      total: 369000,
-      paymentMethod: 'COD',
-      paymentStatus: 'Đã thanh toán khi nhận'
-    },
-    shipping: {
-      provider: 'J&T',
-      providerName: 'J&T Express',
-      service: 'Giao tiêu chuẩn',
-      trackingNo: 'JT111222333VN'
-    }
-  },
-  {
     id: 'ord_6',
-    code: '#SP250811-0281',
-    date: '10/08 11:45',
+    code: '#VL000128',
+    date: '12/08/2026 16:50',
     status: 'Đã hủy',
-    cancelReason: 'Khách hủy đơn',
+    cancelReason: 'Khách hàng đổi ý muốn đổi size sản phẩm',
+    warehouse: 'Kho Tổng Hà Nội',
     customer: {
       name: 'Đỗ Văn Nam',
       phone: '0877 456 789',
@@ -216,9 +223,10 @@ export const MOCK_ORDERS_DEMO = [
     },
     items: [
       {
-        productId: 'p7',
-        name: 'Sạc dự phòng 20000mAh Sạc nhanh 22.5W',
-        variant: 'Đen',
+        productId: 'p6',
+        name: 'Sạc Dự Phòng 20000mAh Sạc Nhanh 22.5W',
+        variant: 'Đen Matte',
+        sku: 'PB-20K-BLK',
         price: 299000,
         quantity: 1,
         total: 299000,
@@ -231,7 +239,7 @@ export const MOCK_ORDERS_DEMO = [
       discount: 0,
       total: 299000,
       paymentMethod: 'Ví V-life',
-      paymentStatus: 'Đã hoàn tiền'
+      paymentStatus: 'Đã hoàn tiền vào ví'
     },
     shipping: {
       provider: '--',
@@ -242,9 +250,52 @@ export const MOCK_ORDERS_DEMO = [
   },
   {
     id: 'ord_7',
-    code: '#SP250811-0280',
-    date: '09/08 22:30',
+    code: '#VL000129',
+    date: '12/08/2026 08:15',
+    status: 'Trả hàng / Hoàn tiền',
+    returnReason: 'Sản phẩm lỗi kết nối Bluetooth',
+    returnStatus: 'Chờ Shop kiểm tra hàng hoàn',
+    warehouse: 'Kho Tổng TP.HCM',
+    customer: {
+      name: 'Phạm Thị Mai',
+      phone: '0388 999 666',
+      address: '159 Trần Phú, Quận Ngô Quyền, Hải Phòng',
+      city: 'Hải Phòng'
+    },
+    items: [
+      {
+        productId: 'p7',
+        name: 'Đồng Hồ Thông Minh Sport Theo Dõi Sức Khỏe',
+        variant: 'Dây Silicon Đen',
+        sku: 'SW-SPORT-BLK',
+        price: 680000,
+        quantity: 1,
+        total: 680000,
+        image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=300'
+      }
+    ],
+    summary: {
+      subtotal: 680000,
+      shippingFee: 25000,
+      discount: -50000,
+      total: 655000,
+      paymentMethod: 'Ví V-life',
+      paymentStatus: 'Tạm giữ tiền hoàn'
+    },
+    shipping: {
+      provider: 'GHN',
+      providerName: 'Giao Hàng Nhanh',
+      service: 'Thu hồi hàng hoàn',
+      trackingNo: 'GHN-RET-992182VN'
+    }
+  },
+  {
+    id: 'ord_8',
+    code: '#VL000130',
+    date: '11/08/2026 21:00',
     status: 'Hoàn thành',
+    hasNewChat: false,
+    warehouse: 'Kho Tổng Hà Nội',
     customer: {
       name: 'Hoàng Thu Hiền',
       phone: '0912 345 678',
@@ -254,8 +305,9 @@ export const MOCK_ORDERS_DEMO = [
     items: [
       {
         productId: 'p8',
-        name: 'Giày thể thao nam Runner Pro Max',
+        name: 'Giày Thể Thao Nam Runner Pro Max Êm Ái',
         variant: 'Đen - 42',
+        sku: 'SH-RUN-42B',
         price: 599000,
         quantity: 1,
         total: 599000,
@@ -342,25 +394,60 @@ const newSellerDb = {
   ]
 };
 
-// Public Service Layer API Interface
+// =========================================================================
+// 1️⃣ DASHBOARD DATA SERVICE (REALTIME MOCK PERSISTENCE & ANALYTICS)
+// =========================================================================
+
+// Fetch KPI Top Summary Cards
 export const sellerService = {
-  // Fetch Shop Profile Info
   async getShopInfo() {
     return Promise.resolve({ ...newSellerDb.shopInfo });
   },
 
-  // Fetch KPI Metrics (Dynamically calculates if real orders exist)
-  async getKpiMetrics(period = 'today', existingOrders = []) {
+  async getKpiMetrics(period = 'today', existingOrders = [], existingProducts = []) {
+    if ((!existingOrders || existingOrders.length === 0) && (!existingProducts || existingProducts.length === 0)) {
+      return Promise.resolve({
+        revenue: { formatted: '0đ', changePercent: 0, isPositive: true },
+        orders: { formatted: '0', changePercent: 0, isPositive: true },
+        pending: { formatted: '0', diffCount: 0, isPositive: true },
+        itemsSold: { formatted: '0', changePercent: 0, isPositive: true },
+        customers: { formatted: '0', changePercent: 0, isPositive: true }
+      });
+    }
     return Promise.resolve(newSellerDb.kpiMetrics[period] || newSellerDb.kpiMetrics.today);
   },
 
-  // Fetch Pending Action Items
-  async getPendingActions(existingOrders = []) {
-    return Promise.resolve([...newSellerDb.pendingActions]);
+  // Fetch Pending Action Items (Requirement 4 & 20)
+  async getPendingActions(existingOrders = [], unreadMessageCount = 8) {
+    if (!existingOrders || existingOrders.length === 0) {
+      return Promise.resolve([
+        { id: 'pending_confirm', title: 'Đơn chờ xác nhận', count: 0, targetTab: 'orders', orderFilter: 'Chờ xác nhận' },
+        { id: 'pending_pack', title: 'Đơn chờ đóng gói', count: 0, targetTab: 'orders', orderFilter: 'Chờ đóng gói' },
+        { id: 'pending_handover', title: 'Đơn chờ bàn giao', count: 0, targetTab: 'orders', orderFilter: 'Chờ bàn giao' },
+        { id: 'returns', title: 'Yêu cầu trả hàng', count: 0, targetTab: 'orders', orderFilter: 'Trả hàng' },
+        { id: 'unread_chats', title: 'Tin nhắn chưa trả lời', count: unreadMessageCount, targetTab: 'messages', orderFilter: 'unread' }
+      ]);
+    }
+    return Promise.resolve([
+      { id: 'pending_confirm', title: 'Đơn chờ xác nhận', count: 24, targetTab: 'orders', orderFilter: 'Chờ xác nhận' },
+      { id: 'pending_pack', title: 'Đơn chờ đóng gói', count: 12, targetTab: 'orders', orderFilter: 'Chờ đóng gói' },
+      { id: 'pending_handover', title: 'Đơn chờ bàn giao', count: 8, targetTab: 'orders', orderFilter: 'Chờ bàn giao' },
+      { id: 'returns', title: 'Yêu cầu trả hàng', count: 3, targetTab: 'orders', orderFilter: 'Trả hàng' },
+      { id: 'unread_chats', title: 'Tin nhắn chưa trả lời', count: unreadMessageCount, targetTab: 'messages', orderFilter: 'unread' }
+    ]);
   },
 
-  // Fetch Revenue Chart Data
+  // Fetch Revenue Chart Data (Requirement 12)
   async getRevenueChartData(days = 7, existingOrders = []) {
+    if (!existingOrders || existingOrders.length === 0) {
+      return Promise.resolve({
+        totalRevenue: 0,
+        formattedRevenue: '0đ',
+        growthPercent: null,
+        days,
+        points: []
+      });
+    }
     return Promise.resolve({
       totalRevenue: 125800000,
       formattedRevenue: '125.800.000đ',
@@ -378,16 +465,32 @@ export const sellerService = {
     });
   },
 
-  // Get Recent Orders
+  // Get Recent Orders (Requirement 13)
   async getRecentOrders(existingOrders = [], limit = 5) {
-    const defaultOrders = [
-      { id: '#VL000123', orderId: 'ord_1', customer: 'Nguyễn Văn A', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100', items: '2 sản phẩm', itemCount: 2, total: 398000, date: '12/08/2026', status: 'Chờ xác nhận' },
-      { id: '#VL000124', orderId: 'ord_2', customer: 'Trần Văn B', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', items: '1 sản phẩm', itemCount: 1, total: 250000, date: '12/08/2026', status: 'Đang giao' },
-      { id: '#VL000125', orderId: 'ord_3', customer: 'Lê Thị C', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', items: '3 sản phẩm', itemCount: 3, total: 680000, date: '12/08/2026', status: 'Chờ lấy hàng' },
-      { id: '#VL000126', orderId: 'ord_4', customer: 'Phạm Văn D', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', items: '1 sản phẩm', itemCount: 1, total: 120000, date: '12/08/2026', status: 'Hoàn thành' },
-      { id: '#VL000127', orderId: 'ord_5', customer: 'Hoàng Văn E', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100', items: '2 sản phẩm', itemCount: 2, total: 560000, date: '12/08/2026', status: 'Đang giao' }
-    ];
-    return Promise.resolve(defaultOrders);
+    if (!existingOrders || existingOrders.length === 0) {
+      return Promise.resolve([]);
+    }
+    const formatted = existingOrders.slice(0, limit).map((o, idx) => {
+      const customerName = typeof o.customer === 'object' 
+        ? (o.customer?.name || o.customer?.fullName || 'Khách hàng') 
+        : (o.customer || 'Khách hàng');
+      const avatar = (typeof o.customer === 'object' ? o.customer?.avatar : o.avatar) 
+        || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100`;
+      const itemCount = o.products?.length || o.itemCount || 1;
+      const totalAmount = typeof o.total === 'number' ? o.total : (o.summary?.totalAmount || o.totalAmount || 0);
+      return {
+        id: o.code || o.id || `#VL00012${idx}`,
+        orderId: o.id || `ord_${idx}`,
+        customer: customerName,
+        avatar: avatar,
+        items: `${itemCount} sản phẩm`,
+        itemCount: itemCount,
+        total: totalAmount,
+        date: o.date || o.createdAt || '12/08/2026',
+        status: o.status || 'Chờ xác nhận'
+      };
+    });
+    return Promise.resolve(formatted);
   },
 
   // FINANCIAL OVERVIEW
@@ -627,7 +730,45 @@ export const sellerService = {
 
   // Get Orders Filtered
   async getOrders(ordersList = [], filters = {}) {
-    const { tab = 'all', query = '', provider = 'Tất cả' } = filters;
+    return this.filterOrders(ordersList, filters);
+  },
+
+  // Get Orders By Status
+  async getOrdersByStatus(ordersList = [], status = 'all') {
+    if (!status || status === 'all' || status === 'Tất cả') {
+      return Promise.resolve([...ordersList]);
+    }
+    const filtered = ordersList.filter(o => o.status === status);
+    return Promise.resolve(filtered);
+  },
+
+  // Search Orders by orderId, customerName, or productName
+  async searchOrders(ordersList = [], query = '') {
+    if (!query || query.trim() === '') {
+      return Promise.resolve([...ordersList]);
+    }
+    const q = query.toLowerCase().trim();
+    const result = ordersList.filter(o => {
+      const matchCode = (o.code && o.code.toLowerCase().includes(q)) || (o.id && o.id.toLowerCase().includes(q));
+      const matchCustName = o.customer?.name && o.customer.name.toLowerCase().includes(q);
+      const matchPhone = o.customer?.phone && o.customer.phone.includes(q);
+      const matchProdName = o.items && o.items.some(it => it.name && it.name.toLowerCase().includes(q));
+      return matchCode || matchCustName || matchPhone || matchProdName;
+    });
+    return Promise.resolve(result);
+  },
+
+  // Comprehensive Multi-Criteria Filter
+  async filterOrders(ordersList = [], filters = {}) {
+    const { 
+      tab = 'all', 
+      query = '', 
+      provider = 'Tất cả',
+      status = 'Tất cả',
+      paymentMethod = 'Tất cả',
+      warehouse = 'Tất cả'
+    } = filters;
+
     let list = [...ordersList];
 
     // Status Tab Filtering
@@ -638,22 +779,38 @@ export const sellerService = {
     if (tab === 'delivered') list = list.filter(o => o.status === 'Đã giao');
     if (tab === 'completed') list = list.filter(o => o.status === 'Hoàn thành');
     if (tab === 'cancelled') list = list.filter(o => o.status === 'Đã hủy');
-    if (tab === 'returned') list = list.filter(o => o.status === 'Trả hàng/Hoàn tiền' || o.status === 'Trả hàng' || o.status === 'Đã hoàn tiền');
+    if (tab === 'returned') list = list.filter(o => o.status === 'Trả hàng/Hoàn tiền' || o.status === 'Trả hàng' || o.status === 'Trả hàng / Hoàn tiền' || o.status === 'Đã hoàn tiền');
 
-    // Search Query (Code, Customer name, Phone)
-    if (query && query.trim() !== '') {
-      const q = query.toLowerCase().trim();
-      list = list.filter(o => {
-        const matchCode = o.code && o.code.toLowerCase().includes(q);
-        const matchCustName = o.customer?.name && o.customer.name.toLowerCase().includes(q);
-        const matchPhone = o.customer?.phone && o.customer.phone.includes(q);
-        return matchCode || matchCustName || matchPhone;
-      });
+    // Status dropdown filter
+    if (status && status !== 'Tất cả') {
+      list = list.filter(o => o.status === status);
+    }
+
+    // Payment Method Filter
+    if (paymentMethod && paymentMethod !== 'Tất cả') {
+      list = list.filter(o => o.summary?.paymentMethod === paymentMethod);
+    }
+
+    // Warehouse Filter
+    if (warehouse && warehouse !== 'Tất cả') {
+      list = list.filter(o => o.warehouse === warehouse);
     }
 
     // Shipping Provider Filter
     if (provider && provider !== 'Tất cả' && provider !== 'Tất cả vận chuyển') {
       list = list.filter(o => o.shipping?.provider === provider || o.shipping?.providerName === provider);
+    }
+
+    // Search Query (Code, Customer name, Phone, Product name)
+    if (query && query.trim() !== '') {
+      const q = query.toLowerCase().trim();
+      list = list.filter(o => {
+        const matchCode = (o.code && o.code.toLowerCase().includes(q)) || (o.id && o.id.toLowerCase().includes(q));
+        const matchCustName = o.customer?.name && o.customer.name.toLowerCase().includes(q);
+        const matchPhone = o.customer?.phone && o.customer.phone.includes(q);
+        const matchProdName = o.items && o.items.some(it => it.name && it.name.toLowerCase().includes(q));
+        return matchCode || matchCustName || matchPhone || matchProdName;
+      });
     }
 
     return Promise.resolve(list);
@@ -685,6 +842,100 @@ export const sellerService = {
       return o;
     });
     return Promise.resolve(updated);
+  },
+
+  // PRODUCT DRAFT MANAGEMENT FACADE API
+  _productDrafts: {},
+
+  async createProductDraft(data = {}) {
+    const draftId = data.id || `draft_${Date.now()}`;
+    const draft = {
+      id: draftId,
+      status: 'DRAFT',
+      name: data.name || '',
+      category: data.category || '',
+      brand: data.brand || 'Không có thương hiệu',
+      description: data.description || '',
+      images: data.images || [],
+      videos: data.videos || [],
+      price: data.price || 0,
+      stock: data.stock || 0,
+      currentStep: data.currentStep || 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...data
+    };
+    this._productDrafts[draftId] = draft;
+    return Promise.resolve(draft);
+  },
+
+  async updateProductDraft(draftId, data = {}) {
+    if (!this._productDrafts[draftId]) {
+      return this.createProductDraft({ id: draftId, ...data });
+    }
+    this._productDrafts[draftId] = {
+      ...this._productDrafts[draftId],
+      ...data,
+      updatedAt: new Date().toISOString()
+    };
+    return Promise.resolve(this._productDrafts[draftId]);
+  },
+
+  async getProductDraft(draftId) {
+    return Promise.resolve(this._productDrafts[draftId] || null);
+  },
+
+  async validateProductDraft(data = {}) {
+    const errors = {};
+    if (!data.name || !data.name.trim()) {
+      errors.name = 'Vui lòng nhập tên sản phẩm.';
+    } else if (data.name.trim().length > 120) {
+      errors.name = 'Tên sản phẩm không được vượt quá 120 ký tự.';
+    }
+
+    if (!data.category || !data.category.trim() || data.category === 'Chọn danh mục' || data.category === 'Tất cả') {
+      errors.category = 'Vui lòng chọn danh mục.';
+    }
+
+    if (!data.images || data.images.length === 0) {
+      errors.images = 'Vui lòng thêm ít nhất 1 hình ảnh.';
+    }
+
+    const isValid = Object.keys(errors).length === 0;
+    return Promise.resolve({ isValid, errors });
+  },
+
+  async publishProduct(draftId, existingProducts = []) {
+    const draft = this._productDrafts[draftId];
+    if (!draft) {
+      return Promise.reject(new Error('Bản nháp không tồn tại.'));
+    }
+    const validation = await this.validateProductDraft(draft);
+    if (!validation.isValid) {
+      return Promise.reject(new Error('Thông tin sản phẩm chưa đầy đủ.'));
+    }
+
+    const newProduct = {
+      id: `prod_${Date.now()}`,
+      name: draft.name,
+      sku: draft.sku || `SKU-${Math.floor(100000 + Math.random() * 900000)}`,
+      category: draft.category,
+      brand: draft.brand || 'Không có thương hiệu',
+      description: draft.description || '',
+      price: Number(draft.price) || 0,
+      origPrice: Number(draft.origPrice) || Number(draft.price) || 0,
+      stock: Number(draft.stock) || 0,
+      sold: 0,
+      status: 'Đang bán',
+      createdAt: new Date().toLocaleDateString('vi-VN'),
+      variants: draft.variants || 'Mặc định',
+      image: draft.images && draft.images.length > 0 ? draft.images[0] : 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
+      images: draft.images || [],
+      videos: draft.videos || []
+    };
+
+    delete this._productDrafts[draftId];
+    return Promise.resolve(newProduct);
   },
 
   // PRODUCT CATALOG MANAGEMENT FACADE API
@@ -869,213 +1120,158 @@ export const sellerService = {
   // 🏭 INVENTORY MANAGEMENT FACADE API (KHO HÀNG SERVICE LAYER)
   // =========================================================================
 
-  // Threshold Configuration
-  LOW_STOCK_THRESHOLD: 30,
+  // Threshold Configuration (Requirement 12)
+  LOW_STOCK_THRESHOLD: 5,
 
   async getWarehouses() {
     return Promise.resolve([
-      { id: 'wh_main', code: 'WH-MAIN', name: 'Kho chính', location: 'TP. Hồ Chí Minh', isDefault: true },
-      { id: 'wh_hn', code: 'WH-HN', name: 'Kho Hà Nội', location: 'Hà Nội', isDefault: false },
+      { id: 'wh_hn', code: 'WH-HN', name: 'Kho Tổng Hà Nội', location: 'Hà Nội', isDefault: true },
+      { id: 'wh_hcm', code: 'WH-HCM', name: 'Kho Tổng TP.HCM', location: 'TP. Hồ Chí Minh', isDefault: false },
       { id: 'wh_dn', code: 'WH-DN', name: 'Kho Đà Nẵng', location: 'Đà Nẵng', isDefault: false }
     ]);
   },
 
-  // Calculate Status: Tồn kho tốt (Green), Sắp hết hàng (Orange), Hết hàng (Red)
+  // Calculate Status: Còn hàng (Green), Sắp hết (Orange), Hết hàng (Red)
   determineStockStatus(quantity) {
-    if (quantity <= 0) return { label: 'Hết hàng', code: 'OUT_OF_STOCK', color: '#EF4444', bg: '#FEF2F2' };
-    if (quantity <= this.LOW_STOCK_THRESHOLD) return { label: 'Sắp hết hàng', code: 'LOW_STOCK', color: '#F97316', bg: '#FFF7ED' };
-    return { label: 'Tồn kho tốt', code: 'GOOD_STOCK', color: '#00B14F', bg: '#E6F4EA' };
+    if (quantity <= 0) return { label: 'Hết hàng', code: 'OUT_OF_STOCK', color: '#EF4444', bg: '#FEF2F2', icon: '🔴' };
+    if (quantity <= this.LOW_STOCK_THRESHOLD) return { label: 'Sắp hết', code: 'LOW_STOCK', color: '#F97316', bg: '#FFF7ED', icon: '🟠' };
+    return { label: 'Còn hàng', code: 'GOOD_STOCK', color: '#00B14F', bg: '#E6F4EA', icon: '🟢' };
   },
 
-  // Get full inventory list (Hydrated from Product Catalog)
+  // Get full inventory list (Referencing strictly from Product Catalog without duplicating catalog)
   async getInventory(existingProducts = [], isNewShopState = false) {
-    if (isNewShopState) {
+    if (isNewShopState || !existingProducts || existingProducts.length === 0) {
       return Promise.resolve([]);
     }
 
-    const defaultItems = [
-      {
-        id: 'inv_1',
-        productId: 'p1',
-        productName: 'Áo thun nam Basic',
-        sku: 'ATB-001-WHT-L',
-        category: 'Thời trang nam / Áo thun',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 120,
-        reservedQuantity: 35,
-        costPrice: 80000,
-        image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
-        barcode: '893600001001'
-      },
-      {
-        id: 'inv_2',
-        productId: 'p2',
-        productName: 'Áo polo nam cao cấp',
-        sku: 'POLO-002-BLK-M',
-        category: 'Thời trang nam / Áo polo',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 85,
-        reservedQuantity: 20,
-        costPrice: 150000,
-        image: 'https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=400',
-        barcode: '893600001002'
-      },
-      {
-        id: 'inv_3',
-        productId: 'p3',
-        productName: 'Giày sneaker nam',
-        sku: 'SHOE-003-WHT-42',
-        category: 'Giày dép / Sneaker',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 45,
-        reservedQuantity: 10,
-        costPrice: 250000,
-        image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-        barcode: '893600001003'
-      },
-      {
-        id: 'inv_4',
-        productId: 'p4',
-        productName: 'Balo laptop 15.6 inch',
-        sku: 'BALO-004-BLK',
-        category: 'Phụ kiện / Balo',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 60,
-        reservedQuantity: 15,
-        costPrice: 180000,
-        image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400',
-        barcode: '893600001004'
-      },
-      {
-        id: 'inv_5',
-        productId: 'p5',
-        productName: 'Đồng hồ nam dây da',
-        sku: 'WATCH-005-BRN',
-        category: 'Phụ kiện / Đồng hồ',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 0,
-        reservedQuantity: 8,
-        costPrice: 450000,
-        image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=400',
-        barcode: '893600001005'
-      },
-      {
-        id: 'inv_6',
-        productId: 'p6',
-        productName: 'Ví da nam cao cấp',
-        sku: 'WALLET-006-BRN',
-        category: 'Phụ kiện / Ví',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 30,
-        reservedQuantity: 5,
-        costPrice: 120000,
-        image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400',
-        barcode: '893600001006'
-      },
-      {
-        id: 'inv_7',
-        productId: 'p7',
-        productName: 'Tai nghe Bluetooth Wireless',
-        sku: 'EAR-007-WHT',
-        category: 'Thiết bị điện tử',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 12,
-        reservedQuantity: 4,
-        costPrice: 320000,
-        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400',
-        barcode: '893600001007'
-      },
-      {
-        id: 'inv_8',
-        productId: 'p8',
-        productName: 'Mũ lưỡi trai Unisex',
-        sku: 'CAP-008-BLK',
-        category: 'Thời trang nam',
-        warehouseId: 'wh_main',
-        warehouseName: 'Kho chính',
-        quantity: 0,
-        reservedQuantity: 0,
-        costPrice: 60000,
-        image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400',
-        barcode: '893600001008'
-      }
-    ];
-
-    // Compute derived properties: Available stock & Inventory Value & Status
-    const calculated = defaultItems.map(item => {
-      const availableQuantity = Math.max(0, item.quantity - item.reservedQuantity);
-      const inventoryValue = item.quantity * item.costPrice;
-      const statusObj = this.determineStockStatus(item.quantity);
+    const calculated = existingProducts.map(prod => {
+      const quantity = typeof prod.stock === 'number' ? prod.stock : 100;
+      const reservedQuantity = prod.reservedStock || (quantity > 10 ? 5 : (quantity > 0 ? 1 : 0));
+      const availableQuantity = Math.max(0, quantity - reservedQuantity);
+      const statusObj = this.determineStockStatus(quantity);
 
       return {
-        ...item,
+        id: `inv_${prod.id}`,
+        productId: prod.id,
+        sku: prod.sku || `SKU-${prod.id}`,
+        warehouse: prod.warehouse || 'Kho Tổng Hà Nội',
+        quantity,
+        physicalStock: quantity,
+        reservedQuantity,
+        reservedStock: reservedQuantity,
         availableQuantity,
-        inventoryValue,
+        availableStock: availableQuantity,
+        sold: prod.sold || 0,
         status: statusObj.label,
-        statusObj
+        statusObj,
+        updatedAt: prod.updatedAt || '15/08/2026'
       };
     });
 
     return Promise.resolve(calculated);
   },
 
-  // Calculate 5 Inventory KPI Stats
-  async getInventoryStats(inventoryList = []) {
-    if (!inventoryList || inventoryList.length === 0) {
-      return Promise.resolve({
-        totalValue: 0,
-        formattedTotalValue: '0đ',
-        totalSku: 0,
-        totalQuantity: 0,
-        lowStockCount: 0,
-        outOfStockCount: 0,
-        positiveStockCount: 0
+  // Get Inventory By Product ID
+  async getInventoryByProductId(productId, inventoryList = []) {
+    const found = inventoryList.find(i => i.productId === productId);
+    return Promise.resolve(found || null);
+  },
+
+  // Search Inventory by productId, productName, or SKU
+  async searchInventory(inventoryList = [], query = '', existingProducts = []) {
+    if (!query || query.trim() === '') {
+      return Promise.resolve([...inventoryList]);
+    }
+    const q = query.toLowerCase().trim();
+    const result = inventoryList.filter(item => {
+      const prod = existingProducts.find(p => p.id === item.productId) || {};
+      const matchPid = item.productId && item.productId.toLowerCase().includes(q);
+      const matchSku = item.sku && item.sku.toLowerCase().includes(q);
+      const matchName = prod.name && prod.name.toLowerCase().includes(q);
+      return matchPid || matchSku || matchName;
+    });
+    return Promise.resolve(result);
+  },
+
+  // Comprehensive Multi-Criteria Filter for Inventory
+  async filterInventory(inventoryList = [], filters = {}, existingProducts = []) {
+    const {
+      query = '',
+      status = 'Tất cả',
+      category = 'Tất cả',
+      warehouse = 'Tất cả',
+      stockRange = 'Tất cả'
+    } = filters;
+
+    let list = [...inventoryList];
+
+    // Status filter (Còn hàng, Sắp hết, Hết hàng)
+    if (status && status !== 'Tất cả') {
+      if (status === 'Còn hàng') list = list.filter(i => (i.quantity || i.physicalStock || 0) > this.LOW_STOCK_THRESHOLD);
+      else if (status === 'Sắp hết' || status === 'Sắp hết hàng') list = list.filter(i => (i.quantity || i.physicalStock || 0) > 0 && (i.quantity || i.physicalStock || 0) <= this.LOW_STOCK_THRESHOLD);
+      else if (status === 'Hết hàng') list = list.filter(i => (i.quantity || i.physicalStock || 0) === 0);
+    }
+
+    // Category filter (lookup from existingProducts)
+    if (category && category !== 'Tất cả' && category !== 'Tất cả danh mục') {
+      list = list.filter(item => {
+        const prod = existingProducts.find(p => p.id === item.productId) || {};
+        return prod.category === category;
       });
     }
 
-    const totalValue = inventoryList.reduce((sum, i) => sum + (i.inventoryValue || i.quantity * i.costPrice || 0), 0);
-    const totalSku = inventoryList.length;
-    const totalQuantity = inventoryList.reduce((sum, i) => sum + (i.quantity || 0), 0);
-    const lowStockCount = inventoryList.filter(i => i.quantity > 0 && i.quantity <= this.LOW_STOCK_THRESHOLD).length;
-    const outOfStockCount = inventoryList.filter(i => i.quantity <= 0).length;
-    const positiveStockCount = inventoryList.filter(i => i.quantity > 0).length;
+    // Warehouse filter
+    if (warehouse && warehouse !== 'Tất cả' && warehouse !== 'Tất cả kho') {
+      list = list.filter(item => item.warehouse === warehouse);
+    }
+
+    // Stock Range filter
+    if (stockRange && stockRange !== 'Tất cả') {
+      if (stockRange === 'under10') list = list.filter(i => (i.quantity || 0) < 10);
+      else if (stockRange === '10to50') list = list.filter(i => (i.quantity || 0) >= 10 && (i.quantity || 0) <= 50);
+      else if (stockRange === 'above50') list = list.filter(i => (i.quantity || 0) > 50);
+    }
+
+    // Search query (productId, productName, SKU)
+    if (query && query.trim() !== '') {
+      const q = query.toLowerCase().trim();
+      list = list.filter(item => {
+        const prod = existingProducts.find(p => p.id === item.productId) || {};
+        const matchPid = item.productId && item.productId.toLowerCase().includes(q);
+        const matchSku = item.sku && item.sku.toLowerCase().includes(q);
+        const matchName = prod.name && prod.name.toLowerCase().includes(q);
+        return matchPid || matchSku || matchName;
+      });
+    }
+
+    return Promise.resolve(list);
+  },
+
+  // Calculate 4 Inventory KPI Stats (Requirement 5)
+  async getInventoryStats(inventoryList = []) {
+    if (!inventoryList || inventoryList.length === 0) {
+      return Promise.resolve({
+        totalProducts: 0,
+        inStockCount: 0,
+        lowStockCount: 0,
+        outOfStockCount: 0
+      });
+    }
+
+    const totalProducts = inventoryList.length;
+    const inStockCount = inventoryList.filter(i => (i.quantity || i.physicalStock || 0) > this.LOW_STOCK_THRESHOLD).length;
+    const lowStockCount = inventoryList.filter(i => (i.quantity || i.physicalStock || 0) > 0 && (i.quantity || i.physicalStock || 0) <= this.LOW_STOCK_THRESHOLD).length;
+    const outOfStockCount = inventoryList.filter(i => (i.quantity || i.physicalStock || 0) === 0).length;
 
     return Promise.resolve({
-      totalValue,
-      formattedTotalValue: `${totalValue.toLocaleString('vi-VN')}đ`,
-      totalSku,
-      totalQuantity,
+      totalProducts,
+      inStockCount,
       lowStockCount,
-      outOfStockCount,
-      positiveStockCount
+      outOfStockCount
     });
   },
 
-  // Get Item History Logs
-  async getInventoryHistory(productId) {
-    const historyLogs = [
-      { id: 'h1', productId: 'p1', time: '12/08/2026 14:30', type: 'Nhập kho', change: +50, before: 70, after: 120, user: 'Nguyễn Văn A', note: 'Nhập lô hàng mới từ nhà cung cấp' },
-      { id: 'h2', productId: 'p1', time: '11/08/2026 10:15', type: 'Xuất kho', change: -10, before: 80, after: 70, user: 'Hệ thống (Đơn hàng)', note: 'Đóng gói đơn hàng #VL000123' },
-      { id: 'h3', productId: 'p1', time: '10/08/2026 16:45', type: 'Điều chỉnh', change: +5, before: 65, after: 70, user: 'Nguyễn Văn A', note: 'Kiểm kê thực tế kho' },
-      { id: 'h4', productId: 'p2', time: '12/08/2026 09:00', type: 'Nhập kho', change: +35, before: 50, after: 85, user: 'Nguyễn Văn A', note: 'Nhập bổ sung tồn kho' }
-    ];
-
-    if (productId) {
-      return Promise.resolve(historyLogs.filter(h => h.productId === productId));
-    }
-    return Promise.resolve(historyLogs);
-  },
-
-
-
-  // Receive stock (+) by SKU or productId
+  // Receive stock (+) by SKU or productId (Requirement 10)
   async receiveInventory(inventoryList, skuOrProductId, quantity, reason = 'Nhập kho bổ sung') {
     const qty = parseInt(quantity, 10) || 0;
     const updated = inventoryList.map(item => {
@@ -1083,12 +1279,15 @@ export const sellerService = {
         const physicalStock = (item.physicalStock || item.quantity || 0) + qty;
         const reservedStock = item.reservedStock || item.reservedQuantity || 0;
         const availableStock = Math.max(0, physicalStock - reservedStock);
+        const statusObj = this.determineStockStatus(physicalStock);
         return {
           ...item,
           physicalStock,
           quantity: physicalStock,
           availableStock,
           availableQuantity: availableStock,
+          status: statusObj.label,
+          statusObj,
           updatedAt: new Date().toLocaleDateString('vi-VN')
         };
       }
@@ -1097,8 +1296,8 @@ export const sellerService = {
     return Promise.resolve(updated);
   },
 
-  // Adjust stock quantity by SKU
-  async adjustInventory(inventoryList, skuOrProductId, adjustType, amount, reason = 'Điều chỉnh tồn kho') {
+  // Adjust stock quantity by SKU or productId (Requirement 11)
+  async adjustInventory(inventoryList, skuOrProductId, adjustType, amount, reason = 'Kiểm kê thực tế') {
     const qty = parseInt(amount, 10) || 0;
     const updated = inventoryList.map(item => {
       if (item.sku === skuOrProductId || item.productId === skuOrProductId || item.id === skuOrProductId) {
@@ -1109,18 +1308,26 @@ export const sellerService = {
 
         const reservedStock = item.reservedStock || item.reservedQuantity || 0;
         const availableStock = Math.max(0, physicalStock - reservedStock);
+        const statusObj = this.determineStockStatus(physicalStock);
         return {
           ...item,
           physicalStock,
           quantity: physicalStock,
           availableStock,
           availableQuantity: availableStock,
+          status: statusObj.label,
+          statusObj,
           updatedAt: new Date().toLocaleDateString('vi-VN')
         };
       }
       return item;
     });
     return Promise.resolve(updated);
+  },
+
+  // Update Inventory directly
+  async updateInventory(inventoryList, skuOrProductId, newQuantity) {
+    return this.adjustInventory(inventoryList, skuOrProductId, 'SET', newQuantity, 'Cập nhật trực tiếp');
   },
 
   // Reserve Stock when Order is confirmed
@@ -2128,5 +2335,756 @@ export const MOCK_SHIPPING_DEMO = [
   }
 ];
 
+// =========================================================================
+// 💬 MESSAGING CENTER MOCK DATA & FACADE METHODS (TRUNG TÂM TIN NHẮN)
+// =========================================================================
+
+export const MOCK_CONVERSATIONS_DATA = [
+  {
+    id: 'conv_1',
+    customerId: 'cust_1',
+    customerName: 'Nguyễn Minh Anh',
+    customerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+    customerPhone: '0987.654.321',
+    customerJoinDate: '12/03/2025',
+    customerTag: '⭐ Khách hàng thân thiết',
+    totalOrders: 12,
+    totalSpent: 8450000,
+    lastMessage: 'Shop ơi áo này còn size M không?',
+    lastMessageTime: '09:42',
+    unreadCount: 2,
+    isReplied: false,
+    updatedAt: '2026-08-15T09:42:00Z',
+    status: 'online'
+  },
+  {
+    id: 'conv_2',
+    customerId: 'cust_2',
+    customerName: 'Trần Văn Nam',
+    customerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    customerPhone: '0912.345.678',
+    customerJoinDate: '05/06/2025',
+    customerTag: '🟢 Đang mua hàng',
+    totalOrders: 5,
+    totalSpent: 2150000,
+    lastMessage: 'Bao giờ đơn của tôi được giao?',
+    lastMessageTime: '09:30',
+    unreadCount: 1,
+    isReplied: false,
+    updatedAt: '2026-08-15T09:30:00Z',
+    status: 'online'
+  },
+  {
+    id: 'conv_3',
+    customerId: 'cust_3',
+    customerName: 'Lê Thu Hà',
+    customerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+    customerPhone: '0903.112.233',
+    customerJoinDate: '20/07/2026',
+    customerTag: '🔵 Khách mới',
+    totalOrders: 1,
+    totalSpent: 450000,
+    lastMessage: 'Cho mình hỏi sản phẩm này còn không?',
+    lastMessageTime: 'Hôm qua',
+    unreadCount: 0,
+    isReplied: true,
+    updatedAt: '2026-08-14T16:20:00Z',
+    status: 'offline'
+  },
+  {
+    id: 'conv_4',
+    customerId: 'cust_4',
+    customerName: 'Hoàng Đức Thắng',
+    customerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+    customerPhone: '0938.889.991',
+    customerJoinDate: '15/01/2025',
+    customerTag: '⭐ Khách hàng thân thiết',
+    totalOrders: 8,
+    totalSpent: 5200000,
+    lastMessage: 'Shop gói hàng kỹ giúp mình nhé!',
+    lastMessageTime: '14/08',
+    unreadCount: 0,
+    isReplied: true,
+    updatedAt: '2026-08-14T10:15:00Z',
+    status: 'offline'
+  },
+  {
+    id: 'conv_5',
+    customerId: 'cust_5',
+    customerName: 'Phạm Mai Chi',
+    customerAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+    customerPhone: '0977.554.433',
+    customerJoinDate: '10/11/2024',
+    customerTag: '⭐ Khách hàng thân thiết',
+    totalOrders: 15,
+    totalSpent: 11200000,
+    lastMessage: 'Áo mặc vừa vặn và đẹp lắm shop ơi.',
+    lastMessageTime: '13/08',
+    unreadCount: 0,
+    isReplied: true,
+    updatedAt: '2026-08-13T14:40:00Z',
+    status: 'offline'
+  },
+  {
+    id: 'conv_6',
+    customerId: 'cust_6',
+    customerName: 'Vũ Quốc Bảo',
+    customerAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
+    customerPhone: '0966.778.899',
+    customerJoinDate: '01/08/2026',
+    customerTag: '🔵 Khách mới',
+    totalOrders: 2,
+    totalSpent: 620000,
+    lastMessage: 'Có freeship cho đơn trên 300k không shop?',
+    lastMessageTime: '12/08',
+    unreadCount: 1,
+    isReplied: false,
+    updatedAt: '2026-08-12T11:05:00Z',
+    status: 'online'
+  },
+  {
+    id: 'conv_7',
+    customerId: 'cust_7',
+    customerName: 'Đặng Bích Ngọc',
+    customerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
+    customerPhone: '0981.223.344',
+    customerJoinDate: '18/05/2025',
+    customerTag: '🟢 Đang mua hàng',
+    totalOrders: 4,
+    totalSpent: 1850000,
+    lastMessage: 'Mình muốn đổi sang size L được không?',
+    lastMessageTime: '11/08',
+    unreadCount: 2,
+    isReplied: false,
+    updatedAt: '2026-08-11T18:22:00Z',
+    status: 'offline'
+  },
+  {
+    id: 'conv_8',
+    customerId: 'cust_8',
+    customerName: 'Ngô Thành Long',
+    customerAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150',
+    customerPhone: '0909.876.543',
+    customerJoinDate: '08/08/2026',
+    customerTag: '🔵 Khách mới',
+    totalOrders: 1,
+    totalSpent: 299000,
+    lastMessage: 'Chất vải này có co giãn nhiều không bạn?',
+    lastMessageTime: '10/08',
+    unreadCount: 2,
+    isReplied: false,
+    updatedAt: '2026-08-10T15:30:00Z',
+    status: 'online'
+  }
+];
+
+export const MOCK_MESSAGES_DATA = {
+  conv_1: [
+    {
+      id: 'm1_1',
+      conversationId: 'conv_1',
+      senderId: 'cust_1',
+      senderType: 'customer',
+      content: 'Chào shop! Mình đang xem mẫu áo thun Basic của shop.',
+      createdAt: '09:38',
+      productId: 'p1'
+    },
+    {
+      id: 'm1_2',
+      conversationId: 'conv_1',
+      senderId: 'cust_1',
+      senderType: 'customer',
+      content: 'Shop ơi áo này còn size M màu trắng không ạ?',
+      createdAt: '09:42'
+    }
+  ],
+  conv_2: [
+    {
+      id: 'm2_1',
+      conversationId: 'conv_2',
+      senderId: 'cust_2',
+      senderType: 'customer',
+      content: 'Chào shop, mình có đặt một đơn hàng hôm qua.',
+      createdAt: '09:28',
+      orderId: 'ord_1'
+    },
+    {
+      id: 'm2_2',
+      conversationId: 'conv_2',
+      senderId: 'cust_2',
+      senderType: 'customer',
+      content: 'Bao giờ đơn của tôi được giao?',
+      createdAt: '09:30'
+    }
+  ],
+  conv_3: [
+    {
+      id: 'm3_1',
+      conversationId: 'conv_3',
+      senderId: 'cust_3',
+      senderType: 'customer',
+      content: 'Cho mình hỏi sản phẩm này còn không?',
+      createdAt: '16:15',
+      productId: 'p2'
+    },
+    {
+      id: 'm3_2',
+      conversationId: 'conv_3',
+      senderId: 'seller',
+      senderType: 'seller',
+      content: 'Chào bạn 👋 Shop đã kiểm tra và sản phẩm vẫn còn hàng nhé.',
+      createdAt: '16:20'
+    }
+  ]
+};
+
+// Extend sellerService with Messaging methods
+Object.assign(sellerService, {
+  // Get all conversations with filters & search
+  async getConversations(filter = 'all', query = '', conversations = MOCK_CONVERSATIONS_DATA) {
+    let list = [...conversations];
+
+    // Filter by Tab (all, unread, replied)
+    if (filter === 'unread') {
+      list = list.filter(c => c.unreadCount > 0);
+    } else if (filter === 'replied') {
+      list = list.filter(c => c.isReplied || c.unreadCount === 0);
+    }
+
+    // Search by customer name or last message
+    if (query && query.trim() !== '') {
+      const q = query.toLowerCase().trim();
+      list = list.filter(c => 
+        (c.customerName && c.customerName.toLowerCase().includes(q)) ||
+        (c.lastMessage && c.lastMessage.toLowerCase().includes(q)) ||
+        (c.customerPhone && c.customerPhone.includes(q))
+      );
+    }
+
+    return Promise.resolve(list);
+  },
+
+  // Get Conversation By ID
+  async getConversationById(id, conversations = MOCK_CONVERSATIONS_DATA) {
+    const found = conversations.find(c => c.id === id);
+    return Promise.resolve(found || null);
+  },
+
+  // Get Message Thread for Conversation
+  async getMessages(conversationId, allMessages = MOCK_MESSAGES_DATA) {
+    const list = allMessages[conversationId] || [
+      {
+        id: `msg_init_${conversationId}`,
+        conversationId,
+        senderId: 'customer',
+        senderType: 'customer',
+        content: 'Chào shop, tư vấn giúp mình với ạ!',
+        createdAt: 'Hôm nay'
+      }
+    ];
+    return Promise.resolve(list);
+  },
+
+  // Send Message (Mock Socket/API layer)
+  async sendMessage(conversationId, messageData, allMessages = MOCK_MESSAGES_DATA, allConversations = MOCK_CONVERSATIONS_DATA) {
+    const newMsg = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+      conversationId,
+      senderId: 'seller',
+      senderType: 'seller',
+      content: messageData.content || '',
+      productId: messageData.productId || null,
+      orderId: messageData.orderId || null,
+      createdAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const currentList = allMessages[conversationId] || [];
+    const updatedMessages = {
+      ...allMessages,
+      [conversationId]: [...currentList, newMsg]
+    };
+
+    // Update conversation last message & mark as replied
+    const updatedConversations = allConversations.map(c => {
+      if (c.id === conversationId) {
+        return {
+          ...c,
+          lastMessage: messageData.content || (messageData.productId ? 'Đã gửi sản phẩm' : 'Đã gửi đơn hàng'),
+          lastMessageTime: newMsg.createdAt,
+          isReplied: true,
+          unreadCount: 0
+        };
+      }
+      return c;
+    });
+
+    return Promise.resolve({
+      newMessage: newMsg,
+      updatedMessages,
+      updatedConversations
+    });
+  },
+
+  // Mark Conversation As Read
+  async markConversationAsRead(conversationId, conversations = MOCK_CONVERSATIONS_DATA) {
+    const updated = conversations.map(c => {
+      if (c.id === conversationId) {
+        return { ...c, unreadCount: 0 };
+      }
+      return c;
+    });
+    return Promise.resolve(updated);
+  },
+
+  // Mark All Conversations As Read
+  async markAllConversationsAsRead(conversations = MOCK_CONVERSATIONS_DATA) {
+    const updated = conversations.map(c => ({ ...c, unreadCount: 0 }));
+    return Promise.resolve(updated);
+  },
+
+  // Get Quick Reply Templates
+  async getQuickReplies() {
+    return Promise.resolve([
+      'Chào bạn, shop có thể hỗ trợ gì cho bạn ạ?',
+      'Shop đã kiểm tra và sản phẩm vẫn còn hàng nhé.',
+      'Đơn hàng của bạn đang được đóng gói và chuẩn bị bàn giao cho ĐVVC.',
+      'Cảm ơn bạn đã ủng hộ shop. Chúc bạn một ngày tốt lành!',
+      'Bạn vui lòng cung cấp thêm chiều cao và cân nặng để shop tư vấn size chuẩn nhất nhé.'
+    ]);
+  },
+
+  // Get Orders associated with a customer
+  async getCustomerOrders(customerId, existingOrders = []) {
+    if (!existingOrders || existingOrders.length === 0) return Promise.resolve([]);
+    const found = existingOrders.filter(o => 
+      (o.customer?.id && o.customer.id === customerId) ||
+      (o.customerId && o.customerId === customerId) ||
+      (o.customer?.phone && customerId.includes(o.customer.phone))
+    );
+    if (found.length > 0) return Promise.resolve(found);
+    // Return sample orders if not matched by ID
+    return Promise.resolve(existingOrders.slice(0, 3));
+  }
+});
+
+// =========================================================================
+// 🔔 NOTIFICATION CENTER MOCK DATA & FACADE METHODS (TRUNG TÂM THÔNG BÁO)
+// =========================================================================
+
+export const MOCK_NOTIFICATIONS_DATA = [
+  {
+    id: 'noti_1',
+    type: 'ORDER',
+    title: 'Đơn hàng mới #VL000123',
+    content: 'Bạn có đơn hàng #VL000123 đang chờ xác nhận từ khách hàng Nguyễn Minh Anh.',
+    referenceId: 'VL000123',
+    read: false,
+    createdAt: '5 phút trước',
+    timestamp: '2026-08-15T09:35:00Z',
+    categoryName: 'Đơn hàng'
+  },
+  {
+    id: 'noti_2',
+    type: 'INVENTORY',
+    title: 'Cảnh báo tồn kho thấp',
+    content: 'Sản phẩm Áo thun nam Basic (ATB-001) chỉ còn 3 sản phẩm trong kho. Hãy nhập thêm hàng để tránh gián đoạn bán hàng.',
+    referenceId: 'p1',
+    read: false,
+    createdAt: '20 phút trước',
+    timestamp: '2026-08-15T09:20:00Z',
+    categoryName: 'Sản phẩm'
+  },
+  {
+    id: 'noti_3',
+    type: 'FINANCE',
+    title: 'Thanh toán đối soát thành công',
+    content: 'Khoản thanh toán 2.450.000đ cho kỳ đối soát tuần 2 tháng 8 đã được ghi nhận vào Số dư ví Shop.',
+    referenceId: 'fin_01',
+    read: false,
+    createdAt: '1 giờ trước',
+    timestamp: '2026-08-15T08:40:00Z',
+    categoryName: 'Tài chính'
+  },
+  {
+    id: 'noti_4',
+    type: 'VIDEO',
+    title: 'Video đạt mốc 10.000 lượt xem',
+    content: 'Video "Review áo thun nam basic" của bạn đã đạt mốc 10.000 lượt xem và mang về 18 đơn hàng mới.',
+    referenceId: 'vid_01',
+    read: false,
+    createdAt: '3 giờ trước',
+    timestamp: '2026-08-15T06:40:00Z',
+    categoryName: 'Hệ thống'
+  },
+  {
+    id: 'noti_5',
+    type: 'PROMOTION',
+    title: 'Chiến dịch Freeship tháng 8',
+    content: 'Chiến dịch Freeship tháng 8 đã được cập nhật chính sách hỗ trợ phí vận chuyển 0đ cho toàn bộ đơn hàng.',
+    referenceId: 'promo_01',
+    read: false,
+    createdAt: 'Hôm qua',
+    timestamp: '2026-08-14T15:00:00Z',
+    categoryName: 'Khuyến mãi'
+  },
+  {
+    id: 'noti_6',
+    type: 'LIVESTREAM',
+    title: 'Tổng kết phiên Livestream',
+    content: 'Phiên Livestream tối qua đã ghi nhận 2.450 người xem đồng thời và 86 đơn hàng phát sinh.',
+    referenceId: 'live_01',
+    read: true,
+    createdAt: '13/08',
+    timestamp: '2026-08-13T22:00:00Z',
+    categoryName: 'Hệ thống'
+  },
+  {
+    id: 'noti_7',
+    type: 'SYSTEM',
+    title: 'Nâng cấp tính năng Xử lý Đơn hàng',
+    content: 'Hệ thống S-SHOPPING Seller Center vừa cập nhật tính năng in phiếu giao hàng và xử lý đơn hàng loạt.',
+    referenceId: 'sys_01',
+    read: true,
+    createdAt: '12/08',
+    timestamp: '2026-08-12T10:00:00Z',
+    categoryName: 'Hệ thống'
+  },
+  {
+    id: 'noti_8',
+    type: 'ORDER',
+    title: 'Đơn hàng #VL000127 đã giao thành công',
+    content: 'Đơn hàng #VL000127 đã được bưu tá Viettel Post giao thành công đến người nhận Lê Thu Hà.',
+    referenceId: 'VL000127',
+    read: true,
+    createdAt: '11/08',
+    timestamp: '2026-08-11T16:30:00Z',
+    categoryName: 'Đơn hàng'
+  },
+  {
+    id: 'noti_9',
+    type: 'INVENTORY',
+    title: 'Nhập kho thành công SKU POLO-002',
+    content: 'Phiếu nhập kho +50 sản phẩm Áo polo nam cao cấp đã được hoàn tất kiểm đếm vào Kho Tổng Hà Nội.',
+    referenceId: 'p2',
+    read: true,
+    createdAt: '10/08',
+    timestamp: '2026-08-10T14:20:00Z',
+    categoryName: 'Sản phẩm'
+  },
+  {
+    id: 'noti_10',
+    type: 'SYSTEM',
+    title: 'Quy định đóng gói hàng hóa mới',
+    content: 'Vui lòng kiểm tra và tuân thủ quy chuẩn đóng gói hàng hóa chống sốc để tránh hư hỏng trong quá trình vận chuyển.',
+    referenceId: 'sys_02',
+    read: true,
+    createdAt: '08/08',
+    timestamp: '2026-08-08T09:00:00Z',
+    categoryName: 'Hệ thống'
+  }
+];
+
+// Extend sellerService with Notification methods
+Object.assign(sellerService, {
+  // Get all notifications with filters & search
+  async getNotifications(filter = 'all', query = '', notifications = MOCK_NOTIFICATIONS_DATA) {
+    let list = [...notifications];
+
+    // Filter by Tab (all, unread, order, product, finance, promotion, system)
+    if (filter === 'unread') {
+      list = list.filter(n => !n.read);
+    } else if (filter === 'order' || filter === 'ORDER') {
+      list = list.filter(n => n.type === 'ORDER');
+    } else if (filter === 'product' || filter === 'inventory' || filter === 'INVENTORY') {
+      list = list.filter(n => n.type === 'INVENTORY' || n.type === 'PRODUCT');
+    } else if (filter === 'finance' || filter === 'FINANCE') {
+      list = list.filter(n => n.type === 'FINANCE');
+    } else if (filter === 'promotion' || filter === 'PROMOTION') {
+      list = list.filter(n => n.type === 'PROMOTION');
+    } else if (filter === 'system' || filter === 'SYSTEM') {
+      list = list.filter(n => n.type === 'SYSTEM' || n.type === 'VIDEO' || n.type === 'LIVESTREAM');
+    }
+
+    // Search by title, content, type, or category
+    if (query && query.trim() !== '') {
+      const q = query.toLowerCase().trim();
+      list = list.filter(n => 
+        (n.title && n.title.toLowerCase().includes(q)) ||
+        (n.content && n.content.toLowerCase().includes(q)) ||
+        (n.type && n.type.toLowerCase().includes(q)) ||
+        (n.categoryName && n.categoryName.toLowerCase().includes(q)) ||
+        (n.referenceId && n.referenceId.toLowerCase().includes(q))
+      );
+    }
+
+    return Promise.resolve(list);
+  },
+
+  // Calculate unread notification count
+  async getUnreadNotificationCount(notifications = MOCK_NOTIFICATIONS_DATA) {
+    const unread = notifications.filter(n => !n.read).length;
+    return Promise.resolve(unread);
+  },
+
+  // Get notifications by specific type
+  async getNotificationsByType(type, notifications = MOCK_NOTIFICATIONS_DATA) {
+    const filtered = notifications.filter(n => n.type === type);
+    return Promise.resolve(filtered);
+  },
+
+  // Mark a single notification as read
+  async markNotificationAsRead(id, notifications = MOCK_NOTIFICATIONS_DATA) {
+    const updated = notifications.map(n => {
+      if (n.id === id) {
+        return { ...n, read: true };
+      }
+      return n;
+    });
+    return Promise.resolve(updated);
+  },
+
+  // Mark all notifications as read
+  async markAllNotificationsAsRead(notifications = MOCK_NOTIFICATIONS_DATA) {
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    return Promise.resolve(updated);
+  },
+
+  // Delete a notification (mock state update)
+  async deleteNotification(id, notifications = MOCK_NOTIFICATIONS_DATA) {
+    const updated = notifications.filter(n => n.id !== id);
+    return Promise.resolve(updated);
+  },
+
+  // Get notification by ID
+  async getNotificationById(id, notifications = MOCK_NOTIFICATIONS_DATA) {
+    const found = notifications.find(n => n.id === id);
+    return Promise.resolve(found || null);
+  },
+
+  // =========================================================================
+  // 1️⃣2️⃣ SHOP SETUP ONBOARDING SERVICE (HOÀN THIỆN SHOP 7 BƯỚC)
+  // =========================================================================
+
+  // Get Shop Setup Status & Progress (Single Source of Truth)
+  async getShopSetupStatus(currentState = null, isNewShop = false, existingProducts = []) {
+    const base = currentState || (isNewShop ? MOCK_SHOP_SETUP_NEW : MOCK_SHOP_SETUP_INITIAL);
+    
+    // Dynamically check if first product is completed based on catalog
+    const hasProducts = (existingProducts && existingProducts.length > 0) || (base.firstProduct && base.firstProduct.status === 'COMPLETED');
+    const productStatus = hasProducts ? 'COMPLETED' : (base.firstProduct?.status || 'PENDING');
+
+    // Dynamically check shipping
+    const hasActiveShipping = base.shipping?.carriers?.some(c => c.enabled);
+    const shippingStatus = hasActiveShipping ? 'COMPLETED' : (base.shipping?.status || 'PENDING');
+
+    const steps = [
+      {
+        id: 1,
+        key: 'shopInfo',
+        stepNumber: '01',
+        title: 'Thông tin Shop',
+        desc: 'Thiết lập tên cửa hàng, logo nhận diện, slogan và danh mục kinh doanh chính.',
+        status: base.shopInfo?.status || 'PENDING',
+        data: base.shopInfo,
+        actionText: base.shopInfo?.status === 'COMPLETED' ? 'Chỉnh sửa' : 'Thiết lập',
+        targetTab: 'settings'
+      },
+      {
+        id: 2,
+        key: 'verification',
+        stepNumber: '02',
+        title: 'Xác minh người bán',
+        desc: 'Xác thực định danh cá nhân / doanh nghiệp qua tài khoản S-Life và CCCD.',
+        status: base.verification?.status || 'PENDING',
+        data: base.verification,
+        actionText: base.verification?.status === 'COMPLETED' ? 'Xem chi tiết' : 'Tiếp tục xác minh',
+        targetTab: 'settings'
+      },
+      {
+        id: 3,
+        key: 'pickupAddress',
+        stepNumber: '03',
+        title: 'Địa chỉ lấy hàng',
+        desc: 'Địa chỉ kho hàng hoặc cửa hàng để đơn vị vận chuyển đến lấy đơn.',
+        status: base.pickupAddress?.status || 'PENDING',
+        data: base.pickupAddress,
+        actionText: base.pickupAddress?.status === 'COMPLETED' ? 'Chỉnh sửa' : 'Thêm địa chỉ',
+        targetTab: 'shipping'
+      },
+      {
+        id: 4,
+        key: 'payoutAccount',
+        stepNumber: '04',
+        title: 'Tài khoản nhận tiền',
+        desc: 'Liên kết tài khoản ngân hàng để nhận doanh thu thanh toán qua Napas 24/7.',
+        status: base.payoutAccount?.status || 'PENDING',
+        data: base.payoutAccount,
+        actionText: base.payoutAccount?.status === 'COMPLETED' ? 'Thay đổi' : 'Thiết lập',
+        targetTab: 'finance'
+      },
+      {
+        id: 5,
+        key: 'shipping',
+        stepNumber: '05',
+        title: 'Thiết lập vận chuyển',
+        desc: 'Bật các kênh giao hàng: V-life Delivery, GHN, Viettel Post, GHTK.',
+        status: shippingStatus,
+        data: base.shipping,
+        actionText: shippingStatus === 'COMPLETED' ? 'Cấu hình' : 'Bật vận chuyển',
+        targetTab: 'shipping'
+      },
+      {
+        id: 6,
+        key: 'firstProduct',
+        stepNumber: '06',
+        title: 'Đăng sản phẩm đầu tiên',
+        desc: 'Thêm sản phẩm đầu tiên để bắt đầu bán hàng trên sàn S-Shopping.',
+        status: productStatus,
+        data: { ...base.firstProduct, count: existingProducts?.length || 0 },
+        actionText: productStatus === 'COMPLETED' ? '+ Thêm sản phẩm' : '+ Đăng sản phẩm',
+        targetTab: 'products'
+      },
+      {
+        id: 7,
+        key: 'finalReview',
+        stepNumber: '07',
+        title: 'Kiểm tra & hoàn tất Shop',
+        desc: 'Rà soát toàn bộ cấu hình và kích hoạt Shop chính thức lên sàn V-life.',
+        status: base.finalReview?.status === 'COMPLETED' 
+          ? 'COMPLETED' 
+          : (stepsAreReadyForReview(base, hasProducts, hasActiveShipping) ? 'READY' : 'LOCKED'),
+        data: base.finalReview,
+        actionText: base.finalReview?.status === 'COMPLETED' 
+          ? 'Shop đã hoạt động' 
+          : (stepsAreReadyForReview(base, hasProducts, hasActiveShipping) ? 'Hoàn tất thiết lập Shop' : 'Chưa thể thực hiện'),
+        targetTab: 'shop_setup'
+      }
+    ];
+
+    // Compute progress
+    const completedCount = steps.filter(s => s.status === 'COMPLETED').length;
+    const progressPercent = Math.round((completedCount / 7) * 100);
+
+    return Promise.resolve({
+      completedCount,
+      totalCount: 7,
+      progressPercent,
+      isFullyCompleted: completedCount === 7,
+      steps,
+      rawState: {
+        ...base,
+        firstProduct: { ...base.firstProduct, status: productStatus },
+        shipping: { ...base.shipping, status: shippingStatus }
+      }
+    });
+  },
+
+  // Update specific step in setup
+  async updateShopSetupStep(currentState, stepKey, updates) {
+    const updated = {
+      ...currentState,
+      [stepKey]: {
+        ...(currentState[stepKey] || {}),
+        ...updates
+      }
+    };
+    return Promise.resolve(updated);
+  },
+
+  // Complete entire shop setup (Final Step 7)
+  async completeShopSetup(currentState) {
+    const updated = {
+      ...currentState,
+      finalReview: {
+        status: 'COMPLETED',
+        completedAt: '12/08/2026 10:00'
+      }
+    };
+    return Promise.resolve(updated);
+  }
+});
+
+// Helper function to check if steps 1 to 6 are done
+function stepsAreReadyForReview(base, hasProducts, hasActiveShipping) {
+  const s1 = base.shopInfo?.status === 'COMPLETED';
+  const s2 = base.verification?.status === 'COMPLETED';
+  const s3 = base.pickupAddress?.status === 'COMPLETED';
+  const s4 = base.payoutAccount?.status === 'COMPLETED';
+  const s5 = hasActiveShipping || base.shipping?.status === 'COMPLETED';
+  const s6 = hasProducts || base.firstProduct?.status === 'COMPLETED';
+  return s1 && s2 && s3 && s4 && s5 && s6;
+}
+
+export const MOCK_SHOP_SETUP_INITIAL = {
+  shopInfo: {
+    status: 'COMPLETED',
+    name: 'S-Shopping Fashion Official',
+    displayName: 'S-Shopping Fashion',
+    category: 'Thời trang & May mặc',
+    description: 'Gian hàng thời trang cao cấp chính hãng trên S-Shopping.',
+    logo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
+  },
+  verification: {
+    status: 'COMPLETED',
+    ownerName: 'Nguyễn Văn A',
+    idNumber: '079203001234',
+    phone: '0987654321',
+    verifiedDate: '12/08/2026'
+  },
+  pickupAddress: {
+    status: 'COMPLETED',
+    contactName: 'Nguyễn Văn A (Kho Tổng)',
+    phone: '0987654321',
+    address: '123 Đường Nguyễn Huệ',
+    ward: 'Phường Bến Nghé',
+    district: 'Quận 1',
+    city: 'TP. Hồ Chí Minh'
+  },
+  payoutAccount: {
+    status: 'COMPLETED',
+    bankName: 'Vietcombank (VCB)',
+    accountNumber: '10123456789',
+    accountHolder: 'NGUYEN VAN A',
+    napasVerified: true
+  },
+  shipping: {
+    status: 'PENDING',
+    carriers: [
+      { id: 'vlife_del', name: 'V-life Delivery', enabled: true, time: '1-2 ngày', type: 'Hỏa tốc' },
+      { id: 'viettel_post', name: 'Viettel Post', enabled: true, time: '2-3 ngày', type: 'Nhanh' },
+      { id: 'ghn', name: 'Giao Hàng Nhanh (GHN)', enabled: true, time: '2-3 ngày', type: 'Nhanh' },
+      { id: 'ghtk', name: 'Giao Hàng Tiết Kiệm (GHTK)', enabled: false, time: '3-4 ngày', type: 'Tiết kiệm' }
+    ]
+  },
+  firstProduct: {
+    status: 'PENDING',
+    productCount: 0
+  },
+  finalReview: {
+    status: 'LOCKED',
+    completedAt: null
+  }
+};
+
+export const MOCK_SHOP_SETUP_NEW = {
+  shopInfo: { status: 'PENDING', name: '', displayName: '', category: '', description: '', logo: '' },
+  verification: { status: 'PENDING', ownerName: '', idNumber: '', phone: '', verifiedDate: null },
+  pickupAddress: { status: 'PENDING', contactName: '', phone: '', address: '', ward: '', district: '', city: '' },
+  payoutAccount: { status: 'PENDING', bankName: '', accountNumber: '', accountHolder: '', napasVerified: false },
+  shipping: {
+    status: 'PENDING',
+    carriers: [
+      { id: 'vlife_del', name: 'V-life Delivery', enabled: false, time: '1-2 ngày', type: 'Hỏa tốc' },
+      { id: 'viettel_post', name: 'Viettel Post', enabled: false, time: '2-3 ngày', type: 'Nhanh' },
+      { id: 'ghn', name: 'Giao Hàng Nhanh (GHN)', enabled: false, time: '2-3 ngày', type: 'Nhanh' },
+      { id: 'ghtk', name: 'Giao Hàng Tiết Kiệm (GHTK)', enabled: false, time: '3-4 ngày', type: 'Tiết kiệm' }
+    ]
+  },
+  firstProduct: { status: 'PENDING', productCount: 0 },
+  finalReview: { status: 'LOCKED', completedAt: null }
+};
+
 export default sellerService;
+
+
 

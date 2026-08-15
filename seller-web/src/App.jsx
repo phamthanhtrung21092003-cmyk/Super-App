@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ShoppingBag, HelpCircle, Eye, EyeOff, QrCode, 
-  Store, Plus, Trash2, ArrowLeft, CheckCircle2, 
-  RefreshCw, Printer, AlertCircle, Sparkles, LogOut, TrendingUp,
-  Search, ShieldCheck, Truck, Zap, Star, Lock, User,
-  Smartphone, KeyRound, Check, AlertTriangle, MessageSquare, Settings, Wallet
+  Store, Plus, ArrowLeft, CheckCircle2, 
+  RefreshCw, AlertCircle, Sparkles, LogOut, TrendingUp,
+  ShieldCheck, Truck, Zap, Star, Lock, User,
+  Smartphone, Check, AlertTriangle, MessageSquare
 } from 'lucide-react';
 
 import Header from './components/layout/Header';
@@ -35,6 +35,8 @@ import OrderFilters from './components/orders/OrderFilters';
 import OrderTable from './components/orders/OrderTable';
 import OrderDetailDrawer from './components/orders/OrderDetailDrawer';
 import InventoryManager from './components/inventory/InventoryManager';
+import MessagesPage from './components/messages/MessagesPage';
+import NotificationsPage from './components/notifications/NotificationsPage';
 import ShippingOverview from './components/shipping/ShippingOverview';
 import ShippingFilters from './components/shipping/ShippingFilters';
 import ShippingTable from './components/shipping/ShippingTable';
@@ -47,7 +49,14 @@ import VideoManager from './components/video/VideoManager';
 import LivestreamManager from './components/livestream/LivestreamManager';
 import ReportManager from './components/reports/ReportManager';
 import SettingsManager from './components/settings/SettingsManager';
-import sellerService, { MOCK_ORDERS_DEMO, MOCK_SHIPPING_DEMO } from './data/sellerService';
+import ShopSetupPage from './components/shop-setup/ShopSetupPage';
+import sellerService, { 
+  MOCK_ORDERS_DEMO, 
+  MOCK_SHIPPING_DEMO, 
+  MOCK_NOTIFICATIONS_DATA,
+  MOCK_SHOP_SETUP_INITIAL,
+  MOCK_SHOP_SETUP_NEW 
+} from './data/sellerService';
 
 // Custom S-life Logo SVG Icon (Official Brand Emblem)
 const SLifeIcon = ({ size = 24 }) => (
@@ -80,15 +89,32 @@ const INITIAL_PRODUCTS = [
 ];
 
 export default function App() {
-  const [mode, setMode] = useState('login'); // 'login' | 'wizard' | 'dashboard'
+  // Persistent Auth & Mode State (Keeps user logged in during code changes & reloads)
+  const [mode, setMode] = useState(() => {
+    return localStorage.getItem('seller_mode') || 'dashboard';
+  });
 
-  // --- LOGIN FORM STATES (Clean inputs by default) ---
+  // --- LOGIN FORM STATES ---
   const [loginTab, setLoginTab] = useState('slife');
   const [slifePhone, setSlifePhone] = useState('');
   const [slifePassword, setSlifePassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [loggedInUser, setLoggedInUser] = useState(null);
+  const [loggedInUser, setLoggedInUser] = useState(() => {
+    const saved = localStorage.getItem('seller_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return {
+      phone: '0987654321',
+      ownerName: 'Trần Thị Người Bán',
+      shopName: 'S-Shopping Fashion Official'
+    };
+  });
 
   // --- WIZARD STATES ---
   const [wizardStep, setWizardStep] = useState(1);
@@ -181,29 +207,97 @@ export default function App() {
   });
 
   // --- DASHBOARD STATES (PHASE 1) ---
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('seller_active_tab') || 'home';
+  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [kpiData, setKpiData] = useState(null);
   const [pendingActions, setPendingActions] = useState([]);
   const [orderFilter, setOrderFilter] = useState('Tất cả');
 
   // Active Seller Initial State (pre-populated with orders & products matching screenshot)
+  const [shopMode, setShopMode] = useState(() => {
+    return localStorage.getItem('seller_shop_mode') || 'DEMO';
+  });
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [orders, setOrders] = useState(MOCK_ORDERS_DEMO);
+  const [shopSetupState, setShopSetupState] = useState(MOCK_SHOP_SETUP_INITIAL);
+  const [shopSetupStatus, setShopSetupStatus] = useState(null);
+
+  // Sync to localStorage
+  useEffect(() => {
+    localStorage.setItem('seller_mode', mode);
+  }, [mode]);
 
   useEffect(() => {
-    sellerService.getKpiMetrics('today', orders, products).then(data => setKpiData(data));
-    sellerService.getPendingActions(orders).then(actions => setPendingActions(actions));
-  }, [orders, products]);
+    if (loggedInUser) {
+      localStorage.setItem('seller_user', JSON.stringify(loggedInUser));
+    } else {
+      localStorage.removeItem('seller_user');
+    }
+  }, [loggedInUser]);
+
+  useEffect(() => {
+    localStorage.setItem('seller_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem('seller_shop_mode', shopMode);
+  }, [shopMode]);
+
+  // Active dataset based on shopMode
+  const activeProducts = useMemo(() => (shopMode === 'DEMO' ? products : []), [shopMode, products]);
+  const activeOrders = useMemo(() => (shopMode === 'DEMO' ? orders : []), [shopMode, orders]);
+
+  useEffect(() => {
+    sellerService.getKpiMetrics('today', activeOrders, activeProducts).then(data => setKpiData(data));
+    sellerService.getPendingActions(activeOrders, 8).then(actions => setPendingActions(actions));
+  }, [activeOrders, activeProducts]);
+
+  // Synchronize Shop Setup Status Single Source of Truth
+  useEffect(() => {
+    const isNew = shopMode === 'NEW_SHOP';
+    const base = shopSetupState || (isNew ? MOCK_SHOP_SETUP_NEW : MOCK_SHOP_SETUP_INITIAL);
+    sellerService.getShopSetupStatus(base, isNew, activeProducts).then(res => {
+      setShopSetupStatus(res);
+    });
+  }, [shopSetupState, shopMode, activeProducts]);
+
+  const handleToggleShopMode = () => {
+    const nextMode = shopMode === 'DEMO' ? 'NEW_SHOP' : 'DEMO';
+    setShopMode(nextMode);
+    setShopSetupState(nextMode === 'NEW_SHOP' ? MOCK_SHOP_SETUP_NEW : MOCK_SHOP_SETUP_INITIAL);
+  };
 
   const handleKpiPeriodChange = async (period) => {
-    const data = await sellerService.getKpiMetrics(period, orders, products);
+    const data = await sellerService.getKpiMetrics(period, activeOrders, activeProducts);
     setKpiData(data);
   };
 
   const handlePendingActionClick = (targetTab, filter) => {
-    if (filter) setOrderFilter(filter);
-    else setOrderFilter('Tất cả');
+    if (targetTab === 'messages' || targetTab === 'chat') {
+      setMessagesInitialFilter(filter || 'unread');
+      setActiveTab('messages');
+      return;
+    }
+    if (targetTab === 'orders') {
+      if (filter === 'Chờ xác nhận' || filter === 'confirm') {
+        setOrderModuleTab('confirm');
+        setOrderFilter('Chờ xác nhận');
+      } else if (filter === 'Chờ đóng gói' || filter === 'packing' || filter === 'pending_pack') {
+        setOrderModuleTab('packing');
+        setOrderFilter('Chờ lấy hàng');
+      } else if (filter === 'Chờ bàn giao' || filter === 'handover' || filter === 'pending_handover') {
+        setOrderModuleTab('handover');
+        setOrderFilter('Chờ lấy hàng');
+      } else if (filter === 'Trả hàng' || filter === 'Trả hàng / Hoàn tiền' || filter === 'returned') {
+        setOrderModuleTab('returned');
+        setOrderFilter('Trả hàng');
+      } else {
+        setOrderModuleTab('all');
+        setOrderFilter('Tất cả');
+      }
+    }
     setActiveTab(targetTab);
   };
 
@@ -222,6 +316,13 @@ export default function App() {
   useEffect(() => {
     sellerService.getProductMetrics(products).then(m => setProductMetrics(m));
   }, [products]);
+
+  const handleOpenAddProduct = () => {
+    setEditingProduct(null);
+    setIsProductFormOpen(true);
+    setShowAddProductModal(false);
+    setActiveTab('products');
+  };
 
   const handleSaveProduct = async (formData) => {
     if (editingProduct) {
@@ -258,27 +359,90 @@ export default function App() {
     setProducts(updated);
   };
 
+  // Inventory Management Module States
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState('Tất cả');
+  const [inventorySearchQuery, setInventorySearchQuery] = useState('');
+
+  // Messages Center Module States
+  const [messagesInitialFilter, setMessagesInitialFilter] = useState('all');
+
+  // Notification Center Module States (Requirement 17 & 22)
+  const [notificationsList, setNotificationsList] = useState(MOCK_NOTIFICATIONS_DATA);
+  const [notificationInitialTab, setNotificationInitialTab] = useState('all');
+  const unreadNotificationCount = useMemo(() => notificationsList.filter(n => !n.read).length, [notificationsList]);
+
+  // Deep link handler for notifications (Requirement 13 & 18)
+  const handleDeepLinkNotification = (targetTab, referenceId) => {
+    if (targetTab === 'orders') {
+      if (referenceId) {
+        const foundOrder = activeOrdersDataset.find(o => o.id === referenceId || o.code === referenceId || (o.code && o.code.includes(referenceId)));
+        if (foundOrder) {
+          setSelectedOrderDetail(foundOrder);
+        }
+      }
+      setActiveTab('orders');
+      return;
+    }
+    if (targetTab === 'inventory') {
+      if (referenceId === 'p1') {
+        setInventoryStatusFilter('Sắp hết');
+      }
+      setActiveTab('inventory');
+      return;
+    }
+    if (targetTab === 'finance') {
+      setActiveTab('finance');
+      return;
+    }
+    if (targetTab === 'marketing') {
+      setActiveTab('marketing');
+      return;
+    }
+    if (targetTab === 'video') {
+      setActiveTab('video');
+      return;
+    }
+    if (targetTab === 'livestream') {
+      setActiveTab('livestream');
+      return;
+    }
+    if (targetTab === 'settings') {
+      setActiveTab('settings');
+      return;
+    }
+    setActiveTab(targetTab || 'home');
+  };
+
   // Order Management Module States
   const [isDemoOrderState, setIsDemoOrderState] = useState(true);
   const [orderModuleTab, setOrderModuleTab] = useState('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [orderProviderFilter, setOrderProviderFilter] = useState('Tất cả');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('Tất cả');
+  const [orderPaymentFilter, setOrderPaymentFilter] = useState('Tất cả');
+  const [orderWarehouseFilter, setOrderWarehouseFilter] = useState('Tất cả');
+  const [orderDateRange, setOrderDateRange] = useState('all');
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
-  const [orderMetrics, setOrderMetrics] = useState({ total: 0, confirm: 0, pickup: 0, delivering: 0, completed: 0, cancelled: 0, returned: 0 });
+  const [orderMetrics, setOrderMetrics] = useState({ total: 0, confirm: 0, packing: 0, handover: 0, delivering: 0, completed: 0, cancelled: 0, returned: 0 });
 
   // Resolve active orders list based on demo toggle state
-  const activeOrdersDataset = isDemoOrderState 
-    ? (orders && orders.length > 0 ? orders : MOCK_ORDERS_DEMO)
-    : [];
+  const activeOrdersDataset = useMemo(() => {
+    return isDemoOrderState 
+      ? (orders && orders.length > 0 ? orders : MOCK_ORDERS_DEMO)
+      : [];
+  }, [isDemoOrderState, orders]);
 
   useEffect(() => {
     sellerService.getOrderMetrics(activeOrdersDataset).then(m => setOrderMetrics(m));
-  }, [isDemoOrderState, orders]);
+  }, [activeOrdersDataset]);
 
   const handleUpdateSingleOrderStatus = async (orderId, newStatus) => {
     const targetDataset = orders && orders.length > 0 ? orders : MOCK_ORDERS_DEMO;
     const updated = await sellerService.updateOrderStatus(targetDataset, orderId, newStatus);
     setOrders(updated);
+    if (selectedOrderDetail && (selectedOrderDetail.id === orderId || selectedOrderDetail.code === orderId)) {
+      setSelectedOrderDetail(prev => ({ ...prev, status: newStatus }));
+    }
   };
 
   const handleBulkUpdateOrderStatus = async (orderIds, newStatus) => {
@@ -452,7 +616,7 @@ export default function App() {
     setWizardStep(5);
   };
 
-  const handleGoToDashboard = (showModal = false) => {
+  const handleGoToDashboard = (openAddProduct = false) => {
     const userPhone = loggedInUser?.phone;
     const updatedUser = { 
       ...(loggedInUser || {}), 
@@ -469,8 +633,10 @@ export default function App() {
     }
     
     setMode('dashboard');
-    if (showModal) {
-      setShowAddProductModal(true);
+    if (openAddProduct) {
+      handleOpenAddProduct();
+    } else {
+      setActiveTab('home');
     }
   };
 
@@ -1313,9 +1479,25 @@ export default function App() {
             shopInfo={shopInfo}
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            onLogout={() => { setLoggedInUser(null); setMode('login'); }}
+            onLogout={() => {
+              localStorage.setItem('seller_mode', 'login');
+              localStorage.removeItem('seller_user');
+              setLoggedInUser(null);
+              setMode('login');
+            }}
+            unreadNotificationCount={unreadNotificationCount}
             onNavigateTab={(tab) => {
               if (tab !== 'orders') setOrderFilter('Tất cả');
+              if (tab === 'chat') {
+                setMessagesInitialFilter('all');
+                setActiveTab('messages');
+                return;
+              }
+              if (tab === 'notifications') {
+                setNotificationInitialTab('all');
+                setActiveTab('notifications');
+                return;
+              }
               setActiveTab(tab);
             }}
           />
@@ -1332,6 +1514,7 @@ export default function App() {
               isCollapsed={isSidebarCollapsed}
               productCount={products.length}
               orderCount={activeOrdersDataset.length}
+              setupProgressBadge={shopSetupStatus ? (shopSetupStatus.isFullyCompleted ? null : `${shopSetupStatus.completedCount}/${shopSetupStatus.totalCount}`) : '4/7'}
             />
 
             {/* Main Content Area */}
@@ -1340,15 +1523,25 @@ export default function App() {
               {/* TAB 1: TRANG CHỦ DASHBOARD (NEW SELLER EMPTY STATE & ONBOARDING) */}
               {activeTab === 'home' && (
                 <div>
-                  <WelcomeBar shopInfo={shopInfo} />
+                  <WelcomeBar 
+                    shopInfo={shopInfo} 
+                    shopMode={shopMode}
+                    onToggleShopMode={handleToggleShopMode}
+                  />
                   
                   {/* ONBOARDING CHECKLIST CARD FOR FRESH SHOP */}
                   <OnboardingChecklist 
-                    onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                    setupData={shopSetupStatus}
+                    onOpenAddProductModal={handleOpenAddProduct} 
                     onNavigateTab={(tab) => setActiveTab(tab)} 
                   />
 
-                  <KpiCards kpiData={kpiData} onPeriodChange={handleKpiPeriodChange} />
+                  <KpiCards 
+                    kpiData={kpiData} 
+                    onPeriodChange={handleKpiPeriodChange} 
+                    onNavigateTab={(tab) => setActiveTab(tab)}
+                    onActionClick={handlePendingActionClick}
+                  />
                   <PendingActions 
                     pendingItems={pendingActions} 
                     onActionClick={handlePendingActionClick}
@@ -1360,16 +1553,24 @@ export default function App() {
                     {/* Left Column: Revenue Chart + Top Products + Video & Livestream + Platform News */}
                     <div className="dashboard-column-left">
                       <RevenueChart 
-                        existingOrders={orders} 
-                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                        existingOrders={activeOrders} 
+                        onOpenAddProductModal={handleOpenAddProduct} 
+                        onNavigateToReports={() => setActiveTab('analytics')}
                       />
                       <TopProducts 
-                        existingProducts={products} 
-                        onNavigateToProducts={() => setActiveTab('products')} 
-                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                        existingProducts={activeProducts} 
+                        onNavigateToProducts={(productOrTab) => {
+                          if (typeof productOrTab === 'object' && productOrTab !== null) {
+                            const found = products.find(p => p.id === (productOrTab.productId || productOrTab.id));
+                            setEditingProduct(found || productOrTab);
+                            setIsProductFormOpen(true);
+                          }
+                          setActiveTab('products');
+                        }} 
+                        onOpenAddProductModal={handleOpenAddProduct} 
                       />
                       <VideoLivestream 
-                        existingProducts={products} 
+                        existingProducts={activeProducts} 
                         onNavigate={(tab) => setActiveTab(tab)} 
                       />
                       <PlatformNews 
@@ -1380,30 +1581,47 @@ export default function App() {
                     {/* Right Column: Recent Orders + Inventory Alerts + Finance + Shop Health + Quick Actions */}
                     <div className="dashboard-column-right">
                       <RecentOrders 
-                        existingOrders={orders} 
+                        existingOrders={activeOrders} 
                         onNavigateToOrders={(tab, filter) => {
-                          if (filter) setOrderFilter(filter);
-                          else setOrderFilter('Tất cả');
+                          if (filter) {
+                            setOrderFilter(filter);
+                            if (filter === 'Chờ xác nhận') setOrderModuleTab('confirm');
+                            else if (filter === 'Chờ lấy hàng') setOrderModuleTab('packing');
+                            else if (filter === 'Đang giao') setOrderModuleTab('handover');
+                            else setOrderModuleTab('all');
+                          } else {
+                            setOrderFilter('Tất cả');
+                            setOrderModuleTab('all');
+                          }
                           setActiveTab(tab);
                         }} 
-                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                        onSelectOrder={(order) => {
+                          const fullOrder = orders.find(o => o.id === order.id || o.code === order.id || o.id === order.orderId) || order;
+                          setSelectedOrderDetail(fullOrder);
+                          setActiveTab('orders');
+                        }}
+                        onOpenAddProductModal={handleOpenAddProduct} 
                       />
                       <InventoryAlerts 
-                        existingProducts={products} 
-                        onNavigateToInventory={() => setActiveTab('products')} 
-                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                        existingProducts={activeProducts} 
+                        onNavigateToInventory={(status, searchQuery) => {
+                          setInventoryStatusFilter(status || 'Sắp hết');
+                          setInventorySearchQuery(searchQuery || '');
+                          setActiveTab('inventory');
+                        }} 
+                        onOpenAddProductModal={handleOpenAddProduct} 
                       />
                       <FinancialOverview 
-                        existingOrders={orders}
+                        existingOrders={activeOrders}
                         onNavigate={(tab) => setActiveTab(tab)} 
                       />
                       <ShopHealth 
-                        existingOrders={orders}
+                        existingOrders={activeOrders}
                         onNavigate={(tab) => setActiveTab(tab)} 
                       />
                       <QuickActions 
                         onNavigate={(tab) => setActiveTab(tab)} 
-                        onOpenAddProductModal={() => setShowAddProductModal(true)} 
+                        onOpenAddProductModal={handleOpenAddProduct} 
                       />
                     </div>
                   </div>
@@ -1426,10 +1644,7 @@ export default function App() {
                   ) : (
                     <div>
                       <ProductHeader 
-                        onOpenAddProductModal={() => {
-                          setEditingProduct(null);
-                          setIsProductFormOpen(true);
-                        }} 
+                        onOpenAddProductModal={handleOpenAddProduct} 
                       />
 
                       <ProductTabs 
@@ -1438,7 +1653,10 @@ export default function App() {
                         metrics={productMetrics}
                       />
 
-                      <ProductMetrics metrics={productMetrics} />
+                      <ProductMetrics 
+                        metrics={productMetrics} 
+                        onSelectFilter={(tabId) => setProductModuleTab(tabId)} 
+                      />
 
                       <ProductFilters 
                         searchQuery={productSearchQuery}
@@ -1491,11 +1709,38 @@ export default function App() {
               {activeTab === 'inventory' && (
                 <InventoryManager 
                   existingProducts={products}
+                  initialStatusFilter={inventoryStatusFilter}
+                  initialSearchQuery={inventorySearchQuery}
                   onNavigateTab={(tab) => setActiveTab(tab)}
-                  onOpenAddProductModal={() => {
-                    setActiveTab('products');
+                  onOpenAddProductModal={handleOpenAddProduct}
+                />
+              )}
+
+              {/* TAB: MESSAGES CENTER MODULE (TRUNG TÂM TIN NHẮN) */}
+              {activeTab === 'messages' && (
+                <MessagesPage 
+                  existingProducts={products}
+                  existingOrders={activeOrdersDataset}
+                  initialFilter={messagesInitialFilter}
+                  onViewProduct={(p) => {
+                    setEditingProduct(p);
                     setIsProductFormOpen(true);
+                    setActiveTab('products');
                   }}
+                  onViewOrder={(o) => {
+                    setSelectedOrderDetail(o);
+                    setActiveTab('orders');
+                  }}
+                />
+              )}
+
+              {/* TAB: NOTIFICATIONS CENTER MODULE (TRUNG TÂM THÔNG BÁO) */}
+              {activeTab === 'notifications' && (
+                <NotificationsPage 
+                  notifications={notificationsList}
+                  onUpdateNotifications={setNotificationsList}
+                  initialTab={notificationInitialTab}
+                  onDeepLinkNavigate={handleDeepLinkNotification}
                 />
               )}
 
@@ -1535,6 +1780,8 @@ export default function App() {
                     totalOrders={activeOrdersDataset.length}
                     isDemoState={isDemoOrderState}
                     onToggleDemoState={() => setIsDemoOrderState(!isDemoOrderState)}
+                    onExportData={() => alert(`📥 Đang xuất dữ liệu của ${activeOrdersDataset.length} đơn hàng ra file Excel...`)}
+                    onOpenSettings={() => setActiveTab('shipping')}
                   />
 
                   <OrderTabs 
@@ -1543,46 +1790,72 @@ export default function App() {
                     metrics={orderMetrics}
                   />
 
-                  <OrderMetrics metrics={orderMetrics} />
+                  <OrderMetrics 
+                    metrics={orderMetrics} 
+                    onSelectKpiTab={(kpiTab) => setOrderModuleTab(kpiTab)}
+                  />
 
                   <OrderFilters 
                     searchQuery={orderSearchQuery}
                     onSearchChange={setOrderSearchQuery}
+                    dateRange={orderDateRange}
+                    onDateRangeChange={setOrderDateRange}
+                    statusFilter={orderStatusFilter}
+                    onStatusChange={setOrderStatusFilter}
+                    paymentFilter={orderPaymentFilter}
+                    onPaymentChange={setOrderPaymentFilter}
                     providerFilter={orderProviderFilter}
                     onProviderChange={setOrderProviderFilter}
+                    warehouseFilter={orderWarehouseFilter}
+                    onWarehouseChange={setOrderWarehouseFilter}
                     onResetFilters={() => {
                       setOrderSearchQuery('');
                       setOrderProviderFilter('Tất cả');
+                      setOrderStatusFilter('Tất cả');
+                      setOrderPaymentFilter('Tất cả');
+                      setOrderWarehouseFilter('Tất cả');
+                      setOrderDateRange('all');
                     }}
                   />
 
                   <OrderTable 
                     orders={activeOrdersDataset.filter(o => {
-                      // Tab filtering
+                      // 1. Tab filtering
                       if (orderModuleTab === 'confirm' && o.status !== 'Chờ xác nhận') return false;
-                      if (orderModuleTab === 'pickup' && o.status !== 'Chờ lấy hàng' && o.status !== 'Chờ đóng gói') return false;
-                      if (orderModuleTab === 'delivering' && o.status !== 'Đang giao' && o.status !== 'Chờ bàn giao') return false;
+                      if (orderModuleTab === 'packing' && o.status !== 'Chờ đóng gói' && o.status !== 'Chờ lấy hàng') return false;
+                      if (orderModuleTab === 'handover' && o.status !== 'Chờ bàn giao') return false;
+                      if (orderModuleTab === 'delivering' && o.status !== 'Đang giao') return false;
                       if (orderModuleTab === 'completed' && o.status !== 'Hoàn thành') return false;
                       if (orderModuleTab === 'cancelled' && o.status !== 'Đã hủy') return false;
-                      if (orderModuleTab === 'returned' && o.status !== 'Trả hàng/Hoàn tiền' && o.status !== 'Trả hàng') return false;
+                      if (orderModuleTab === 'returned' && o.status !== 'Trả hàng / Hoàn tiền' && o.status !== 'Trả hàng/Hoàn tiền' && o.status !== 'Trả hàng' && o.status !== 'Đã hoàn tiền') return false;
 
-                      // Search query
-                      if (orderSearchQuery.trim()) {
-                        const q = orderSearchQuery.toLowerCase().trim();
-                        const matchCode = o.code && o.code.toLowerCase().includes(q);
-                        const matchCustName = o.customer?.name ? o.customer.name.toLowerCase().includes(q) : typeof o.customer === 'string' && o.customer.toLowerCase().includes(q);
-                        const matchPhone = o.customer?.phone && o.customer.phone.includes(q);
-                        if (!matchCode && !matchCustName && !matchPhone) return false;
+                      // 2. Status dropdown filter
+                      if (orderStatusFilter !== 'Tất cả' && o.status !== orderStatusFilter) return false;
+
+                      // 3. Payment method filter
+                      if (orderPaymentFilter !== 'Tất cả' && o.summary?.paymentMethod !== orderPaymentFilter) return false;
+
+                      // 4. Warehouse filter
+                      if (orderWarehouseFilter !== 'Tất cả' && o.warehouse !== orderWarehouseFilter) return false;
+
+                      // 5. Shipping Provider filter
+                      if (orderProviderFilter !== 'Tất cả' && orderProviderFilter !== 'Tất cả vận chuyển' && orderProviderFilter !== 'Tất cả ĐVVC') {
+                        if (o.shipping?.provider !== orderProviderFilter && o.shipping?.providerName !== orderProviderFilter) return false;
                       }
 
-                      // Shipping Provider filter
-                      if (orderProviderFilter !== 'Tất cả' && orderProviderFilter !== 'Tất cả vận chuyển') {
-                        if (o.shipping?.provider !== orderProviderFilter && o.shipping?.providerName !== orderProviderFilter) return false;
+                      // 6. Search query (code, customer name, phone, product name)
+                      if (orderSearchQuery.trim()) {
+                        const q = orderSearchQuery.toLowerCase().trim();
+                        const matchCode = (o.code && o.code.toLowerCase().includes(q)) || (o.id && o.id.toLowerCase().includes(q));
+                        const matchCustName = o.customer?.name ? o.customer.name.toLowerCase().includes(q) : typeof o.customer === 'string' && o.customer.toLowerCase().includes(q);
+                        const matchPhone = o.customer?.phone && o.customer.phone.includes(q);
+                        const matchProd = o.items && o.items.some(it => it.name && it.name.toLowerCase().includes(q));
+                        if (!matchCode && !matchCustName && !matchPhone && !matchProd) return false;
                       }
 
                       return true;
                     })}
-                    onNavigateToProducts={() => setActiveTab('products')}
+                    onNavigateToProducts={handleOpenAddProduct}
                     onViewOrderDetail={(order) => setSelectedOrderDetail(order)}
                     onUpdateOrderStatus={handleUpdateSingleOrderStatus}
                     onBulkUpdateStatus={handleBulkUpdateOrderStatus}
@@ -1652,6 +1925,18 @@ export default function App() {
                 <SettingsManager 
                   existingProducts={products}
                   existingOrders={orders}
+                />
+              )}
+
+              {/* TAB: HOÀN THIỆN SHOP (SHOP SETUP ONBOARDING 7 STEPS) */}
+              {activeTab === 'shop_setup' && (
+                <ShopSetupPage 
+                  shopSetupState={shopSetupState}
+                  onUpdateShopSetupState={(newState) => setShopSetupState(newState)}
+                  isNewShop={shopMode === 'NEW_SHOP'}
+                  existingProducts={activeProducts}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                  onOpenAddProduct={handleOpenAddProduct}
                 />
               )}
 

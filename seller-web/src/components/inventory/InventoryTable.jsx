@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sliders, PlusCircle, Eye, Package, Clock } from 'lucide-react';
+import { Sliders, PlusCircle, Package } from 'lucide-react';
 import InventoryBulkActions from './InventoryBulkActions';
 import InventoryDetailDrawer from './InventoryDetailDrawer';
 
@@ -34,15 +34,19 @@ export default function InventoryTable({
     return (
       <div className="inventory-empty-card">
         <div className="empty-icon-circle">
-          <Package size={36} className="empty-icon" />
+          <Package size={44} className="empty-icon" color="#00B14F" />
         </div>
         <h3 className="empty-title">Kho hàng chưa có sản phẩm</h3>
         <p className="empty-desc">
-          Đăng sản phẩm đầu tiên để bắt đầu quản lý tồn kho trên S-SHOPPING Kênh Người Bán.
+          Đăng sản phẩm đầu tiên để bắt đầu quản lý tồn kho.
         </p>
         {onOpenAddProductModal && (
-          <button className="nav-btn-primary empty-add-btn" onClick={onOpenAddProductModal}>
-            + Đăng sản phẩm
+          <button 
+            type="button" 
+            className="nav-btn-primary empty-add-btn" 
+            onClick={onOpenAddProductModal}
+          >
+            <PlusCircle size={16} /> + Đăng sản phẩm
           </button>
         )}
       </div>
@@ -50,7 +54,7 @@ export default function InventoryTable({
   }
 
   return (
-    <div className="inventory-table-card" style={{ position: 'relative' }}>
+    <div className="inventory-table-card">
       {/* Floating Bulk Action Bar */}
       <InventoryBulkActions 
         selectedCount={selectedIds.length}
@@ -67,7 +71,8 @@ export default function InventoryTable({
         }}
       />
 
-      <div className="table-responsive-wrapper">
+      {/* Desktop & Tablet Table (Requirement 8) */}
+      <div className="table-responsive-wrapper desktop-inventory-table-view">
         <table className="inventory-data-table">
           <thead>
             <tr>
@@ -79,15 +84,13 @@ export default function InventoryTable({
                 />
               </th>
               <th className="col-product">Sản phẩm</th>
-              <th className="col-pid">Product ID</th>
               <th className="col-sku">SKU</th>
-              <th className="col-variant">Phân loại</th>
-              <th className="col-num">Tồn thực tế</th>
+              <th className="col-category">Danh mục</th>
+              <th className="col-num">Tồn kho</th>
               <th className="col-num">Đang giữ</th>
               <th className="col-num">Có thể bán</th>
               <th className="col-num">Đã bán</th>
               <th className="col-status">Trạng thái</th>
-              <th className="col-date">Cập nhật</th>
               <th className="col-actions">Thao tác</th>
             </tr>
           </thead>
@@ -96,47 +99,37 @@ export default function InventoryTable({
               const skuId = item.sku || item.id || `sku_${idx}`;
               const isSelected = selectedIds.includes(skuId);
 
-              // Single Source of Truth lookup from Product Catalog
+              // Single Source of Truth lookup from Product Catalog (Requirement 14)
               const matchingProduct = existingProducts.find(p => p.id === item.productId) || {};
-              const productName = item.productName || matchingProduct.name || item.name || 'Áo thun nam basic';
-              const productImage = item.image || matchingProduct.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300';
-              const productId = item.productId || matchingProduct.id || 'p2';
-              const variant = item.variant || item.variants || 'Đen / M';
+              const productName = matchingProduct.name || item.productName || 'Sản phẩm';
+              const productImage = matchingProduct.image || item.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300';
+              const productCategory = matchingProduct.category || item.category || 'Thời trang';
 
-              const physicalStock = item.physicalStock !== undefined ? item.physicalStock : (item.quantity || 128);
-              const reservedStock = item.reservedStock !== undefined ? item.reservedStock : (item.reservedQuantity || 12);
+              // Stock calculation (Requirement 9)
+              const physicalStock = typeof item.physicalStock === 'number' ? item.physicalStock : (item.quantity ?? 100);
+              const reservedStock = typeof item.reservedStock === 'number' ? item.reservedStock : (item.reservedQuantity ?? 5);
               const availableStock = Math.max(0, physicalStock - reservedStock);
-              const soldQuantity = item.soldQuantity !== undefined ? item.soldQuantity : (item.sold || 1245);
-              const minimumStock = item.minimumStock || 10;
+              const soldCount = matchingProduct.sold || item.sold || 0;
 
-              // Status badge logic
-              let statusText = '🟢 Còn hàng';
-              let badgeClass = 'status-tag-green';
+              // Warning Status with explicit text (Requirement 12)
+              let statusLabel = '🟢 Còn hàng';
+              let statusClass = 'status-badge-green';
 
-              if (availableStock === 0) {
-                statusText = '🔴 Hết hàng';
-                badgeClass = 'status-tag-red';
-              } else if (availableStock <= minimumStock) {
-                statusText = '🟠 Sắp hết';
-                badgeClass = 'status-tag-yellow';
+              if (physicalStock === 0) {
+                statusLabel = '🔴 Hết hàng';
+                statusClass = 'status-badge-red';
+              } else if (physicalStock <= 5) {
+                statusLabel = '🟠 Sắp hết';
+                statusClass = 'status-badge-orange';
               }
 
-              const fullItemObj = {
-                ...item,
-                productName,
-                image: productImage,
-                productId,
-                variant,
-                physicalStock,
-                reservedStock,
-                availableStock,
-                soldQuantity,
-                minimumStock
-              };
-
               return (
-                <tr key={skuId} className={isSelected ? 'selected-row' : ''}>
-                  <td className="col-checkbox">
+                <tr 
+                  key={skuId} 
+                  className={`inventory-table-row ${isSelected ? 'row-selected' : ''}`}
+                >
+                  {/* 1. Checkbox */}
+                  <td className="col-checkbox" onClick={(e) => e.stopPropagation()}>
                     <input 
                       type="checkbox" 
                       checked={isSelected}
@@ -144,94 +137,81 @@ export default function InventoryTable({
                     />
                   </td>
 
-                  {/* Product Thumb & Title */}
+                  {/* 2. Sản phẩm */}
                   <td className="col-product">
-                    <div className="inv-product-cell">
-                      <img src={productImage} alt={productName} className="inv-item-thumb" />
-                      <span 
-                        className="inv-item-title clickable-title"
-                        onClick={() => setSelectedDetailItem(fullItemObj)}
-                        title={productName}
-                      >
-                        {productName}
-                      </span>
+                    <div className="product-thumb-title-flex">
+                      <img src={productImage} alt={productName} className="prod-thumb-img" />
+                      <div className="prod-name-id-group">
+                        <span 
+                          className="prod-name-text" 
+                          title={productName}
+                          onClick={() => setSelectedDetailItem(item)}
+                        >
+                          {productName}
+                        </span>
+                        <span className="prod-id-subtag">
+                          ID: <strong>{item.productId}</strong>
+                        </span>
+                      </div>
                     </div>
                   </td>
 
-                  {/* Product ID */}
-                  <td className="col-pid">
-                    <code className="monospace-tag">{productId}</code>
-                  </td>
-
-                  {/* SKU */}
+                  {/* 3. SKU */}
                   <td className="col-sku">
-                    <span className="product-sku-code">{item.sku || 'ATB-BLK-M'}</span>
+                    <span className="sku-code-text">{item.sku}</span>
                   </td>
 
-                  {/* Phân loại Variant */}
-                  <td className="col-variant">
-                    <span className="variant-tag-text">{variant}</span>
+                  {/* 4. Danh mục */}
+                  <td className="col-category">
+                    <span className="category-text-tag">{productCategory}</span>
                   </td>
 
-                  {/* Tồn thực tế */}
+                  {/* 5. Tồn kho (Physical Stock) */}
                   <td className="col-num">
-                    <strong className="physical-stock-val">{physicalStock}</strong>
+                    <strong className="stock-number-text">{physicalStock}</strong>
                   </td>
 
-                  {/* Đang giữ */}
+                  {/* 6. Đang giữ */}
                   <td className="col-num">
-                    <span className="reserved-stock-val">{reservedStock}</span>
+                    <span className="reserved-number-text">{reservedStock}</span>
                   </td>
 
-                  {/* Có thể bán = Physical - Reserved */}
+                  {/* 7. Có thể bán (Formula: Tồn kho - Đang giữ) */}
                   <td className="col-num">
-                    <strong className={`available-stock-val ${availableStock === 0 ? 'zero' : ''}`}>
-                      {availableStock}
-                    </strong>
+                    <strong className="available-number-text highlight-avail">{availableStock}</strong>
                   </td>
 
-                  {/* Đã bán */}
+                  {/* 8. Đã bán */}
                   <td className="col-num">
-                    <span className="sold-val-text">{soldQuantity}</span>
+                    <span className="sold-number-text">{soldCount}</span>
                   </td>
 
-                  {/* Trạng thái */}
+                  {/* 9. Trạng thái */}
                   <td className="col-status">
-                    <span className={`product-status-badge ${badgeClass}`}>
-                      {statusText}
+                    <span className={`inventory-status-pill ${statusClass}`}>
+                      {statusLabel}
                     </span>
                   </td>
 
-                  {/* Cập nhật */}
-                  <td className="col-date">
-                    <span className="created-date-text">{item.updatedAt || '13/08/2026'}</span>
-                  </td>
-
-                  {/* Thao tác */}
-                  <td className="col-actions">
-                    <div className="row-actions-group" style={{ display: 'flex', gap: '6px' }}>
+                  {/* 10. Thao tác */}
+                  <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+                    <div className="action-buttons-group">
                       <button 
-                        className="row-action-btn view-btn"
-                        onClick={() => setSelectedDetailItem(fullItemObj)}
-                        title="Xem chi tiết tồn kho SKU"
+                        type="button" 
+                        className="btn-stock-receive"
+                        onClick={() => onOpenReceiveModal && onOpenReceiveModal(item.sku)}
+                        title="Nhập thêm hàng vào kho"
                       >
-                        <Eye size={15} />
+                        <PlusCircle size={13} /> Nhập kho
                       </button>
 
                       <button 
-                        className="row-action-btn edit-btn"
-                        onClick={() => onOpenAdjustModal(fullItemObj)}
-                        title="Điều chỉnh tồn kho"
+                        type="button" 
+                        className="btn-stock-adjust"
+                        onClick={() => onOpenAdjustModal && onOpenAdjustModal(item)}
+                        title="Điều chỉnh số lượng tồn kho"
                       >
-                        <Sliders size={15} />
-                      </button>
-
-                      <button 
-                        className="row-action-btn toggle-btn"
-                        onClick={() => onOpenReceiveModal(item.sku)}
-                        title="Nhập kho nhanh SKU này"
-                      >
-                        <PlusCircle size={15} />
+                        <Sliders size={13} /> Điều chỉnh
                       </button>
                     </div>
                   </td>
@@ -242,18 +222,93 @@ export default function InventoryTable({
         </table>
       </div>
 
-      {/* Inventory Detail Drawer */}
+      {/* Mobile Card List View (Requirement 19) */}
+      <div className="mobile-inventory-cards-view">
+        {items.map((item, idx) => {
+          const skuId = item.sku || item.id || `sku_${idx}`;
+          const matchingProduct = existingProducts.find(p => p.id === item.productId) || {};
+          const productName = matchingProduct.name || item.productName || 'Sản phẩm';
+          const productImage = matchingProduct.image || item.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300';
+          const productCategory = matchingProduct.category || item.category || 'Thời trang';
+
+          const physicalStock = typeof item.physicalStock === 'number' ? item.physicalStock : (item.quantity ?? 100);
+          const reservedStock = typeof item.reservedStock === 'number' ? item.reservedStock : (item.reservedQuantity ?? 5);
+          const availableStock = Math.max(0, physicalStock - reservedStock);
+
+          let statusLabel = '🟢 Còn hàng';
+          let statusClass = 'status-badge-green';
+          if (physicalStock === 0) {
+            statusLabel = '🔴 Hết hàng';
+            statusClass = 'status-badge-red';
+          } else if (physicalStock <= 5) {
+            statusLabel = '🟠 Sắp hết';
+            statusClass = 'status-badge-orange';
+          }
+
+          return (
+            <div key={skuId} className="mobile-inventory-item-card">
+              <div className="mobile-item-header">
+                <span className="mobile-sku-badge">{item.sku}</span>
+                <span className={`inventory-status-pill ${statusClass}`}>{statusLabel}</span>
+              </div>
+
+              <div className="mobile-item-body">
+                <img src={productImage} alt={productName} className="mobile-item-thumb" />
+                <div className="mobile-item-details">
+                  <h4 className="mobile-item-name">{productName}</h4>
+                  <span className="mobile-item-cat">{productCategory} • ID: {item.productId}</span>
+                </div>
+              </div>
+
+              <div className="mobile-stock-metrics-grid">
+                <div className="metric-box">
+                  <span className="lbl">Tồn kho</span>
+                  <strong className="val">{physicalStock}</strong>
+                </div>
+                <div className="metric-box">
+                  <span className="lbl">Đang giữ</span>
+                  <strong className="val orange">{reservedStock}</strong>
+                </div>
+                <div className="metric-box">
+                  <span className="lbl">Có thể bán</span>
+                  <strong className="val green">{availableStock}</strong>
+                </div>
+              </div>
+
+              <div className="mobile-item-actions">
+                <button 
+                  type="button" 
+                  className="btn-mobile-receive"
+                  onClick={() => onOpenReceiveModal && onOpenReceiveModal(item.sku)}
+                >
+                  <PlusCircle size={14} /> Nhập kho
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-mobile-adjust"
+                  onClick={() => onOpenAdjustModal && onOpenAdjustModal(item)}
+                >
+                  <Sliders size={14} /> Điều chỉnh
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Side Drawer for Inspection */}
       {selectedDetailItem && (
         <InventoryDetailDrawer 
           item={selectedDetailItem}
+          existingProducts={existingProducts}
           onClose={() => setSelectedDetailItem(null)}
-          onOpenReceive={(sku) => {
-            setSelectedDetailItem(null);
-            onOpenReceiveModal(sku);
-          }}
-          onOpenAdjust={(it) => {
+          onOpenAdjustModal={(it) => {
             setSelectedDetailItem(null);
             onOpenAdjustModal(it);
+          }}
+          onOpenReceiveModal={(sku) => {
+            setSelectedDetailItem(null);
+            onOpenReceiveModal(sku);
           }}
         />
       )}

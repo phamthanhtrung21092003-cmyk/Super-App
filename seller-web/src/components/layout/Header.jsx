@@ -24,7 +24,9 @@ export default function Header({
   isSidebarCollapsed, 
   onToggleSidebar, 
   onLogout,
-  onNavigateTab
+  onNavigateTab,
+  unreadNotificationCount = 5,
+  unreadMessageCount = 8
 }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -66,6 +68,11 @@ export default function Header({
             placeholder="Tìm kiếm sản phẩm, đơn hàng, SKU..." 
             className="search-input"
             aria-label="Tìm kiếm sản phẩm, đơn hàng, SKU"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                if (onNavigateTab) onNavigateTab('products');
+              }
+            }}
           />
           <kbd className="keyboard-shortcut-badge" aria-hidden="true">Ctrl + K</kbd>
         </div>
@@ -73,10 +80,17 @@ export default function Header({
 
       {/* Right: Quick Notifications, Messages, Help & Profile Dropdown */}
       <div className="seller-header-right">
-        {/* Notifications */}
-        <button className="header-action-icon-btn" title="Thông báo" aria-label="Thông báo">
+        {/* Notifications (Requirement 2 & 22) */}
+        <button 
+          className="header-action-icon-btn" 
+          title="Trung tâm Thông báo" 
+          aria-label={`${unreadNotificationCount} thông báo chưa đọc`}
+          onClick={() => onNavigateTab('notifications')}
+        >
           <Bell size={18} />
-          <span className="header-badge-count red-badge" aria-label="0 thông báo">0</span>
+          {unreadNotificationCount > 0 && (
+            <span className="header-badge-count red-badge">{unreadNotificationCount}</span>
+          )}
         </button>
 
         {/* Messages / Chat */}
@@ -84,14 +98,21 @@ export default function Header({
           className="header-action-icon-btn" 
           title="Tin nhắn"
           aria-label="Mở Hộp thoại Tin nhắn Chat"
-          onClick={() => onNavigateTab('chat')}
+          onClick={() => onNavigateTab('messages')}
         >
           <MessageSquare size={18} />
-          <span className="header-badge-count green-badge" aria-label="0 tin nhắn chưa đọc">0</span>
+          {unreadMessageCount > 0 && (
+            <span className="header-badge-count green-badge">{unreadMessageCount}</span>
+          )}
         </button>
 
         {/* Help Center */}
-        <button className="header-action-icon-btn text-link-btn" title="Trợ giúp" aria-label="Trung tâm Trợ giúp người bán">
+        <button 
+          className="header-action-icon-btn text-link-btn" 
+          title="Trợ giúp" 
+          aria-label="Trung tâm Trợ giúp người bán"
+          onClick={() => onNavigateTab('settings')}
+        >
           <HelpCircle size={18} />
           <span className="hide-on-mobile">Trợ giúp</span>
         </button>
