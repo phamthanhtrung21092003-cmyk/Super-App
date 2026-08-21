@@ -303,7 +303,7 @@ export default function HomeScreen() {
         >
           {/* Glassmorphic Liquid Aurora Overlay */}
           <LinearGradient 
-            colors={['rgba(248,250,252,0.62)', 'rgba(241,245,249,0.78)', 'rgba(238,242,255,0.88)']} 
+            colors={['rgba(248,250,252,0.25)', 'rgba(241,245,249,0.4)', 'rgba(238,242,255,0.5)']} 
             style={styles.overlay} 
           />
 
@@ -868,9 +868,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.65)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
   },
   notifBadge: {
@@ -899,12 +899,12 @@ const styles = StyleSheet.create({
   searchBoxLight: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
     borderRadius: 16,
     paddingHorizontal: 14,
     height: 48,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.75)',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
   },
   searchInput: {
@@ -912,6 +912,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 14,
     height: '100%',
+    fontWeight: '600',
     ...(Platform.OS === 'web' && { outlineStyle: 'none' }),
   },
   qrSearchBtn: {
@@ -922,19 +923,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   tagPillLight: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.65)',
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   tagTextLight: {
-    color: '#475569',
+    color: '#334155',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1011,10 +1012,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.75)',
     padding: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
     boxShadow: '0 6px 16px rgba(0, 0, 0, 0.04)',
   },
   gridIconWrapperLight: {
@@ -1034,9 +1035,9 @@ const styles = StyleSheet.create({
     boxShadow: '0 6px 14px rgba(14, 165, 233, 0.25)',
   },
   gridTitleLight: {
-    color: '#1E293B',
+    color: '#0F172A',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: 'center',
   },
   groupContainer: {
@@ -1062,10 +1063,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.75)',
     gap: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
   },
   utilityIconWrapperLight: {
@@ -1111,9 +1112,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   utilityItemTitleLight: {
-    color: '#1E293B',
+    color: '#0F172A',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     flex: 1,
   },
   bottomTabBarLight: {
@@ -1122,13 +1123,13 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     height: 64,
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    backgroundColor: 'rgba(255, 255, 255, 0.58)',
     borderRadius: 32,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
     paddingHorizontal: 8,
     boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
   },

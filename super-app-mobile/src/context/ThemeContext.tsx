@@ -11,6 +11,9 @@ export interface ThemeState {
   textColor: string;
   backgroundImage: string | null;
   background?: string;
+  isDark?: boolean;
+  accentHex?: string;
+  accentRgb?: string;
 }
 
 const DEFAULT_THEME: ThemeState = {
@@ -19,6 +22,9 @@ const DEFAULT_THEME: ThemeState = {
   textColor: '#FFFFFF',
   backgroundImage: null, // null means use default array
   background: '#F8FAFC', // Default bright background for travel/explore content screens
+  isDark: false,
+  accentHex: '#00D8FF',
+  accentRgb: '0, 216, 255',
 };
 
 interface ThemeContextProps {

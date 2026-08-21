@@ -21,14 +21,27 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
 
-const DEFAULT_BACKGROUND = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+const DEFAULT_BACKGROUND = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop';
 
 const BACKGROUNDS = [
-  { id: '1', title: 'Liquid Light', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop' },
-  { id: '2', title: 'Cyber City', url: 'https://images.unsplash.com/photo-1518655048521-f130df041f66?auto=format&fit=crop&w=1000&q=80' },
-  { id: '3', title: 'Neon Night', url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1000&q=80' },
-  { id: '4', title: 'Dark Matrix', url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1000&q=80' },
-  { id: '5', title: 'Purple Void', url: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1000&q=80' },
+  { id: '1', title: 'Liquid Cyber', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop' },
+  { id: '2', title: 'Cyber City', url: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=1200&auto=format&fit=crop' },
+  { id: '3', title: 'Pastel Drops', url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop' },
+  { id: '4', title: 'Neon Horizon', url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1200&auto=format&fit=crop' },
+  { id: '5', title: 'Matrix Tech', url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=1200&auto=format&fit=crop' },
+  { id: '6', title: 'Purple Nebula', url: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1200&auto=format&fit=crop' },
+  { id: '7', title: 'Aurora Glow', url: 'https://images.unsplash.com/photo-1579033461380-adb47c3eb938?q=80&w=1200&auto=format&fit=crop' },
+  { id: '8', title: 'Minimal Obsidian', url: 'https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=1200&auto=format&fit=crop' },
+  { id: '9', title: 'Sunset Metropolis', url: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?q=80&w=1200&auto=format&fit=crop' },
+  { id: '10', title: 'Cyberpunk Rain', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1200&auto=format&fit=crop' },
+  { id: '11', title: 'Fuji Blossom', url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1200&auto=format&fit=crop' },
+  { id: '12', title: 'Tropical Oasis', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop' },
+  { id: '13', title: 'Golden Silk Dunes', url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1200&auto=format&fit=crop' },
+  { id: '14', title: 'Emerald Marble', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop' },
+  { id: '15', title: 'Mystic Forest', url: 'https://images.unsplash.com/photo-1511497584788-87676104235f?q=80&w=1200&auto=format&fit=crop' },
+  { id: '16', title: 'Deep Ocean Wave', url: 'https://images.unsplash.com/photo-1682687220063-4742bd7fd538?q=80&w=1200&auto=format&fit=crop' },
+  { id: '17', title: 'Neon Synth Stream', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1200&auto=format&fit=crop' },
+  { id: '18', title: 'Cosmic Starfield', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1200&auto=format&fit=crop' },
 ];
 
 const COLORS = [
@@ -65,7 +78,7 @@ export default function AppearanceScreen() {
 
   const handleSetAccentColor = (hex: string, rgb: string) => {
     setThemeColor(hex, rgb);
-    updateTheme({ textColor: hex });
+    updateTheme({ textColor: hex, accentHex: hex, accentRgb: rgb });
   };
 
   return (
@@ -88,9 +101,11 @@ export default function AppearanceScreen() {
           style={styles.backgroundImage}
           resizeMode="cover"
         >
+          {/* Deep Dark Frosted Overlay to guarantee 100% contrast for all text */}
           <LinearGradient
-            colors={['rgba(15, 23, 42, 0.65)', 'rgba(15, 23, 42, 0.92)']}
+            colors={['rgba(15, 23, 42, 0.82)', 'rgba(15, 23, 42, 0.94)']}
             style={styles.darkOverlay}
+            pointerEvents="none"
           />
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
@@ -107,7 +122,7 @@ export default function AppearanceScreen() {
               style={styles.backButton} 
               activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
             <View style={styles.headerTitleWrap}>
               <Text style={[styles.headerTitle, { fontFamily: theme.fontFamily, fontSize: scaleFont(17) }]}>GIAO DIỆN</Text>
@@ -129,7 +144,7 @@ export default function AppearanceScreen() {
                       key={color.id} 
                       style={[
                         styles.colorCard, 
-                        isActive && { borderColor: color.hex, backgroundColor: `rgba(${color.rgb}, 0.2)` }
+                        isActive && { borderColor: color.hex, backgroundColor: `rgba(${color.rgb}, 0.25)` }
                       ]}
                       onPress={() => handleSetAccentColor(color.hex, color.rgb)}
                       activeOpacity={0.8}
@@ -155,8 +170,8 @@ export default function AppearanceScreen() {
                   onPress={pickImage}
                   activeOpacity={0.8}
                 >
-                  <LinearGradient colors={['rgba(56, 189, 248, 0.25)', 'rgba(14, 165, 233, 0.1)']} style={styles.actionBtnGradient}>
-                    <Ionicons name="image-outline" size={22} color="#38BDF8" />
+                  <LinearGradient colors={['rgba(56, 189, 248, 0.3)', 'rgba(14, 165, 233, 0.15)']} style={styles.actionBtnGradient}>
+                    <Ionicons name="image-outline" size={20} color="#38BDF8" />
                     <Text style={[styles.actionBtnText, { fontSize: scaleFont(12) }]}>Chọn Từ Thư Viện</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -166,14 +181,18 @@ export default function AppearanceScreen() {
                   onPress={() => handleSetBg(null)}
                   activeOpacity={0.8}
                 >
-                  <LinearGradient colors={['rgba(244, 114, 182, 0.25)', 'rgba(236, 72, 153, 0.1)']} style={styles.actionBtnGradient}>
-                    <Ionicons name="sparkles-outline" size={22} color="#F472B6" />
+                  <LinearGradient colors={['rgba(244, 114, 182, 0.3)', 'rgba(236, 72, 153, 0.15)']} style={styles.actionBtnGradient}>
+                    <Ionicons name="sparkles-outline" size={20} color="#F472B6" />
                     <Text style={[styles.actionBtnText, { fontSize: scaleFont(12) }]}>Mặc Định Aurora</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bgScroll}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={styles.bgScrollContent}
+              >
                 {BACKGROUNDS.map((bg) => {
                   const isActive = currentBg === bg.url;
                   return (
@@ -181,18 +200,24 @@ export default function AppearanceScreen() {
                       key={bg.id} 
                       style={[
                         styles.bgCard,
-                        isActive && { borderColor: accentHex || '#0EA5E9', borderWidth: 2 }
+                        isActive && { borderColor: accentHex || '#0EA5E9', borderWidth: 2.5, transform: [{ scale: 1.02 }] }
                       ]}
                       onPress={() => handleSetBg(bg.url)}
-                      activeOpacity={0.8}
+                      activeOpacity={0.85}
                     >
                       <Image source={{ uri: bg.url }} style={styles.bgImage} />
+                      <LinearGradient
+                        colors={['transparent', 'rgba(15, 23, 42, 0.9)']}
+                        style={styles.bgCardGradient}
+                      />
                       {isActive && (
                         <View style={[styles.bgActiveBadge, { backgroundColor: accentHex || '#0EA5E9' }]}>
-                          <Ionicons name="checkmark" size={14} color="#FFF" />
+                          <Ionicons name="checkmark" size={13} color="#FFF" />
                         </View>
                       )}
-                      <Text style={[styles.bgName, isActive && { color: accentHex || '#0EA5E9', fontWeight: '700' }, { fontSize: scaleFont(12) }]}>{bg.title}</Text>
+                      <Text style={[styles.bgName, isActive && { color: accentHex || '#38BDF8', fontWeight: '800' }, { fontSize: scaleFont(11.5) }]} numberOfLines={1}>
+                        {bg.title}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -202,7 +227,7 @@ export default function AppearanceScreen() {
             {/* ══════════ PHÔNG CHỮ HỆ THỐNG ══════════ */}
             <Animated.View entering={FadeInUp.delay(300).duration(700)} style={styles.section}>
               <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily, fontSize: scaleFont(15) }]}>🔤 Phông Chữ Hiển Thị</Text>
-              <BlurView intensity={30} tint="dark" style={styles.glassCard}>
+              <View style={styles.glassCard}>
                 <View style={styles.fontGrid}>
                   {FONTS.map((font) => {
                     const isSelected = theme.fontFamily === font;
@@ -211,24 +236,24 @@ export default function AppearanceScreen() {
                         key={font}
                         style={[
                           styles.fontGridItem, 
-                          isSelected && { borderColor: accentHex || '#0EA5E9', backgroundColor: `rgba(${accentRgb || '14, 165, 233'}, 0.2)` }
+                          isSelected && { borderColor: accentHex || '#0EA5E9', backgroundColor: `rgba(${accentRgb || '14, 165, 233'}, 0.25)` }
                         ]}
                         onPress={() => updateTheme({ fontFamily: font })}
                         activeOpacity={0.8}
                       >
-                        <Text style={[styles.fontPreview, { fontFamily: font, color: isSelected ? accentHex || '#38BDF8' : '#FFF', fontSize: scaleFont(22) }]}>Aa</Text>
-                        <Text style={[styles.fontLabel, { color: isSelected ? '#FFF' : '#94A3B8', fontWeight: isSelected ? '700' : '500', fontSize: scaleFont(12) }]}>{font}</Text>
+                        <Text style={[styles.fontPreview, { fontFamily: font, color: isSelected ? accentHex || '#38BDF8' : '#FFFFFF', fontSize: scaleFont(22) }]}>Aa</Text>
+                        <Text style={[styles.fontLabel, { color: isSelected ? '#FFFFFF' : '#CBD5E1', fontWeight: isSelected ? '800' : '600', fontSize: scaleFont(12) }]}>{font}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-              </BlurView>
+              </View>
             </Animated.View>
 
             {/* ══════════ CỠ CHỮ HỆ THỐNG ══════════ */}
             <Animated.View entering={FadeInUp.delay(400).duration(700)} style={styles.section}>
               <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily, fontSize: scaleFont(15) }]}>🔍 Tỷ Lệ Cỡ Chữ</Text>
-              <BlurView intensity={30} tint="dark" style={styles.glassCard}>
+              <View style={styles.glassCard}>
                 <View style={styles.sizeRow}>
                   {[ 
                     { label: 'Nhỏ', value: 0.8 }, 
@@ -248,7 +273,7 @@ export default function AppearanceScreen() {
                       >
                         <Text style={[
                           styles.sizeText, 
-                          { fontFamily: theme.fontFamily, fontSize: scaleFont(14 * size.value), color: isSelected ? '#FFFFFF' : '#94A3B8' }
+                          { fontFamily: theme.fontFamily, fontSize: scaleFont(14 * size.value), color: isSelected ? '#FFFFFF' : '#CBD5E1' }
                         ]}>
                           {size.label}
                         </Text>
@@ -256,13 +281,13 @@ export default function AppearanceScreen() {
                     );
                   })}
                 </View>
-              </BlurView>
+              </View>
             </Animated.View>
 
             {/* ══════════ CẤU HÌNH THÔNG BÁO & HỆ THỐNG ══════════ */}
             <Animated.View entering={FadeInUp.delay(500).duration(700)} style={styles.section}>
               <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily, fontSize: scaleFont(15) }]}>⚙️ Cấu Hình Thông Báo & Hệ Thống</Text>
-              <BlurView intensity={30} tint="dark" style={styles.glassCard}>
+              <View style={styles.glassCard}>
                 <View style={styles.toggleRow}>
                   <View style={styles.toggleLeft}>
                     <Ionicons name="notifications-outline" size={20} color="#38BDF8" />
@@ -301,7 +326,7 @@ export default function AppearanceScreen() {
                     thumbColor="#FFFFFF"
                   />
                 </View>
-              </BlurView>
+              </View>
             </Animated.View>
 
             {/* ══════════ BẢN XEM TRƯỚC TRỰC TIẾP ══════════ */}
@@ -310,15 +335,15 @@ export default function AppearanceScreen() {
               <View style={[
                 styles.previewCard, 
                 { 
-                  borderColor: `rgba(${accentRgb || '14, 165, 233'}, 0.4)`, 
-                  backgroundColor: `rgba(${accentRgb || '14, 165, 233'}, 0.1)` 
+                  borderColor: accentHex || '#38BDF8', 
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)' 
                 }
               ]}>
                 <Text style={[styles.previewHeading, { color: accentHex || '#38BDF8', fontFamily: theme.fontFamily, fontSize: scaleFont(16) }]}>
                   VIET SUPER Giao Diện Mới
                 </Text>
                 <Text style={[styles.previewText, { fontFamily: theme.fontFamily, fontSize: scaleFont(13) }]}>
-                  Giao diện, màu sắc chủ đạo ({accentHex}) và phông chữ ({theme.fontFamily}) sẽ lập tức được áp dụng toàn bộ trên ứng dụng của bạn!
+                  Giao diện, màu sắc chủ đạo ({accentHex}) và phông chữ ({theme.fontFamily}) sẽ lập tức được áp dụng đồng bộ toàn bộ trên ứng dụng của bạn!
                 </Text>
                 <TouchableOpacity style={[styles.previewBtn, { backgroundColor: accentHex || '#0EA5E9' }]} activeOpacity={0.8}>
                   <Text style={[styles.previewBtnText, { fontFamily: theme.fontFamily, fontSize: scaleFont(14) }]}>Nút Bấm Trải Nghiệm Mẫu</Text>
@@ -382,7 +407,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   darkOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   header: {
     flexDirection: 'row',
@@ -393,12 +418,15 @@ const styles = StyleSheet.create({
     zIndex: 10,
     borderBottomWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -413,7 +441,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   headerSubtitle: {
-    color: '#94A3B8',
+    color: '#CBD5E1',
     fontSize: 11,
     fontWeight: '500',
     marginTop: 2,
@@ -423,13 +451,13 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   section: {
-    marginBottom: 28,
+    marginBottom: 26,
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   colorGrid: {
     flexDirection: 'row',
@@ -440,27 +468,29 @@ const styles = StyleSheet.create({
     width: '48%',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(30, 41, 59, 0.75)',
     padding: 12,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   colorCircle: {
     width: 22,
     height: 22,
     borderRadius: 11,
     marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   colorName: {
-    color: '#E2E8F0',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
   },
   actionRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   actionBtn: {
     flex: 1,
@@ -473,36 +503,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 14,
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
   },
   actionBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
-  bgScroll: {
+  bgScrollContent: {
     flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    alignItems: 'center',
   },
   bgCard: {
-    width: 120,
-    marginRight: 14,
+    width: 125,
+    height: 175,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    position: 'relative',
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   bgImage: {
     width: '100%',
-    height: 140,
-    borderRadius: 14,
+    height: '100%',
+    position: 'absolute',
+  },
+  bgCardGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 65,
   },
   bgName: {
-    color: '#CBD5E1',
-    fontSize: 12,
+    position: 'absolute',
+    bottom: 8,
+    left: 6,
+    right: 6,
+    color: '#FFFFFF',
+    fontSize: 11.5,
     textAlign: 'center',
-    paddingVertical: 8,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   bgActiveBadge: {
     position: 'absolute',
@@ -513,13 +561,16 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   glassCard: {
     padding: 16,
     borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(30, 41, 59, 0.75)',
   },
   fontGrid: {
     flexDirection: 'row',
@@ -532,9 +583,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
   },
   fontPreview: {
     fontSize: 22,
@@ -554,9 +605,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
   },
   sizeText: {
     fontWeight: '700',
@@ -573,14 +624,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   toggleLabel: {
-    color: '#E2E8F0',
+    color: '#F1F5F9',
     fontSize: 13,
     fontWeight: '600',
   },
   previewCard: {
     padding: 20,
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 1.5,
     alignItems: 'center',
   },
   previewHeading: {
@@ -589,7 +640,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   previewText: {
-    color: '#E2E8F0',
+    color: '#F1F5F9',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,

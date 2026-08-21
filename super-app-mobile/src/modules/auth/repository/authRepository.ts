@@ -77,11 +77,12 @@ export const authRepository: IAuthRepository = {
       // Trong chế độ mock, luôn đảm bảo phiên đăng nhập mock hợp lệ
       if (isMockMode) {
         console.log('[AuthRepository] Auto mock session login...');
+        const storedAvatar = await AsyncStorage.getItem('avatarUrl');
         let mockUser = {
           id: 'mock_user_trung',
           fullName: 'Phạm Thành Trung ✨',
           phone: '0987654321',
-          avatarUrl: 'https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512',
+          avatarUrl: storedAvatar || 'https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512',
           bio: 'Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨',
           coins: 15000,
           rewardPoints: 1850,
@@ -90,7 +91,11 @@ export const authRepository: IAuthRepository = {
 
         if (userStr) {
           try {
-            mockUser = JSON.parse(userStr);
+            const parsed = JSON.parse(userStr);
+            mockUser = { ...mockUser, ...parsed };
+            if (storedAvatar && (!mockUser.avatarUrl || mockUser.avatarUrl.includes('ui-avatars.com'))) {
+              mockUser.avatarUrl = storedAvatar;
+            }
           } catch (e) {
             // fallback to default mockUser
           }

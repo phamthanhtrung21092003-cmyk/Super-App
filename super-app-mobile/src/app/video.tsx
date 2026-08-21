@@ -4,7 +4,7 @@ import {
   Platform, TouchableOpacity, Image, StatusBar, Modal,
   TextInput, KeyboardAvoidingView, SafeAreaView, Share, ScrollView, Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,33 +28,45 @@ const formatCount = (n: number): string => {
   return n.toString();
 };
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Data (Thứ tự danh sách feed: Video 6 mới nhất [index 0] -> Video 1 cũ nhất [index 5]) ─────────
 const MOCK_VIDEOS = [
   {
-    id: '1',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    user: { username: '@nature_vibes', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' },
-    caption: 'Vẻ đẹp thiên nhiên rực rỡ! Một buổi chiều thật chill bên những bông hoa vàng. 🌼✨ #nature #chill #flowers',
-    music: 'Original Sound - Nature Vibes',
-    likesCount: 124000, commentsCount: 4200, sharesCount: 12000,
-    location: 'Đà Lạt, Lâm Đồng',
-    linkedService: { type: 'tour', title: 'Tour Săn Mây Đà Lạt', price: '450.000đ', icon: '⛺' },
+    id: '6',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+    user: { username: '@mountain_escape', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100' },
+    caption: 'Chinh phục đỉnh núi cao giữa biển mây. Cảm giác thật tuyệt vời khi chạm tay vào bầu trời! 🏔️☁️ #mountains #clouds #adventure',
+    music: 'Epic Journey - Mountain Sound',
+    likesCount: 78000, commentsCount: 2100, sharesCount: 8900, liked: false,
+    location: 'Fansipan, Lào Cai',
+    linkedService: { type: 'tour', title: 'Vé cáp treo Fansipan', price: '850.000đ', icon: '🚠' },
     commentsList: [
-      { id: 'c1', user: 'Linh Nga', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100', text: 'Cảnh đẹp quá! Ở đâu vậy bạn?', likesCount: 128, timestamp: '2 giờ trước', isOwn: false },
-      { id: 'c2', user: 'Minh Quân', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', text: 'Thật yên bình ❤️', likesCount: 64, timestamp: '3 giờ trước', isOwn: false },
+      { id: 'c8', user: 'Đức Huy', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100', text: 'Mây phủ đẹp quá bạn ơi!', likesCount: 88, timestamp: '1 phút trước', isOwn: false },
     ],
   },
   {
-    id: '2',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    user: { username: '@family_moments', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100' },
-    caption: 'Khoảnh khắc đáng yêu của hai mẹ con cuối tuần. Marshmallow ngon tuyệt! 🥰🍡 #family #cute #weekend',
-    music: 'Happy Kids - Background Music',
-    likesCount: 89000, commentsCount: 1500, sharesCount: 5000,
-    location: 'Quận 1, TP.HCM',
-    linkedService: { type: 'food', title: 'Kẹo dẻo Marshmallow', price: '55.000đ', icon: '🍬' },
+    id: '5',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    user: { username: '@sunset_lover', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100' },
+    caption: 'Hoàng hôn rực rỡ buông xuống đồi cỏ. Bức tranh hoàng hôn đẹp nhất từng thấy 🌅✨ #sunset #chillvibes #goldenhour',
+    music: 'Sunset Melody - Acoustic Guitar',
+    likesCount: 310000, commentsCount: 14200, sharesCount: 65000, liked: true,
+    location: 'Tà Xùa, Sơn La',
+    linkedService: { type: 'tour', title: 'Săn hoàng hôn Tà Xùa', price: '650.000đ', icon: '🌄' },
     commentsList: [
-      { id: 'c3', user: 'Mẹ Bỉm Sữa', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', text: 'Bé cưng quá đi mất thôi 🥰', likesCount: 45, timestamp: '1 giờ trước', isOwn: false },
+      { id: 'c7', user: 'Hoàng Yến', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', text: 'Màu hoàng hôn đỉnh thật sự!', likesCount: 156, timestamp: '5 phút trước', isOwn: false },
+    ],
+  },
+  {
+    id: '4',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    user: { username: '@wanderlust_vn', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' },
+    caption: 'Lạc bước vào cánh rừng thông xanh ngát. Hít thở không khí trong lành nguyên sơ 🌲🍃 #forest #nature #travel',
+    music: 'Deep Forest - Healing Sound',
+    likesCount: 52000, commentsCount: 920, sharesCount: 3100, liked: false,
+    location: 'Ba Vì, Hà Nội',
+    linkedService: { type: 'tour', title: 'Cắm trại rừng thông Ba Vì', price: '350.000đ', icon: '⛺' },
+    commentsList: [
+      { id: 'c6', user: 'Tuấn Anh', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', text: 'Rừng thông đẹp mê mẩn!', likesCount: 42, timestamp: '10 phút trước', isOwn: false },
     ],
   },
   {
@@ -63,12 +75,39 @@ const MOCK_VIDEOS = [
     user: { username: '@photo_graphy', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100' },
     caption: 'Hậu trường chụp ảnh lookbook siêu ngầu. Góc chụp quyết định tất cả! 📸🔥 #photography #behindthescenes',
     music: 'Trending Song - Beat Drop',
-    likesCount: 250000, commentsCount: 10000, sharesCount: 45000,
+    likesCount: 250000, commentsCount: 10000, sharesCount: 45000, liked: false,
     location: 'Hoàn Kiếm, Hà Nội',
     linkedService: { type: 'shopping', title: 'Máy ảnh Film Vintage', price: '1.200.000đ', icon: '📸' },
     commentsList: [
       { id: 'c4', user: 'Nhiếp Ảnh Gia', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', text: 'Góc máy ảo diệu thật sự!', likesCount: 312, timestamp: '30 phút trước', isOwn: false },
       { id: 'c5', user: 'Mẫu Ảnh HN', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100', text: 'Tuyệt vờiiii 🔥', likesCount: 89, timestamp: '45 phút trước', isOwn: false },
+    ],
+  },
+  {
+    id: '2',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    user: { username: '@family_moments', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100' },
+    caption: 'Khoảnh khắc đáng yêu của hai mẹ con cuối tuần. Marshmallow ngon tuyệt! 🥰🍡 #family #cute #weekend',
+    music: 'Happy Kids - Background Music',
+    likesCount: 89000, commentsCount: 1500, sharesCount: 5000, liked: true,
+    location: 'Quận 1, TP.HCM',
+    linkedService: { type: 'food', title: 'Kẹo dẻo Marshmallow', price: '55.000đ', icon: '🍬' },
+    commentsList: [
+      { id: 'c3', user: 'Mẹ Bỉm Sữa', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', text: 'Bé cưng quá đi mất thôi 🥰', likesCount: 45, timestamp: '1 giờ trước', isOwn: false },
+    ],
+  },
+  {
+    id: '1',
+    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    user: { username: '@nature_vibes', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' },
+    caption: 'Vẻ đẹp thiên nhiên rực rỡ! Một buổi chiều thật chill bên những bông hoa vàng. 🌼✨ #nature #chill #flowers',
+    music: 'Original Sound - Nature Vibes',
+    likesCount: 124000, commentsCount: 4200, sharesCount: 12000, liked: false,
+    location: 'Đà Lạt, Lâm Đồng',
+    linkedService: { type: 'tour', title: 'Tour Săn Mây Đà Lạt', price: '450.000đ', icon: '⛺' },
+    commentsList: [
+      { id: 'c1', user: 'Linh Nga', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100', text: 'Cảnh đẹp quá! Ở đâu vậy bạn?', likesCount: 128, timestamp: '2 giờ trước', isOwn: false },
+      { id: 'c2', user: 'Minh Quân', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', text: 'Thật yên bình ❤️', likesCount: 64, timestamp: '3 giờ trước', isOwn: false },
     ],
   },
 ];
@@ -207,8 +246,6 @@ const VideoItem = ({
       <VideoView
         style={StyleSheet.absoluteFill}
         player={player}
-        allowsFullscreen={false}
-        allowsPictureInPicture={false}
         nativeControls={false}
         contentFit="cover"
       />
@@ -358,13 +395,56 @@ const VideoItem = ({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function VideoScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ videoId?: string; tab?: string }>();
+  const flatListRef = useRef<FlatList>(null);
   const { theme } = useTheme();
   const { userName, avatarUrl } = useUser();
   const { width, height } = useWindowDimensions();
 
-  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('foryou');
   const [isMuted, setIsMuted] = useState(true);
+
+  // Compute feed list dynamically based on incoming profile tab
+  const videoFeed = React.useMemo(() => {
+    if (params.tab === 'saved') {
+      return MOCK_VIDEOS.slice(0, 3); // 3 saved videos
+    }
+    if (params.tab === 'liked') {
+      return MOCK_VIDEOS.filter(v => v.liked); // Liked videos
+    }
+    if (params.tab === 'reposted') {
+      return MOCK_VIDEOS.slice(3, 6); // 3 reposted videos
+    }
+    if (params.tab === 'posted') {
+      return MOCK_VIDEOS; // All 6 posted videos
+    }
+    return activeTab === 'following' ? [MOCK_VIDEOS[0]] : MOCK_VIDEOS;
+  }, [params.tab, activeTab]);
+
+  const [activeVideoIndex, setActiveVideoIndex] = useState(() => {
+    if (params.videoId) {
+      const idx = videoFeed.findIndex(v => v.id === params.videoId);
+      return idx !== -1 ? idx : 0;
+    }
+    return 0;
+  });
+
+  // Sync scroll to requested videoId
+  useEffect(() => {
+    if (params.videoId) {
+      const idx = videoFeed.findIndex(v => v.id === params.videoId);
+      if (idx !== -1) {
+        setActiveVideoIndex(idx);
+        setTimeout(() => {
+          try {
+            flatListRef.current?.scrollToIndex({ index: idx, animated: false });
+          } catch {
+            flatListRef.current?.scrollToOffset({ offset: idx * height, animated: false });
+          }
+        }, 60);
+      }
+    }
+  }, [params.videoId, params.tab, height, videoFeed]);
 
   // ── Likes per video ──
   const [likesState, setLikesState] = useState<{ [id: string]: { count: number; liked: boolean } }>(() => {
@@ -451,7 +531,7 @@ export default function VideoScreen() {
     setTimeout(() => setToast({ visible: false, message: '' }), 2500);
   };
 
-  const currentVideo = MOCK_VIDEOS[activeVideoIndex];
+  const currentVideo = videoFeed[activeVideoIndex] || MOCK_VIDEOS[0];
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSendComment = () => {
@@ -599,8 +679,6 @@ export default function VideoScreen() {
     if (viewableItems.length > 0) setActiveVideoIndex(viewableItems[0].index);
   }).current;
 
-  const videoFeed = activeTab === 'following' ? [MOCK_VIDEOS[0]] : MOCK_VIDEOS;
-
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
@@ -608,6 +686,7 @@ export default function VideoScreen() {
 
       {/* Feed */}
       <FlatList
+        ref={flatListRef}
         style={{ flex: 1 }}
         data={videoFeed}
         keyExtractor={item => item.id}
@@ -632,12 +711,23 @@ export default function VideoScreen() {
           />
         )}
         pagingEnabled
+        initialScrollIndex={activeVideoIndex}
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        initialNumToRender={1}
-        maxToRenderPerBatch={2}
-        windowSize={3}
+        initialNumToRender={videoFeed.length}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        getItemLayout={(_, index) => ({
+          length: height,
+          offset: height * index,
+          index,
+        })}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToOffset({ offset: info.index * height, animated: false });
+          }, 100);
+        }}
       />
 
       {/* Top Nav */}
@@ -646,15 +736,25 @@ export default function VideoScreen() {
           <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/social')} style={styles.glassBtn}>
             <Ionicons name="chevron-back" size={24} color="#FFF" />
           </TouchableOpacity>
-          <View style={styles.pillWrap}>
-            {['following', 'foryou'].map(tab => (
-              <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={[styles.pill, activeTab === tab && styles.pillActive]}>
-                <Text style={[styles.pillText, { fontFamily: theme.fontFamily }, activeTab === tab && styles.pillTextActive]}>
-                  {tab === 'following' ? 'Bạn bè' : 'Đề xuất'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {params.tab ? (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 6, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 20 }}>
+              <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700', fontFamily: theme.fontFamily }}>
+                {params.tab === 'saved' ? 'Video đã lưu' :
+                 params.tab === 'liked' ? 'Video đã thích' :
+                 params.tab === 'reposted' ? 'Video đã đăng lại' : 'Video đã đăng'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.pillWrap}>
+              {['following', 'foryou'].map(tab => (
+                <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={[styles.pill, activeTab === tab && styles.pillActive]}>
+                  <Text style={[styles.pillText, { fontFamily: theme.fontFamily }, activeTab === tab && styles.pillTextActive]}>
+                    {tab === 'following' ? 'Bạn bè' : 'Đề xuất'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <TouchableOpacity style={styles.glassBtn} onPress={() => { setSearchQuery(''); setSearchResults([]); setShowSearch(true); }}>
             <Ionicons name="search" size={20} color="#FFF" />
           </TouchableOpacity>

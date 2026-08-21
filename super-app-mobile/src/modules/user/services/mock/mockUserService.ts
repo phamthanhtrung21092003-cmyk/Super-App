@@ -14,16 +14,15 @@ export const mockUserService: IUserService = {
     await simulateLatency(500, 1200);
     simulateNetworkError(0.01);
     const profileIdx = MOCK_USER_PROFILES.findIndex(u => u.id === userId);
-    const profile = profileIdx !== -1 ? MOCK_USER_PROFILES[profileIdx] : MOCK_USER_PROFILES[0];
+    const targetIdx = profileIdx !== -1 ? profileIdx : 0;
+    const profile = MOCK_USER_PROFILES[targetIdx];
 
     const updated = {
       ...profile,
       ...data
     };
 
-    if (profileIdx !== -1) {
-      MOCK_USER_PROFILES[profileIdx] = updated;
-    }
+    MOCK_USER_PROFILES[targetIdx] = updated;
     return updated;
   },
 

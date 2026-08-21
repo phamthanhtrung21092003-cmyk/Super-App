@@ -6,10 +6,11 @@ import { walletSecurityService } from '../../modules/wallet/services/walletSecur
 
 interface WalletAuthModalProps {
   visible: boolean;
+  onClose?: () => void;
   onRegister?: () => void;
 }
 
-export const WalletAuthModal: React.FC<WalletAuthModalProps> = ({ visible, onRegister }) => {
+export const WalletAuthModal: React.FC<WalletAuthModalProps> = ({ visible, onClose, onRegister }) => {
   const { unlockWalletWithPin, unlockWalletWithBiometrics } = useWalletSecurity();
   const [pin, setPin] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -82,6 +83,13 @@ export const WalletAuthModal: React.FC<WalletAuthModalProps> = ({ visible, onReg
     <Modal visible={visible} animationType="slide" transparent backdropColor="rgba(0,0,0,0.85)">
       <View style={styles.overlay}>
         <View style={styles.card}>
+          {/* Nút quay lại / đóng */}
+          {onClose && (
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="arrow-back" size={22} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+
           <Text style={styles.brandTitle}>Ví S-life</Text>
           <Text style={styles.subTitle}>
             Để bảo vệ tài sản của bạn, hãy xác thực một lần nữa.
@@ -212,6 +220,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(216, 198, 144, 0.3)',
     elevation: 12,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   brandTitle: {
     fontSize: 24,

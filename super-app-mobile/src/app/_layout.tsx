@@ -4,6 +4,8 @@ import { UserProvider, useUser } from '../context/UserContext';
 import { ShoppingProvider } from '../context/ShoppingContext';
 import { EducationProvider } from '../context/EducationContext';
 import { CinemaProvider } from '../context/CinemaContext';
+import { WalletSecurityProvider } from '../context/WalletSecurityContext';
+import { WalletActivationProvider } from '../context/WalletActivationContext';
 import React, { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -40,10 +42,15 @@ function AppNavigation() {
   );
 }
 
-import { WalletSecurityProvider } from '../context/WalletSecurityContext';
-import { WalletActivationProvider } from '../context/WalletActivationContext';
-
 export default function RootLayout() {
+  useEffect(() => {
+    // Dự phòng an toàn cho thiết bị Native: Đảm bảo Splash Screen luôn được ẩn sau khi root mount
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <ThemeProvider>
       <UserProvider>

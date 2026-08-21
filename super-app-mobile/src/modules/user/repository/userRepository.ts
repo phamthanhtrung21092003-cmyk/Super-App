@@ -10,10 +10,19 @@ export const userRepository: IUserRepository = {
     try {
       // Thử đọc cache
       const stored = await AsyncStorage.getItem(PROFILE_KEY);
+      const storedAvatar = await AsyncStorage.getItem('avatarUrl');
+
       if (stored) {
-        return JSON.parse(stored);
+        const parsed: UserProfile = JSON.parse(stored);
+        if (storedAvatar && (!parsed.avatarUrl || parsed.avatarUrl.includes('ui-avatars.com'))) {
+          parsed.avatarUrl = storedAvatar;
+        }
+        return parsed;
       }
       const profile = await userService.getUserProfile(userId);
+      if (storedAvatar && (!profile.avatarUrl || profile.avatarUrl.includes('ui-avatars.com'))) {
+        profile.avatarUrl = storedAvatar;
+      }
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
       return profile;
     } catch (error) {
@@ -24,10 +33,26 @@ export const userRepository: IUserRepository = {
 
   async updateProfile(userId: string, data: Partial<UserProfile>): Promise<UserProfile> {
     try {
+      const stored = await AsyncStorage.getItem(PROFILE_KEY);
+      const existing = stored ? JSON.parse(stored) : {};
+      const currentStoredAvatar = await AsyncStorage.getItem('avatarUrl');
+      const customAvatar = (existing.avatarUrl && !existing.avatarUrl.includes('ui-avatars.com') && !existing.avatarUrl.startsWith('blob:')) ? existing.avatarUrl : currentStoredAvatar;
+
       const updated = await userService.updateProfile(userId, data);
-      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
-      await AsyncStorage.setItem('userName', updated.fullName); // Đồng bộ với tên hiển thị cũ
-      return updated;
+      const merged = { ...existing, ...updated, ...data };
+
+      if (!data.avatarUrl && customAvatar && !customAvatar.includes('ui-avatars.com') && !customAvatar.startsWith('blob:')) {
+        merged.avatarUrl = customAvatar;
+      }
+
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(merged));
+      if (merged.fullName) {
+        await AsyncStorage.setItem('userName', merged.fullName);
+      }
+      if (merged.avatarUrl) {
+        await AsyncStorage.setItem('avatarUrl', merged.avatarUrl);
+      }
+      return merged;
     } catch (error) {
       console.error('[UserRepository] Failed to update profile:', error);
       throw error;

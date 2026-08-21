@@ -70,22 +70,41 @@ export const WalletSecurityProvider: React.FC<{ children: React.ReactNode }> = (
     return net.isConnected;
   }, []);
 
+  // FIX: lockWallet phải được định nghĩa TRƯỚC useEffect để tránh lỗi
+  // "Cannot access 'lockWallet' before initialization"
+  const lockWallet = useCallback(async () => {
+    try {
+      await walletSecurityService.revokeWalletSession();
+    } catch (e) {
+      // Bỏ qua lỗi khi revoke — không để crash app
+      console.warn('[WalletSecurity] revokeWalletSession failed (ignored):', e);
+    }
+    setIsWalletLocked(true);
+    setIsSessionActive(false);
+  }, []);
+
   // 3. Recheck Session & Lock status
   const checkWalletSession = useCallback(async () => {
-    const isValid = await walletSecurityService.isAccessTokenValid();
-    if (!isValid) {
-      const refreshed = await walletSecurityService.silentRefreshSession();
-      if (!refreshed) {
-        setIsWalletLocked(true);
-        setIsSessionActive(false);
+    try {
+      const isValid = await walletSecurityService.isAccessTokenValid();
+      if (!isValid) {
+        const refreshed = await walletSecurityService.silentRefreshSession();
+        if (!refreshed) {
+          setIsWalletLocked(true);
+          setIsSessionActive(false);
+        }
       }
+    } catch (e) {
+      console.warn('[WalletSecurity] checkWalletSession failed (ignored):', e);
     }
   }, []);
 
   // 4. Initial check & AppState listener (Check when returning from background)
+  // FIX: lockWallet đã được định nghĩa trước, thêm vào dependency array
   useEffect(() => {
     recheckDeviceSecurity();
     recheckNetwork();
+    // Khóa ví khi khởi động — không dừng app nếu lỗi (đã handle trong lockWallet)
     lockWallet();
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
@@ -102,13 +121,7 @@ export const WalletSecurityProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       subscription.remove();
     };
-  }, [recheckDeviceSecurity, recheckNetwork, checkWalletSession]);
-
-  const lockWallet = async () => {
-    await walletSecurityService.revokeWalletSession();
-    setIsWalletLocked(true);
-    setIsSessionActive(false);
-  };
+  }, [recheckDeviceSecurity, recheckNetwork, checkWalletSession, lockWallet]);
 
   const unlockWalletWithPin = async (pin: string): Promise<PinVerifyResult> => {
     const result = await walletSecurityService.verifyPinWithServer(pin);

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import apiClient from './apiClient';
 
 export const authService = {
@@ -30,14 +31,31 @@ export const authService = {
 
   async uploadAvatar(file: { uri: string; name: string; type: string }): Promise<any> {
     const formData = new FormData();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    formData.append('avatar', file as any);
+
+    if (Platform.OS === 'web' || file.uri.startsWith('blob:') || file.uri.startsWith('data:')) {
+      const res = await fetch(file.uri);
+      const blob = await res.blob();
+      formData.append('avatar', blob, file.name || 'avatar.jpg');
+    } else {
+      formData.append('avatar', {
+        uri: file.uri,
+        name: file.name || 'avatar.jpg',
+        type: file.type || 'image/jpeg',
+      } as any);
+    }
+
+    const headers: Record<string, any> = {};
+    if (Platform.OS === 'web') {
+      headers['Content-Type'] = undefined;
+    } else {
+      headers['Content-Type'] = 'multipart/form-data';
+    }
 
     const response = await apiClient.patch('/users/me/avatar', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers,
+      transformRequest: (data) => data,
     });
     return response.data;
   },
 };
+

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Image,
   ScrollView, StatusBar, Platform, Modal, TextInput,
   useWindowDimensions, SafeAreaView, Alert, ImageBackground, Switch,
-  ActivityIndicator,
+  ActivityIndicator, KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,15 +13,16 @@ import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
+import { imageHolderService } from '../services/imageHolderService';
 
 // ─── Mock Video Data ──────────────────────────────────────────────────────────
 const MOCK_VIDEOS = [
-  { id: '1', thumb: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300', views: '124K', duration: '0:32', liked: false },
-  { id: '2', thumb: 'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?w=300', views: '89K',  duration: '1:04', liked: true  },
-  { id: '3', thumb: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=300', views: '250K', duration: '0:47', liked: false },
-  { id: '4', thumb: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300', views: '52K',  duration: '0:18', liked: false },
-  { id: '5', thumb: 'https://images.unsplash.com/photo-1518098268026-4e89f1a2cd8e?w=300', views: '310K', duration: '2:15', liked: true  },
-  { id: '6', thumb: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=300', views: '78K',  duration: '0:55', liked: false },
+  { id: '6', thumb: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=300', views: '78K',  duration: '0:55', liked: false, createdAt: 1720500000000 },
+  { id: '5', thumb: 'https://images.unsplash.com/photo-1518098268026-4e89f1a2cd8e?w=300', views: '310K', duration: '2:15', liked: true,  createdAt: 1720000000000 },
+  { id: '4', thumb: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300', views: '52K',  duration: '0:18', liked: false, createdAt: 1719500000000 },
+  { id: '3', thumb: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=300', views: '250K', duration: '0:47', liked: false, createdAt: 1719000000000 },
+  { id: '2', thumb: 'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?w=300', views: '89K',  duration: '1:04', liked: true,  createdAt: 1718500000000 },
+  { id: '1', thumb: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300', views: '124K', duration: '0:32', liked: false, createdAt: 1718000000000 },
 ];
 
 const MOCK_SERVICES = [
@@ -71,8 +72,6 @@ export default function AccountScreen() {
   const { width, height } = useWindowDimensions();
   const isMobileUA = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isDesktop = Platform.OS === 'web' && width > 1024 && !isMobileUA;
-  const COLS = 3;
-  const CELL = (isDesktop ? 390 - 2 : width - 2) / COLS;
 
   const [activeTab, setActiveTab] = useState<'posted' | 'saved' | 'liked' | 'reposted'>('posted');
   const [showEdit, setShowEdit] = useState(false);
@@ -88,6 +87,10 @@ export default function AccountScreen() {
   const [secureCurrent, setSecureCurrent] = useState(true);
   const [secureNew, setSecureNew] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
+
+  // Edit & Modal Refs
+  const editScrollRef = useRef<ScrollView>(null);
+  const passwordScrollRef = useRef<ScrollView>(null);
 
   // Edit states
   const [editName, setEditName] = useState(userName);
@@ -153,25 +156,33 @@ export default function AccountScreen() {
       }
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setShowEdit(false);
-      router.push({
-        pathname: '/crop',
-        params: {
-          uri: result.assets[0].uri,
-          width: result.assets[0].width,
-          height: result.assets[0].height,
-        }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 1,
       });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setShowEdit(false);
+
+        imageHolderService.setImage({
+          uri: asset.uri,
+          width: asset.width || 0,
+          height: asset.height || 0,
+          mimeType: asset.mimeType || 'image/jpeg',
+          fileName: asset.fileName || asset.uri.split('/').pop() || 'avatar.jpg',
+        });
+
+        router.push('/crop');
+      }
+    } catch (error) {
+      console.error('[Account] pickImage failed:', error);
+      Alert.alert('Lỗi', 'Không thể mở thư viện ảnh.');
     }
   };
+
 
   const handleSaveEdit = () => {
     setUserName(editName.trim() || userName);
@@ -384,14 +395,17 @@ export default function AccountScreen() {
                 {MOCK_VIDEOS.map(v => (
                   <TouchableOpacity
                     key={v.id}
-                    style={[styles.gridCell, { width: CELL, height: CELL * 1.5 }]}
-                    onPress={() => router.push('/video')}
+                    style={styles.gridCell}
+                    onPress={() => router.push({ pathname: '/video', params: { videoId: v.id, tab: 'posted' } })}
+                    activeOpacity={0.85}
                   >
-                    <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
-                    <View style={styles.viewsRow}>
-                      <Ionicons name="play-outline" size={10} color="#FFF" />
-                      <Text style={styles.viewsText}>{v.views}</Text>
+                    <View style={styles.gridInner}>
+                      <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
+                      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
+                      <View style={styles.viewsRow}>
+                        <Ionicons name="play-outline" size={10} color="#FFF" />
+                        <Text style={styles.viewsText}>{v.views}</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -403,14 +417,17 @@ export default function AccountScreen() {
                 {MOCK_VIDEOS.slice(0, 3).map(v => (
                   <TouchableOpacity
                     key={v.id}
-                    style={[styles.gridCell, { width: CELL, height: CELL * 1.5 }]}
-                    onPress={() => router.push('/video')}
+                    style={styles.gridCell}
+                    onPress={() => router.push({ pathname: '/video', params: { videoId: v.id, tab: 'saved' } })}
+                    activeOpacity={0.85}
                   >
-                    <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
-                    <View style={styles.viewsRow}>
-                      <Ionicons name="bookmark-outline" size={10} color="#FFF" />
-                      <Text style={styles.viewsText}>{v.views}</Text>
+                    <View style={styles.gridInner}>
+                      <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
+                      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
+                      <View style={styles.viewsRow}>
+                        <Ionicons name="bookmark-outline" size={10} color="#FFF" />
+                        <Text style={styles.viewsText}>{v.views}</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -422,14 +439,17 @@ export default function AccountScreen() {
                 {MOCK_VIDEOS.filter(v => v.liked).map(v => (
                   <TouchableOpacity
                     key={v.id}
-                    style={[styles.gridCell, { width: CELL, height: CELL * 1.5 }]}
-                    onPress={() => router.push('/video')}
+                    style={styles.gridCell}
+                    onPress={() => router.push({ pathname: '/video', params: { videoId: v.id, tab: 'liked' } })}
+                    activeOpacity={0.85}
                   >
-                    <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
-                    <View style={styles.viewsRow}>
-                      <Ionicons name="heart" size={10} color="#FF4D4F" />
-                      <Text style={styles.viewsText}>{v.views}</Text>
+                    <View style={styles.gridInner}>
+                      <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
+                      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
+                      <View style={styles.viewsRow}>
+                        <Ionicons name="heart" size={10} color="#FF4D4F" />
+                        <Text style={styles.viewsText}>{v.views}</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -441,14 +461,17 @@ export default function AccountScreen() {
                 {MOCK_VIDEOS.slice(3, 6).map(v => (
                   <TouchableOpacity
                     key={v.id}
-                    style={[styles.gridCell, { width: CELL, height: CELL * 1.5 }]}
-                    onPress={() => router.push('/video')}
+                    style={styles.gridCell}
+                    onPress={() => router.push({ pathname: '/video', params: { videoId: v.id, tab: 'reposted' } })}
+                    activeOpacity={0.85}
                   >
-                    <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
-                    <View style={styles.viewsRow}>
-                      <Ionicons name="repeat-outline" size={10} color="#FFF" />
-                      <Text style={styles.viewsText}>{v.views}</Text>
+                    <View style={styles.gridInner}>
+                      <Image source={{ uri: v.thumb }} style={styles.gridThumb} />
+                      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.gridOverlay} />
+                      <View style={styles.viewsRow}>
+                        <Ionicons name="repeat-outline" size={10} color="#FFF" />
+                        <Text style={styles.viewsText}>{v.views}</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -476,7 +499,10 @@ export default function AccountScreen() {
 
           {/* ══════════ EDIT MODAL ══════════ */}
           <Modal visible={showEdit} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={styles.modalOverlay}
+            >
               <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowEdit(false)} />
               <BlurView intensity={90} tint="dark" style={styles.sheetContent}>
                 <View style={styles.sheetHandle} />
@@ -490,7 +516,13 @@ export default function AccountScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView style={{ padding: 20 }}>
+                <ScrollView
+                  ref={editScrollRef}
+                  style={{ flexGrow: 1 }}
+                  contentContainerStyle={{ padding: 20, paddingBottom: 380 }}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                >
                   <View style={styles.editAvatarWrap}>
                     <TouchableOpacity style={styles.editAvatarRing} onPress={pickImage}>
                       <Image source={{ uri: avatarUrl }} style={styles.editAvatarImg} />
@@ -507,27 +539,51 @@ export default function AccountScreen() {
                     value={editName}
                     onChangeText={setEditName}
                     placeholder="Nhập tên của bạn..."
-                    placeholderTextColor="#555"
+                    placeholderTextColor="#94A3B8"
+                    onFocus={() => {
+                      setTimeout(() => {
+                        editScrollRef.current?.scrollTo({ y: 100, animated: true });
+                      }, 150);
+                    }}
                   />
 
-                  <Text style={[styles.inputLabel, { marginTop: 20 }]}>Tiểu sử</Text>
+                  <View style={styles.bioHeaderRow}>
+                    <Text style={styles.inputLabel}>Tiểu sử</Text>
+                    <Text style={styles.bioCounter}>{editBio.length}/100</Text>
+                  </View>
                   <TextInput
-                    style={[styles.textInput, { fontFamily: theme.fontFamily, height: 80, textAlignVertical: 'top' }]}
+                    style={[
+                      styles.textInput,
+                      styles.bioInput,
+                      { fontFamily: theme.fontFamily },
+                    ]}
                     value={editBio}
                     onChangeText={setEditBio}
-                    placeholder="Nhập tiểu sử ngắn..."
-                    placeholderTextColor="#555"
+                    placeholder="Nhập tiểu sử ngắn (tối đa 100 ký tự)..."
+                    placeholderTextColor="#94A3B8"
                     multiline
+                    numberOfLines={4}
                     maxLength={100}
+                    onFocus={() => {
+                      setTimeout(() => {
+                        editScrollRef.current?.scrollToEnd({ animated: true });
+                      }, 150);
+                    }}
+                    onContentSizeChange={() => {
+                      editScrollRef.current?.scrollToEnd({ animated: true });
+                    }}
                   />
                 </ScrollView>
               </BlurView>
-            </View>
+            </KeyboardAvoidingView>
           </Modal>
 
           {/* ══════════ CHANGE PASSWORD MODAL ══════════ */}
           <Modal visible={showChangePassword} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={styles.modalOverlay}
+            >
               <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => !isChangingPassword && setShowChangePassword(false)} />
               <BlurView intensity={90} tint="dark" style={styles.sheetContent}>
                 <View style={styles.sheetHandle} />
@@ -545,7 +601,12 @@ export default function AccountScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView style={{ padding: 20 }}>
+                <ScrollView
+                  style={{ flexGrow: 1 }}
+                  contentContainerStyle={{ padding: 20, paddingBottom: 280 }}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                >
                   <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
                   <View style={styles.passwordInputContainer}>
                     <TextInput
@@ -611,11 +672,9 @@ export default function AccountScreen() {
                       </Text>
                     )}
                   </TouchableOpacity>
-                  
-                  <View style={{ height: 40 }} />
                 </ScrollView>
               </BlurView>
-            </View>
+            </KeyboardAvoidingView>
           </Modal>
 
           {/* ══════════ QR MODAL ══════════ */}
@@ -786,8 +845,9 @@ const styles = StyleSheet.create({
   activeIndicator: { position: 'absolute', bottom: 0, width: '40%', height: 2, borderRadius: 1 },
 
   // Grid
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1 },
-  gridCell: { position: 'relative', overflow: 'hidden' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  gridCell: { width: '33.333%', aspectRatio: 3 / 4.2, padding: 0.75 },
+  gridInner: { flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: '#F1F5F9' },
   gridThumb: { width: '100%', height: '100%', backgroundColor: '#F1F5F9' },
   gridOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%' },
   viewsRow: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -813,6 +873,9 @@ const styles = StyleSheet.create({
   cameraOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
   photoTip: { color: '#64748B', fontSize: 12, marginTop: 8 },
   inputLabel: { color: '#475569', fontSize: 12, fontWeight: '700', marginLeft: 4, marginBottom: 8 },
+  bioHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8, paddingHorizontal: 4 },
+  bioCounter: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
+  bioInput: { minHeight: 115, paddingTop: 12, paddingBottom: 12, lineHeight: 22, textAlignVertical: 'top' },
   textInput: { backgroundColor: '#F8FAFC', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: '#0F172A', fontSize: 14, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
 
   // QR Modal

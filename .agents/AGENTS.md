@@ -10,3 +10,11 @@
 
 ## Repository Updates
 - If the user asks to "get the project" (lấy dự án về), automatically pull the latest changes from the GitHub repository without asking for clarification.
+
+## Fast Update Shortcut
+- If the user types "cập nhật" (or "cập nhật dự án", "cập nhật chỉnh sửa"), automatically:
+  1. Pull latest changes if needed (`git fetch` / `git pull`).
+  2. Build the latest incremental Release APK with Gradle (`.\gradlew.bat assembleRelease`).
+  3. Install/overwrite the APK directly onto the connected phone via ADB (`adb install -r ...`).
+  4. Auto-dismiss any Google Play Protect prompt and launch the updated app on the phone immediately.
+

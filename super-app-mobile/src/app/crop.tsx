@@ -10,11 +10,13 @@ import {
   Animated,
   PanResponder,
   Image,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useUser } from '../context/UserContext';
+import { imageHolderService } from '../services/imageHolderService';
 
 export default function CropScreen() {
   const router = useRouter();
@@ -22,19 +24,59 @@ export default function CropScreen() {
   const { setAvatarUrl } = useUser();
   const { width: windowWidth } = useWindowDimensions();
 
-  const uri = typeof params.uri === 'string' ? params.uri : '';
-  const origW = Number(params.width) || 1;
-  const origH = Number(params.height) || 1;
-
   const [loading, setLoading] = useState(false);
+  const [imageUri, setImageUri] = useState<string>('');
+  const [origW, setOrigW] = useState<number>(0);
+  const [origH, setOrigH] = useState<number>(0);
+  const [isReady, setIsReady] = useState(false);
 
   // Kích thước của khung cắt (Mask hình tròn)
   const BOX_SIZE = Math.min(windowWidth - 40, 300);
 
+  // 1. Tải thông tin và kích thước ảnh khi mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const initImage = async () => {
+      const held = imageHolderService.getImage();
+      let targetUri = held?.uri || (typeof params.uri === 'string' ? params.uri : '');
+      let w = held?.width || Number(params.width) || 0;
+      let h = held?.height || Number(params.height) || 0;
+
+      if (!targetUri) {
+        Alert.alert('Lỗi', 'Không tìm thấy thông tin ảnh để căn chỉnh.');
+        router.back();
+        return;
+      }
+
+      // Nếu thiếu kích thước hoặc kích thước không hợp lệ, lấy kích thước thực tế của ảnh
+      if (w <= 1 || h <= 1) {
+        const dims = await imageHolderService.getImageDimensions(targetUri);
+        w = dims.width || 512;
+        h = dims.height || 512;
+      }
+
+      if (isMounted) {
+        setImageUri(targetUri);
+        setOrigW(w);
+        setOrigH(h);
+        setIsReady(true);
+      }
+    };
+
+    initImage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [params.uri, params.width, params.height, router]);
+
   // Tính toán kích thước hiển thị của ảnh sao cho cạnh nhỏ nhất vừa khít khung
-  const scale = BOX_SIZE / Math.min(origW, origH);
-  const dispW = origW * scale;
-  const dispH = origH * scale;
+  const safeW = origW > 0 ? origW : 512;
+  const safeH = origH > 0 ? origH : 512;
+  const scale = BOX_SIZE / Math.min(safeW, safeH);
+  const dispW = safeW * scale;
+  const dispH = safeH * scale;
 
   // Giới hạn kéo thả (Bounding Box)
   const minX = BOX_SIZE - dispW;
@@ -43,7 +85,14 @@ export default function CropScreen() {
   const maxY = 0;
 
   // Animated Values cho việc kéo thả
-  const pan = useRef(new Animated.ValueXY({ x: minX / 2, y: minY / 2 })).current; // Default center
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  // Reset pan về tâm ảnh khi dimensions đã sẵn sàng
+  useEffect(() => {
+    if (isReady && origW > 0 && origH > 0) {
+      pan.setValue({ x: minX / 2, y: minY / 2 });
+    }
+  }, [isReady, origW, origH, minX, minY, pan]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -78,51 +127,92 @@ export default function CropScreen() {
     })
   ).current;
 
+  const handleCancel = () => {
+    imageHolderService.clearImage();
+    router.back();
+  };
+
   const handleCrop = async () => {
-    if (!uri) return;
+    if (!imageUri) return;
     setLoading(true);
     try {
       // @ts-ignore
-      const currentX = pan.x._value;
+      const currentX = pan.x._value ?? (minX / 2);
       // @ts-ignore
-      const currentY = pan.y._value;
+      const currentY = pan.y._value ?? (minY / 2);
 
-      // Tính toán tọa độ thực tế trên ảnh gốc
-      const cropX = Math.abs(currentX) / scale;
-      const cropY = Math.abs(currentY) / scale;
-      const cropW = BOX_SIZE / scale;
-      const cropH = BOX_SIZE / scale;
+      // Tính toán tọa độ thực tế trên ảnh gốc an toàn với Math.floor và bounds clamp
+      const rawCropX = Math.abs(currentX) / scale;
+      const rawCropY = Math.abs(currentY) / scale;
+      const rawCropW = BOX_SIZE / scale;
+      const rawCropH = BOX_SIZE / scale;
 
-      const result = await ImageManipulator.manipulateAsync(
-        uri,
-        [
-          { 
-            crop: { 
-              originX: cropX, 
-              originY: cropY, 
-              width: cropW, 
-              height: cropH 
-            } 
+      const cropX = Math.max(0, Math.min(Math.floor(rawCropX), safeW - 1));
+      const cropY = Math.max(0, Math.min(Math.floor(rawCropY), safeH - 1));
+      const cropW = Math.max(1, Math.min(Math.floor(rawCropW), safeW - cropX));
+      const cropH = Math.max(1, Math.min(Math.floor(rawCropH), safeH - cropY));
+
+      let finalUri = imageUri;
+
+      try {
+        const result = await ImageManipulator.manipulateAsync(
+          imageUri,
+          [
+            { 
+              crop: { 
+                originX: cropX, 
+                originY: cropY, 
+                width: cropW, 
+                height: cropH 
+              } 
+            },
+            {
+              resize: {
+                width: 512,
+                height: 512,
+              }
+            }
+          ],
+          { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        );
+
+        if (result) {
+          if (result.base64) {
+            finalUri = result.base64.startsWith('data:') ? result.base64 : `data:image/jpeg;base64,${result.base64}`;
+          } else if (result.uri) {
+            finalUri = result.uri;
           }
-        ],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
+        }
+      } catch (manipError) {
+        console.warn('[CropScreen] ImageManipulator failed, fallback to original image:', manipError);
+        finalUri = imageUri;
+      }
 
-      await setAvatarUrl(result.uri);
+      await setAvatarUrl(finalUri);
+      imageHolderService.clearImage();
       router.back();
     } catch (error) {
-      console.error(error);
+      console.error('[CropScreen] handleCrop failed:', error);
       const err = error as { response?: { data?: { message?: string } } };
       const errMsg = err.response?.data?.message || 'Đã xảy ra lỗi khi tải ảnh lên!';
-      alert(errMsg);
+      Alert.alert('Thông báo', errMsg);
       setLoading(false);
     }
   };
 
+  if (!isReady) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#00D8FF" />
+        <Text style={[styles.instruction, { marginTop: 16 }]}>Đang chuẩn bị ảnh...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+        <TouchableOpacity onPress={handleCancel} style={styles.headerBtn} disabled={loading}>
           <Text style={styles.headerBtnText}>Hủy</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Căn chỉnh ảnh</Text>
@@ -145,7 +235,7 @@ export default function CropScreen() {
             ]}
           >
             <Image 
-              source={{ uri }} 
+              source={{ uri: imageUri }} 
               style={{ width: dispW, height: dispH }} 
               resizeMode="cover"
             />

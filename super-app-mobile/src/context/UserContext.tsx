@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setSessionExpiredHandler, getBaseURL } from '../services/apiClient';
 import { authRepository } from '../modules/auth/repository/authRepository';
@@ -10,6 +11,7 @@ import { Wallet } from '../modules/wallet/types';
 import { transactionRepository } from '../modules/transaction/repository/transactionRepository';
 import { Transaction } from '../modules/transaction/types';
 import { authService } from '../services/authService';
+import { isMockMode } from '../modules/auth/services';
 
 
 export type SavingsBook = {
@@ -117,10 +119,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (!url) {
       return 'https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512';
     }
-    if (url.startsWith('http')) return url;
+    if (
+      url.startsWith('http://') ||
+      url.startsWith('https://') ||
+      url.startsWith('data:') ||
+      url.startsWith('blob:') ||
+      url.startsWith('file://') ||
+      url.startsWith('content://') ||
+      url.startsWith('ph://')
+    ) {
+      return url;
+    }
     const baseUrl = getBaseURL();
     const serverUrl = baseUrl.replace('/api/v1', '');
-    return `${serverUrl}${url}`;
+    return `${serverUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const isDefaultAvatarUrl = (url: string | null | undefined): boolean => {
+    if (!url) return true;
+    if (url.startsWith('blob:')) return true; // blob: URLs are ephemeral and die when browser/app session ends
+    return url.includes('ui-avatars.com') || url.includes('pravatar.cc');
   };
 
   // Ảnh mặc định sẽ là chữ cái đầu của tên (PT) với màu nền cố định để không bị đổi màu liên tục
@@ -130,7 +148,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Theme State
   const [accentHex, setAccentHexState] = useState('#00D8FF');
   const [accentRgb, setAccentRgbState] = useState('0, 216, 255');
-  const [bgUrl, setBgUrlState] = useState('https://images.unsplash.com/photo-1518655048521-f130df041f66?auto=format&fit=crop&w=1000&q=80');
+  const [bgUrl, setBgUrlState] = useState('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop');
 
   // Wallet State
   const [walletBalance, setWalletBalance] = useState(1000000000); // 1 tỷ VND để test
@@ -298,20 +316,37 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Load thông tin người dùng từ userRepository
       try {
         const profile = await userRepository.getUserProfile(result.user.id);
+        const storedAvatar = await AsyncStorage.getItem('avatarUrl');
         
-        setUserNameState(profile.fullName);
-        setAvatarUrlState(getFullAvatarUrl(profile.avatarUrl));
-        setBioState(profile.bio);
-        setCoins(profile.coins);
-        setRewardPoints(profile.rewardPoints);
-        setVipTier(profile.vipTier);
+        setUserNameState(profile.fullName || result.user.fullName || userName);
+        
+        let resolvedAvatar = profile.avatarUrl;
+        if ((!resolvedAvatar || isDefaultAvatarUrl(resolvedAvatar)) && storedAvatar && !isDefaultAvatarUrl(storedAvatar)) {
+          resolvedAvatar = storedAvatar;
+          try {
+            await userRepository.updateProfile(result.user.id, { avatarUrl: storedAvatar });
+          } catch {}
+        }
+
+        const finalFullAvatar = getFullAvatarUrl(resolvedAvatar);
+        setAvatarUrlState(finalFullAvatar);
+        await AsyncStorage.setItem('avatarUrl', finalFullAvatar);
+
+        setBioState(profile.bio || bio);
+        setCoins(profile.coins ?? coins);
+        setRewardPoints(profile.rewardPoints ?? rewardPoints);
+        setVipTier(profile.vipTier || vipTier);
 
         // Load địa chỉ qua addressRepository
         const addrs = await addressRepository.getAddresses();
         setAddresses(addrs);
       } catch (profileError) {
         console.warn('Failed to load user profile on restore session:', profileError);
-        setUserNameState(result.user.fullName);
+        setUserNameState(result.user.fullName || userName);
+        const storedAvatar = await AsyncStorage.getItem('avatarUrl');
+        if (storedAvatar) {
+          setAvatarUrlState(getFullAvatarUrl(storedAvatar));
+        }
       }
 
       // Load ví từ repository sau khi khôi phục phiên
@@ -411,25 +446,74 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setAvatarUrl = async (url: string) => {
-    if (!currentUser) return;
     try {
-      if (
-        url.startsWith('file://') ||
-        url.startsWith('content://') ||
-        url.startsWith('ph://')
-      ) {
-        // Local file URI -> Upload to server!
-        const filename = url.split('/').pop() || 'avatar.jpg';
+      let finalUrl = url;
+
+      // Nếu là blob: trên Web, chuyển thành Data URL (Base64) để lưu trữ vĩnh viễn
+      if (Platform.OS === 'web' && url.startsWith('blob:')) {
+        try {
+          finalUrl = await new Promise<string>((resolve, reject) => {
+            fetch(url)
+              .then(res => res.blob())
+              .then(blob => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              })
+              .catch(reject);
+          });
+        } catch (blobErr) {
+          console.warn('[UserContext] Failed to convert blob to data url:', blobErr);
+        }
+      }
+
+      const isLocalOrTemp = 
+        finalUrl.startsWith('file://') ||
+        finalUrl.startsWith('content://') ||
+        finalUrl.startsWith('ph://') ||
+        finalUrl.startsWith('blob:') ||
+        finalUrl.startsWith('data:');
+
+      if (isMockMode) {
+        const fullUrl = getFullAvatarUrl(finalUrl);
+        setAvatarUrlState(fullUrl);
+        setCurrentUser((prev: any) => (prev ? { ...prev, avatarUrl: fullUrl } : { id: 'mock_user_trung', fullName: userName, avatarUrl: fullUrl }));
+        await AsyncStorage.setItem('avatarUrl', fullUrl);
+
+        try {
+          const userId = currentUser?.id || 'mock_user_trung';
+          await userRepository.updateProfile(userId, { avatarUrl: fullUrl });
+
+          const storedUser = await AsyncStorage.getItem('currentUser');
+          if (storedUser) {
+            const u = JSON.parse(storedUser);
+            u.avatarUrl = fullUrl;
+            await AsyncStorage.setItem('currentUser', JSON.stringify(u));
+          }
+        } catch (storageErr) {
+          console.warn('[UserContext] Failed to persist mock avatar profile:', storageErr);
+        }
+        return;
+      }
+
+      // Backend (Real API)
+      if (isLocalOrTemp) {
+        const filename = 'avatar_' + Date.now() + '.jpg';
         await updateAvatar({
           uri: url,
           name: filename,
           type: 'image/jpeg',
         });
       } else {
-        const updated = await userRepository.updateProfile(currentUser.id, {
-          avatarUrl: url,
-        });
-        setAvatarUrlState(getFullAvatarUrl(updated.avatarUrl));
+        const fullUrl = getFullAvatarUrl(url);
+        setAvatarUrlState(fullUrl);
+        await AsyncStorage.setItem('avatarUrl', fullUrl);
+        setCurrentUser((prev: any) => (prev ? { ...prev, avatarUrl: url } : prev));
+        try {
+          const userId = currentUser?.id || 'me';
+          await userRepository.updateProfile(userId, { avatarUrl: url });
+        } catch {}
       }
     } catch (e) {
       console.error('Failed to update avatar:', e);
@@ -442,20 +526,49 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     name: string;
     type: string;
   }) => {
-    if (!currentUser) return;
     try {
+      if (isMockMode) {
+        const fullUrl = getFullAvatarUrl(file.uri);
+        setAvatarUrlState(fullUrl);
+        setCurrentUser((prev: any) => (prev ? { ...prev, avatarUrl: fullUrl } : { id: 'mock_user_trung', fullName: userName, avatarUrl: fullUrl }));
+        await AsyncStorage.setItem('avatarUrl', fullUrl);
+        try {
+          const userId = currentUser?.id || 'mock_user_trung';
+          await userRepository.updateProfile(userId, { avatarUrl: fullUrl });
+        } catch {}
+        return { avatarUrl: fullUrl };
+      }
+
       const updated = await authService.uploadAvatar(file);
       const fullUrl = getFullAvatarUrl(updated.avatarUrl);
       setAvatarUrlState(fullUrl);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      setCurrentUser((prev: any) => ({ ...prev, avatarUrl: updated.avatarUrl }));
+      setCurrentUser((prev: any) => (prev ? { ...prev, avatarUrl: updated.avatarUrl } : { avatarUrl: updated.avatarUrl }));
       await AsyncStorage.setItem('avatarUrl', fullUrl);
+
+      try {
+        const storedProfileStr = await AsyncStorage.getItem('user_profile');
+        let storedProfile = storedProfileStr ? JSON.parse(storedProfileStr) : {};
+        storedProfile = { ...storedProfile, ...updated, avatarUrl: updated.avatarUrl };
+        await AsyncStorage.setItem('user_profile', JSON.stringify(storedProfile));
+
+        const storedUser = await AsyncStorage.getItem('currentUser');
+        if (storedUser) {
+          const u = JSON.parse(storedUser);
+          u.avatarUrl = updated.avatarUrl;
+          await AsyncStorage.setItem('currentUser', JSON.stringify(u));
+        }
+      } catch (storageErr) {
+        console.warn('[UserContext] Failed to persist backend avatar profile:', storageErr);
+      }
+
       return updated;
     } catch (e) {
       console.error('Failed to upload avatar:', e);
       throw e;
     }
   };
+
 
   const setBio = async (newBio: string) => {
     if (!currentUser) return;

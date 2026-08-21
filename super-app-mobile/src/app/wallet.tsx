@@ -178,7 +178,7 @@ const getUserTier = (balance: number) => {
 };
 
 export default function WalletScreen() {
-  const { walletBalance, transactions, addTransaction, linkedBanks, addLinkedBank, hasWallet, setHasWallet, activateWalletProfile } = useUser();
+  const { walletBalance, paymentTransactions, transactions, addTransaction, linkedBanks, addLinkedBank, hasWallet, setHasWallet, activateWalletProfile } = useUser();
   const {
     isDeviceSecure,
     isNetworkConnected,
@@ -681,22 +681,28 @@ export default function WalletScreen() {
           </View>
           
           <BlurView intensity={currentTier.isDark ? 40 : 100} tint={currentTier.isDark ? "dark" : "light"} style={[styles.whiteCard, { backgroundColor: currentTier.sectionBg, borderColor: currentTier.isDark ? 'rgba(255,255,255,0.1)' : 'transparent', borderWidth: currentTier.isDark ? 1 : 0, overflow: 'hidden' }]}>
-            {transactions.slice(0, 5).map((tx, index) => (
-              <View key={tx.id} style={[styles.txRow, index !== Math.min(transactions.length, 5) - 1 && { borderBottomColor: currentTier.isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6', borderBottomWidth: 1 }]}>
-                <View style={[styles.txIconBox, { backgroundColor: currentTier.isDark ? 'rgba(255,255,255,0.05)' : tx.bg, borderWidth: currentTier.isDark ? 1 : 0, borderColor: currentTier.isDark ? 'rgba(255,255,255,0.1)' : 'transparent' }]}>
-                  <Ionicons name={tx.icon as any} size={22} color={currentTier.isDark ? '#E5E7EB' : tx.color} />
+            {(paymentTransactions && paymentTransactions.length > 0 ? paymentTransactions : transactions).slice(0, 5).map((tx: any, index: number) => {
+              const isAmountString = typeof tx.amount === 'string';
+              const isPositive = isAmountString ? tx.amount.startsWith('+') || tx.type === 'in' : tx.type === 'in';
+              const displayAmount = isAmountString ? tx.amount : `${isPositive ? '+' : '-'}${Number(tx.amount || 0).toLocaleString('vi-VN')}đ`;
+              
+              return (
+                <View key={tx.id} style={[styles.txRow, index !== Math.min(transactions.length, 5) - 1 && { borderBottomColor: currentTier.isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6', borderBottomWidth: 1 }]}>
+                  <View style={[styles.txIconBox, { backgroundColor: currentTier.isDark ? 'rgba(255,255,255,0.05)' : (tx.bg || 'rgba(59, 130, 246, 0.1)'), borderWidth: currentTier.isDark ? 1 : 0, borderColor: currentTier.isDark ? 'rgba(255,255,255,0.1)' : 'transparent' }]}>
+                    <Ionicons name={(tx.icon as any) || 'receipt-outline'} size={22} color={currentTier.isDark ? '#E5E7EB' : (tx.color || '#3B82F6')} />
+                  </View>
+                  <View style={styles.txDetails}>
+                    <Text style={[styles.txTitle, { color: currentTier.textColor }]}>{tx.title || tx.description || 'Giao dịch'}</Text>
+                    {tx.desc && <Text style={[styles.txDesc, { color: currentTier.subTextColor }]}>{tx.desc}</Text>}
+                    <Text style={[styles.txDate, { color: currentTier.subTextColor }]}>{tx.date || 'Hôm nay'}</Text>
+                  </View>
+                  <Text style={[styles.txAmount, { color: isPositive ? '#10B981' : currentTier.textColor }]}>
+                    {displayAmount}
+                  </Text>
                 </View>
-                <View style={styles.txDetails}>
-                  <Text style={[styles.txTitle, { color: currentTier.textColor }]}>{tx.title}</Text>
-                  {tx.desc && <Text style={[styles.txDesc, { color: currentTier.subTextColor }]}>{tx.desc}</Text>}
-                  <Text style={[styles.txDate, { color: currentTier.subTextColor }]}>{tx.date}</Text>
-                </View>
-                <Text style={[styles.txAmount, { color: tx.type === 'in' ? '#10B981' : currentTier.textColor }]}>
-                  {tx.type === 'in' ? '+' : '-'}{tx.amount.toLocaleString('vi-VN')}đ
-                </Text>
-              </View>
-            ))}
-            {transactions.length === 0 && (
+              );
+            })}
+            {(paymentTransactions.length === 0 && transactions.length === 0) && (
               <View style={{ alignItems: 'center', paddingVertical: 30 }}>
                 <Ionicons name="receipt-outline" size={48} color={currentTier.subTextColor} />
                 <Text style={{ color: currentTier.subTextColor, marginTop: 10 }}>Chưa có giao dịch nào</Text>
@@ -959,7 +965,7 @@ export default function WalletScreen() {
                             {bank.logo ? (
                               <Image source={bank.logo} style={{ width: 28, height: 28, resizeMode: 'contain' }} />
                             ) : (
-                              <Ionicons name={bank.icon as any} size={24} color={bank.color} />
+                              <Ionicons name={(bank as any).icon || 'card-outline'} size={24} color={bank.color} />
                             )}
                           </View>
                           <View style={{ flex: 1, paddingRight: 10 }}>
@@ -1019,6 +1025,7 @@ export default function WalletScreen() {
         <NetworkOfflineModal visible={!isNetworkConnected && isDeviceSecure} />
         <WalletAuthModal
           visible={isWalletLocked && isDeviceSecure && isNetworkConnected}
+          onClose={() => router.canGoBack() ? router.back() : router.replace('/home')}
           onRegister={() => {
             setHasWallet(false);
             setIsActivationWizardVisible(true);
