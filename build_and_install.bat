@@ -1,0 +1,55 @@
+@echo off
+echo =====================================================
+echo  BUILD VA CAI APP VIET SUPER LEN DIEN THOAI
+echo =====================================================
+echo.
+
+:: Set Java
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+set PATH=%JAVA_HOME%\bin;%PATH%
+
+:: Set Expo Router app root - quan trong de tim routes
+set EXPO_ROUTER_APP_ROOT=./src/app
+set NODE_ENV=production
+
+echo [1/3] Bundle JavaScript voi Expo CLI...
+cd super-app-mobile
+call npx expo export:embed --platform android --entry-file node_modules/expo-router/entry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --dev false
+if %ERRORLEVEL% NEQ 0 (
+    echo [LOI] Bundle that bai!
+    pause
+    exit /b 1
+)
+echo [OK] Bundle hoan tat!
+echo.
+
+echo [2/3] Build APK...
+cd android
+call gradlew.bat assembleDebug
+if %ERRORLEVEL% NEQ 0 (
+    echo [LOI] Build APK that bai!
+    cd ..\..
+    pause
+    exit /b 1
+)
+echo [OK] Build APK hoan tat!
+echo.
+cd ..\..
+
+echo [3/3] Cai APK vao dien thoai...
+set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
+"%ADB%" install -r "super-app-mobile\android\app\build\outputs\apk\debug\app-debug.apk"
+if %ERRORLEVEL% NEQ 0 (
+    echo [LOI] Cai APK that bai!
+    pause
+    exit /b 1
+)
+
+echo [4/4] Khoi chay ung dung tren dien thoai...
+"%ADB%" shell monkey -p com.trung219203.superappmobile -c android.intent.category.LAUNCHER 1
+
+echo.
+echo =====================================================
+echo  HOAN TAT! Da cap nhat va mo app tren dien thoai!
+echo =====================================================
+
