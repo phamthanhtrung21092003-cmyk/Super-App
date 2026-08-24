@@ -96,12 +96,14 @@ export class AuthService {
     userId: string,
     phone: string,
     role: string,
+    deviceId?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       sub: userId,
       phone,
       role,
-      jti: crypto.randomUUID(), // Đảm bảo tính duy nhất cho mỗi token được sinh ra
+      deviceId,
+      jti: crypto.randomUUID(),
     };
 
     const accessTokenExpires =
@@ -137,7 +139,6 @@ export class AuthService {
   ): Promise<void> {
     let hashedRefreshToken: string | null = null;
     if (refreshToken) {
-      // Hash với SHA-256 trước để tránh giới hạn 72 ký tự của bcrypt, sau đó băm bằng bcrypt
       const sha256Hash = crypto
         .createHash('sha256')
         .update(refreshToken)
@@ -160,9 +161,9 @@ export class AuthService {
     }
   }
 
-  // Login business logic
-  async loginUser(dto: UserLoginDto) {
-    const { phone, password } = dto;
+  // Login business logic with Device History & 1 Mobile Active enforcement
+  async loginUser(dto: UserLoginDto, ipAddress?: string) {
+    const { phone, password, deviceInfo } = dto;
 
     // Find User
     const user = await this.prisma.user.findUnique({
@@ -181,17 +182,97 @@ export class AuthService {
       throw new UnauthorizedException('Invalid phone or password');
     }
 
-    // Generate tokens dynamically
+    // Device Identification details
+    const deviceId = deviceInfo?.deviceId || `dev_web_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const deviceName = deviceInfo?.deviceName || 'Web Browser';
+    const manufacturer = deviceInfo?.manufacturer || null;
+    const modelName = deviceInfo?.modelName || null;
+    const platform = deviceInfo?.platform || 'Web';
+    const osVersion = deviceInfo?.osVersion || null;
+
+    const isMobile = platform.toLowerCase().includes('ios') ||
+                     platform.toLowerCase().includes('android') ||
+                     platform.toLowerCase().includes('mobile');
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // 1 MOBILE ACTIVE ENFORCEMENT:
+    // If logging in on a mobile device, revoke all other active mobile device sessions for this user.
+    // ════════════════════════════════════════════════════════════════════════════
+    if (isMobile) {
+      const revokedDevices = await this.prisma.userDevice.updateMany({
+        where: {
+          userId: user.id,
+          deviceId: { not: deviceId },
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'LOGGED_OUT',
+          loggedOutAt: new Date(),
+          refreshTokenHash: null,
+        },
+      });
+
+      if (revokedDevices.count > 0) {
+        this.logger.log(
+          `[1 Mobile Rule] Revoked ${revokedDevices.count} previous active mobile session(s) for user: ${phone}`,
+        );
+      }
+    }
+
+    // Generate tokens dynamically with deviceId
     const { accessToken, refreshToken } = await this.generateTokens(
       user.id,
       user.phone,
       user.role,
+      deviceId,
     );
 
-    // Save hashed refresh token
+    // Compute hashed refresh token for device and user
+    const sha256Hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const hashedRefreshToken = await bcrypt.hash(sha256Hash, 12);
+
+    // Upsert UserDevice record (Preserves Device History)
+    await this.prisma.userDevice.upsert({
+      where: {
+        userId_deviceId: {
+          userId: user.id,
+          deviceId,
+        },
+      },
+      create: {
+        userId: user.id,
+        deviceId,
+        deviceName,
+        manufacturer,
+        modelName,
+        platform,
+        osVersion,
+        ipAddress: ipAddress || null,
+        status: 'ACTIVE',
+        refreshTokenHash: hashedRefreshToken,
+        lastLoginAt: new Date(),
+        lastActiveAt: new Date(),
+        loggedOutAt: null,
+      },
+      update: {
+        deviceName,
+        manufacturer,
+        modelName,
+        platform,
+        osVersion,
+        ipAddress: ipAddress || null,
+        status: 'ACTIVE',
+        refreshTokenHash: hashedRefreshToken,
+        lastLoginAt: new Date(),
+        lastActiveAt: new Date(),
+        loggedOutAt: null,
+      },
+    });
+
+    // Save hashed refresh token in User for backward compatibility
     await this.updateRefreshToken(user.id, refreshToken, 'USER');
 
-    this.logger.log(`User login: ${phone}`);
+    this.logger.log(`User login on device [${deviceName}]: ${phone}`);
 
     const accessTokenExpires =
       this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
@@ -204,14 +285,15 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
       },
+      deviceId,
       accessToken,
       refreshToken,
       expiresIn,
     };
   }
 
-  // Refresh Token Rotation logic
-  async refreshToken(dto: RefreshTokenDto) {
+  // Refresh Token Rotation logic with Device Status check
+  async refreshToken(dto: RefreshTokenDto, ipAddress?: string) {
     const { refreshToken } = dto;
     const refreshTokenSecret =
       this.configService.get<string>('JWT_REFRESH_SECRET') ||
@@ -220,15 +302,12 @@ export class AuthService {
     let payload: any;
     let userPhone = 'unknown';
 
-    // Decode unverified token to extract phone for logging if verification fails
     try {
       const decoded = this.jwtService.decode(refreshToken);
       if (decoded && decoded.phone) {
         userPhone = decoded.phone;
       }
-    } catch (e) {
-      // ignore decoding error
-    }
+    } catch (e) {}
 
     try {
       payload = await this.jwtService.verifyAsync(refreshToken, {
@@ -255,33 +334,85 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Check if hashedRefreshToken exists in DB
-    if (!user.hashedRefreshToken) {
-      this.logger.warn(`Invalid refresh token: ${user.phone} (token revoked)`);
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    // Verify refresh token matching the hashed one in DB
     const sha256Hash = crypto
       .createHash('sha256')
       .update(refreshToken)
       .digest('hex');
-    const isTokenMatching = await bcrypt.compare(
-      sha256Hash,
-      user.hashedRefreshToken,
-    );
-    if (!isTokenMatching) {
-      this.logger.warn(`Invalid refresh token: ${user.phone} (hash mismatch)`);
-      throw new UnauthorizedException('Invalid refresh token');
+
+    // Per-device verification if deviceId is present in token payload
+    if (payload.deviceId) {
+      const device = await this.prisma.userDevice.findUnique({
+        where: {
+          userId_deviceId: {
+            userId: user.id,
+            deviceId: payload.deviceId,
+          },
+        },
+      });
+
+      if (!device || device.status !== 'ACTIVE') {
+        this.logger.warn(
+          `Refresh token rejected: Device ${payload.deviceId} for user ${user.phone} is LOGGED_OUT`,
+        );
+        throw new UnauthorizedException('Phiên đăng nhập trên thiết bị này đã bị hủy.');
+      }
+
+      if (device.refreshTokenHash) {
+        const isDeviceTokenMatching = await bcrypt.compare(
+          sha256Hash,
+          device.refreshTokenHash,
+        );
+        if (!isDeviceTokenMatching) {
+          this.logger.warn(`Invalid refresh token on device: ${user.phone} (hash mismatch)`);
+          throw new UnauthorizedException('Invalid refresh token');
+        }
+      }
+    } else {
+      // Fallback check against user.hashedRefreshToken
+      if (!user.hashedRefreshToken) {
+        this.logger.warn(`Invalid refresh token: ${user.phone} (token revoked)`);
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const isTokenMatching = await bcrypt.compare(
+        sha256Hash,
+        user.hashedRefreshToken,
+      );
+      if (!isTokenMatching) {
+        this.logger.warn(`Invalid refresh token: ${user.phone} (hash mismatch)`);
+        throw new UnauthorizedException('Invalid refresh token');
+      }
     }
 
-    // Generate new tokens
-    const tokens = await this.generateTokens(user.id, user.phone, user.role);
+    // Generate new rotated tokens
+    const tokens = await this.generateTokens(
+      user.id,
+      user.phone,
+      user.role,
+      payload.deviceId,
+    );
+
+    const newSha256Hash = crypto.createHash('sha256').update(tokens.refreshToken).digest('hex');
+    const newHashedRefreshToken = await bcrypt.hash(newSha256Hash, 12);
+
+    if (payload.deviceId) {
+      await this.prisma.userDevice.updateMany({
+        where: {
+          userId: user.id,
+          deviceId: payload.deviceId,
+        },
+        data: {
+          refreshTokenHash: newHashedRefreshToken,
+          lastActiveAt: new Date(),
+          ipAddress: ipAddress || undefined,
+        },
+      });
+    }
 
     // Save hashed refresh token (Rotation)
     await this.updateRefreshToken(user.id, tokens.refreshToken, 'USER');
 
-    this.logger.log(`Refresh token rotated: ${user.phone}`);
+    this.logger.log(`Refresh token rotated for user: ${user.phone} on device ${payload.deviceId || 'default'}`);
 
     const accessTokenExpires =
       this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
@@ -294,18 +425,38 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string): Promise<{ message: string }> {
+  // Logout maintaining Device History (Sets status to LOGGED_OUT, does NOT delete)
+  async logout(userId: string, deviceId?: string): Promise<{ message: string }> {
     try {
-      const user = await this.prisma.user.update({
+      if (deviceId) {
+        await this.prisma.userDevice.updateMany({
+          where: { userId, deviceId },
+          data: {
+            status: 'LOGGED_OUT',
+            loggedOutAt: new Date(),
+            refreshTokenHash: null,
+          },
+        });
+      } else {
+        await this.prisma.userDevice.updateMany({
+          where: { userId, status: 'ACTIVE' },
+          data: {
+            status: 'LOGGED_OUT',
+            loggedOutAt: new Date(),
+            refreshTokenHash: null,
+          },
+        });
+      }
+
+      await this.prisma.user.update({
         where: { id: userId },
         data: { hashedRefreshToken: null },
         select: { id: true, phone: true },
       });
-      this.logger.log(`User logout: ${user.phone}`);
+
+      this.logger.log(`User logout device [${deviceId || 'all'}]: ${userId}`);
     } catch (error) {
-      this.logger.warn(
-        `User logout warning: User record not found or already logged out for ID ${userId}`,
-      );
+      this.logger.warn(`User logout warning for ID ${userId}: ${error}`);
     }
     return { message: 'Logout successfully' };
   }

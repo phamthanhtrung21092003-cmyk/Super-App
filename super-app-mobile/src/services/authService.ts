@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import apiClient from './apiClient';
+import { deviceInfoService } from './deviceInfoService';
 
 export const authService = {
   async register(phone: string, password: string, fullName: string): Promise<void> {
@@ -10,10 +11,12 @@ export const authService = {
     });
   },
 
-  async login(phone: string, password: string): Promise<{ user: any; accessToken: string; refreshToken: string; expiresIn: number }> {
+  async login(phone: string, password: string): Promise<{ user: any; deviceId?: string; accessToken: string; refreshToken: string; expiresIn: number }> {
+    const deviceInfo = await deviceInfoService.getDeviceInfo();
     const response = await apiClient.post('/auth/login', {
       phone,
       password,
+      deviceInfo,
     });
     return response.data;
   },
@@ -58,4 +61,3 @@ export const authService = {
     return response.data;
   },
 };
-

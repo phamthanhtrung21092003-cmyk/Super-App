@@ -1,16 +1,29 @@
 import {
   Controller,
   Get,
-  Body,
   Patch,
+  Post,
+  Delete,
+  Body,
+  Param,
+  Query,
   UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
   UploadedFile,
   UseInterceptors,
   BadRequestException,
 } from '@nestjs/common';
-import { UserService } from './user.service';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { UserService } from './user.service';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { RequestPhoneOtpDto, VerifyPhoneOtpDto } from './dto/phone-change.dto';
+import { RequestEmailOtpDto, VerifyEmailOtpDto } from './dto/email-change.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -19,180 +32,163 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { extname } from 'path';
-import { diskStorage } from 'multer';
-import { randomUUID } from 'crypto';
-import { UploadAvatarDto } from './dto/upload-avatar.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-
-export const multerOptions = {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-  storage: diskStorage({
-    destination: './uploads/avatars',
-    filename: (
-      req: any,
-      file: { originalname: string },
-      callback: (error: Error | null, filename: string) => void,
-    ) => {
-      const uniqueSuffix = randomUUID();
-      const ext = extname(file.originalname);
-      callback(null, `${uniqueSuffix}${ext}`);
-    },
-  }),
-  fileFilter: (
-    req: any,
-    file: { mimetype: string },
-    callback: (error: Error | null, acceptFile: boolean) => void,
-  ) => {
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/webp',
-    ];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      return callback(
-        new BadRequestException(
-          'Only JPG, JPEG, PNG, and WEBP image files are allowed',
-        ),
-        false,
-      );
-    }
-    callback(null, true);
-  },
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-  },
-};
 
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @Get('check-username')
+  @ApiOperation({ summary: 'Kiểm tra tính khả dụng của username' })
+  async checkUsername(@Query('username') username: string) {
+    return this.userService.checkUsername(username);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy thông tin người dùng hiện tại' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lấy thông tin thành công',
-    schema: {
-      example: {
-        id: 'b320d3ba-4ecc-4901-85ab-b66f97d854ae',
-        phone: '0394562659',
-        fullName: 'Phạm Thành Trung',
-        role: 'USER',
-        avatarUrl: null,
-        createdAt: '2026-07-07T10:00:00Z',
-        updatedAt: '2026-07-07T10:00:00Z',
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getProfile(@CurrentUser() user: { id: string }) {
-    return this.userService.getMyProfile(user.id);
+  async getMyProfile(@Req() req: any) {
+    const userId = req.user.id || req.user.sub;
+    return this.userService.getMyProfile(userId);
   }
 
   @Patch('me')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Cập nhật hồ sơ người dùng hiện tại' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cập nhật hồ sơ thành công',
-    schema: {
-      example: {
-        id: 'b320d3ba-4ecc-4901-85ab-b66f97d854ae',
-        phone: '0394562659',
-        fullName: 'Phạm Thành Trung Updated',
-        role: 'USER',
-        avatarUrl: null,
-        createdAt: '2026-07-07T10:00:00Z',
-        updatedAt: '2026-07-07T10:15:00Z',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Yêu cầu không hợp lệ / Dữ liệu không hợp lệ',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
-  async updateProfile(
-    @CurrentUser() user: { id: string },
-    @Body() dto: UpdateUserDto,
-  ) {
-    return this.userService.updateMyProfile(user.id, dto);
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cập nhật thông tin cá nhân của người dùng' })
+  async updateProfile(@Req() req: any, @Body() dto: UpdateUserDto) {
+    const userId = req.user.id || req.user.sub;
+    return this.userService.updateProfile(userId, dto);
   }
 
-  @Patch('me/avatar')
+  @Post('me/phone/request-otp')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    type: UploadAvatarDto,
-  })
-  @ApiOperation({ summary: 'Cập nhật ảnh đại diện người dùng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cập nhật ảnh đại diện thành công',
-    schema: {
-      example: {
-        id: 'b320d3ba-4ecc-4901-85ab-b66f97d854ae',
-        phone: '0394562659',
-        fullName: 'Phạm Thành Trung',
-        role: 'USER',
-        avatarUrl: '/uploads/avatars/4dbef3d5-acde-49cf-a8d1-a91cf0e7ab51.jpg',
-        createdAt: '2026-07-07T10:00:00Z',
-        updatedAt: '2026-07-07T10:15:00Z',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description:
-      'Yêu cầu không hợp lệ / Định dạng tệp hoặc kích thước không đúng',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
-  @UseInterceptors(FileInterceptor('avatar', multerOptions))
-  async uploadAvatar(
-    @CurrentUser() user: { id: string },
-    @UploadedFile()
-    file: { filename: string; path: string; mimetype: string; size: number },
-  ) {
-    if (!file) {
-      throw new BadRequestException('Avatar file is required');
-    }
-    return this.userService.updateAvatar(user.id, file);
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Yêu cầu mã OTP để đổi số điện thoại' })
+  async requestPhoneOtp(@Req() req: any, @Body() dto: RequestPhoneOtpDto) {
+    const userId = req.user.id || req.user.sub;
+    return this.userService.requestPhoneOtp(userId, dto);
+  }
+
+  @Post('me/phone/verify-otp')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Xác thực mã OTP và cập nhật số điện thoại mới' })
+  async verifyPhoneOtp(@Req() req: any, @Body() dto: VerifyPhoneOtpDto) {
+    const userId = req.user.id || req.user.sub;
+    return this.userService.verifyPhoneOtp(userId, dto);
+  }
+
+  @Post('me/email/request-otp')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Yêu cầu mã xác thực để liên kết / đổi email' })
+  async requestEmailOtp(@Req() req: any, @Body() dto: RequestEmailOtpDto) {
+    const userId = req.user.id || req.user.sub;
+    return this.userService.requestEmailOtp(userId, dto);
+  }
+
+  @Post('me/email/verify-otp')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Xác thực OTP và cập nhật email' })
+  async verifyEmailOtp(@Req() req: any, @Body() dto: VerifyEmailOtpDto) {
+    const userId = req.user.id || req.user.sub;
+    return this.userService.verifyEmailOtp(userId, dto);
   }
 
   @Patch('me/change-password')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Đổi mật khẩu người dùng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Đổi mật khẩu thành công',
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đổi mật khẩu tài khoản' })
+  async changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
+    const userId = req.user.id || req.user.sub;
+    const currentDeviceId = req.user.deviceId;
+    return this.userService.changePassword(userId, dto, currentDeviceId);
+  }
+
+  @Get('me/devices')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lấy danh sách thiết bị và lịch sử đăng nhập' })
+  async getDevices(@Req() req: any) {
+    const userId = req.user.id || req.user.sub;
+    const currentDeviceId = req.user.deviceId;
+    return this.userService.getUserDevices(userId, currentDeviceId);
+  }
+
+  @Delete('me/devices/others')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đăng xuất khỏi tất cả các thiết bị khác' })
+  async logoutOtherDevices(@Req() req: any) {
+    const userId = req.user.id || req.user.sub;
+    const currentDeviceId = req.user.deviceId;
+    return this.userService.logoutOtherDevices(userId, currentDeviceId);
+  }
+
+  @Delete('me/devices/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đăng xuất một thiết bị cụ thể' })
+  async logoutDevice(@Req() req: any, @Param('id') deviceId: string) {
+    const userId = req.user.id || req.user.sub;
+    const currentDeviceId = req.user.deviceId;
+    return this.userService.logoutDevice(userId, deviceId, currentDeviceId);
+  }
+
+  @Patch('me/avatar')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tải lên avatar người dùng' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
     schema: {
-      example: {
-        message: 'Password changed successfully',
+      type: 'object',
+      properties: {
+        avatar: {
+          type: 'string',
+          format: 'binary',
+        },
       },
     },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Yêu cầu không hợp lệ / Mật khẩu hiện tại không chính xác / Mật khẩu mới trùng mật khẩu cũ',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 429, description: 'Quá nhiều yêu cầu đổi mật khẩu (Rate limit)' })
-  async changePassword(
-    @CurrentUser() user: { id: string },
-    @Body() dto: ChangePasswordDto,
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      storage: diskStorage({
+        destination: './uploads/avatars',
+        filename: (req, file, cb) => {
+          const randomName = Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
+          return cb(
+            new BadRequestException('Only image files are allowed!'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
+    }),
+  )
+  async uploadAvatar(
+    @Req() req: any,
+    @UploadedFile() file: any,
   ) {
-    return this.userService.changePassword(user.id, dto);
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    const userId = req.user.id || req.user.sub;
+    const avatarUrl = `/uploads/avatars/${file.filename}`;
+    return this.userService.updateAvatar(userId, avatarUrl);
   }
 }

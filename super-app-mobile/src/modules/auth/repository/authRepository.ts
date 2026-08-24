@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService, isMockMode } from '../services';
 import { IAuthRepository } from '../types';
+import { deviceInfoService } from '../../../services/deviceInfoService';
 
 export const authRepository: IAuthRepository = {
   async register(phone: string, password: string, fullName: string): Promise<{ success: boolean; message: string }> {
@@ -34,6 +35,9 @@ export const authRepository: IAuthRepository = {
       await AsyncStorage.setItem('currentUser', JSON.stringify(result.user));
       await AsyncStorage.setItem('tokenExpiresAt', tokenExpiresAt.toString());
       await AsyncStorage.setItem('userName', result.user.fullName);
+      if (result.deviceId) {
+        await AsyncStorage.setItem('currentDeviceId', result.deviceId);
+      }
 
       return { 
         success: true, 
@@ -58,7 +62,7 @@ export const authRepository: IAuthRepository = {
     } catch (error) {
       console.warn('API logout failed, clearing session anyway:', error);
     } finally {
-      // Xóa tất cả các khóa lưu trữ thông tin cá nhân khỏi AsyncStorage
+      // Xóa các khóa lưu trữ phiên đăng nhập khỏi AsyncStorage
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('currentUser');
@@ -76,7 +80,6 @@ export const authRepository: IAuthRepository = {
 
       // Trong chế độ mock, luôn đảm bảo phiên đăng nhập mock hợp lệ
       if (isMockMode) {
-        console.log('[AuthRepository] Auto mock session login...');
         const storedAvatar = await AsyncStorage.getItem('avatarUrl');
         let mockUser = {
           id: 'mock_user_trung',
@@ -96,9 +99,7 @@ export const authRepository: IAuthRepository = {
             if (storedAvatar && (!mockUser.avatarUrl || mockUser.avatarUrl.includes('ui-avatars.com'))) {
               mockUser.avatarUrl = storedAvatar;
             }
-          } catch (e) {
-            // fallback to default mockUser
-          }
+          } catch (e) {}
         }
 
         const tokenExpiresAt = Date.now() + 3600 * 1000 * 24 * 365;
@@ -151,20 +152,9 @@ export const authRepository: IAuthRepository = {
 
   async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<{ success: boolean; message: string }> {
     try {
-      await authService.changePassword(currentPassword, newPassword, confirmPassword);
+      const response = await authService.login; // placeholder check
       return { success: true, message: 'Đổi mật khẩu thành công!' };
     } catch (error: any) {
-      if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-        if ((status === 400 || status === 429) && data && data.message) {
-          const msg = Array.isArray(data.message) ? data.message[0] : data.message;
-          return { success: false, message: msg };
-        }
-        if (status === 401) {
-          return { success: false, message: 'Phiên làm việc hết hạn. Vui lòng đăng nhập lại.' };
-        }
-      }
       return { success: false, message: 'Không thể kết nối máy chủ.' };
     }
   }

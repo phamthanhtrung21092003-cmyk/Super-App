@@ -1,5 +1,7 @@
-import { IsNotEmpty, IsString, Length, Matches } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, Length, Matches, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { DeviceInfoDto } from './device-info.dto';
 
 export class UserLoginDto {
   @ApiProperty({
@@ -16,4 +18,13 @@ export class UserLoginDto {
   @IsString({ message: 'Mật khẩu phải là chuỗi' })
   @Length(6, 20, { message: 'Mật khẩu phải từ 6 đến 20 ký tự' })
   password: string;
+
+  @ApiPropertyOptional({
+    type: DeviceInfoDto,
+    description: 'Thông tin thiết bị đăng nhập',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DeviceInfoDto)
+  deviceInfo?: DeviceInfoDto;
 }

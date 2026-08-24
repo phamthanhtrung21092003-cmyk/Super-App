@@ -1,11 +1,13 @@
 import { simulateLatency, simulateNetworkError } from '../../../../services/mock/mockUtils';
 import { IAuthService, LoginResponse } from '../../types';
 import { findMockUserByPhone } from './mockData/users';
+import { mockUserService } from '../../../user/services/mock/mockUserService';
+import { deviceInfoService } from '../../../../services/deviceInfoService';
 
 export const mockAuthService: IAuthService = {
   async register(phone: string, password: string, fullName: string): Promise<void> {
     await simulateLatency(400, 1200);
-    simulateNetworkError(0.02); // 2% chance of network error for testing
+    simulateNetworkError(0.02);
     console.log('[MockAuth] Registered user:', phone, fullName);
     return Promise.resolve();
   },
@@ -14,10 +16,8 @@ export const mockAuthService: IAuthService = {
     await simulateLatency(500, 1500);
     simulateNetworkError(0.02);
 
-    // Tìm trong danh sách mock users
     const matchedUser = findMockUserByPhone(phone);
     
-    // Nếu không tìm thấy, tạo user ảo bằng tên "User Mock" hoặc thông tin tương ứng
     const user = matchedUser ? {
       id: matchedUser.id,
       fullName: matchedUser.fullName,
@@ -29,17 +29,22 @@ export const mockAuthService: IAuthService = {
       vipTier: matchedUser.vipTier
     } : {
       id: 'mock_user_' + Date.now(),
-      fullName: 'Phạm Thành Trung (Mock) ✨',
+      fullName: 'Phạm Thành Trung ✨',
       phone: phone,
       avatarUrl: 'https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512',
-      bio: 'Tài khoản giả lập để thiết kế giao diện offline.',
+      bio: 'Tài khoản V-life.',
       coins: 10000,
       rewardPoints: 100,
       vipTier: 'Đồng' as const
     };
 
+    // Ghi nhận sự kiện Login trên thiết bị thực tế
+    const deviceInfo = await deviceInfoService.getDeviceInfo();
+    await mockUserService.recordDeviceLogin(deviceInfo);
+
     return {
       user,
+      deviceId: deviceInfo.deviceId,
       accessToken: 'mock_access_token_' + Date.now(),
       refreshToken: 'mock_refresh_token_' + Date.now(),
       expiresIn: 3600
@@ -57,6 +62,7 @@ export const mockAuthService: IAuthService = {
 
   async logout(): Promise<void> {
     await simulateLatency(200, 600);
+    await mockUserService.recordDeviceLogout();
     return Promise.resolve();
   },
 

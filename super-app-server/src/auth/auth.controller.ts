@@ -6,6 +6,7 @@ import {
   HttpStatus,
   UseGuards,
   Req,
+  Ip,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserRegisterDto } from './dto/user-register.dto';
@@ -48,26 +49,13 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Đăng nhập thành công',
-    schema: {
-      example: {
-        user: {
-          id: 'b320d3ba-4ecc-4901-85ab-b66f97d854ae',
-          phone: '0912345678',
-          fullName: 'Nguyen Van A',
-          role: 'USER',
-        },
-        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        expiresIn: 900,
-      },
-    },
   })
   @ApiResponse({
     status: 401,
     description: 'Số điện thoại hoặc mật khẩu không chính xác',
   })
-  async login(@Body() dto: UserLoginDto) {
-    return this.authService.loginUser(dto);
+  async login(@Body() dto: UserLoginDto, @Ip() ip: string) {
+    return this.authService.loginUser(dto, ip);
   }
 
   @Post('refresh')
@@ -77,21 +65,14 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Làm mới token thành công',
-    schema: {
-      example: {
-        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        expiresIn: 900,
-      },
-    },
   })
   @ApiResponse({ status: 400, description: 'Dữ liệu đầu vào không hợp lệ' })
   @ApiResponse({
     status: 401,
     description: 'Refresh token không hợp lệ hoặc hết hạn',
   })
-  async refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto);
+  async refresh(@Body() dto: RefreshTokenDto, @Ip() ip: string) {
+    return this.authService.refreshToken(dto, ip);
   }
 
   @Post('logout')
@@ -106,7 +87,8 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async logout(@Req() req: any) {
-    const userId = req.user.sub;
-    return this.authService.logout(userId);
+    const userId = req.user.id || req.user.sub;
+    const deviceId = req.user.deviceId;
+    return this.authService.logout(userId, deviceId);
   }
 }

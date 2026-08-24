@@ -52,6 +52,33 @@ type UserContextType = {
   setAvatarUrl: (url: string) => void;
   bio: string;
   setBio: (bio: string) => void;
+
+  // Personal Info Properties
+  username: string;
+  email: string;
+  phone: string;
+  birthYear: number | undefined;
+  gender: string;
+  hometown: string;
+  createdAt: string;
+  updateUserProfile: (data: {
+    fullName?: string;
+    username?: string;
+    bio?: string;
+    birthYear?: number;
+    gender?: string;
+    hometown?: string;
+  }) => Promise<any>;
+  checkUsernameAvailability: (username: string) => Promise<{ available: boolean; message: string }>;
+  requestPhoneOtp: (newPhone: string, password: string) => Promise<{ message: string; expiresIn: number; devOtp?: string }>;
+  verifyPhoneOtp: (newPhone: string, otp: string) => Promise<{ message: string; phone: string }>;
+  requestEmailOtp: (newEmail: string) => Promise<{ message: string; expiresIn: number; devOtp?: string }>;
+  verifyEmailOtp: (newEmail: string, otp: string) => Promise<{ message: string; email: string }>;
+  devices: any[];
+  refreshDevices: () => Promise<void>;
+  logoutDevice: (deviceId: string) => Promise<{ message: string }>;
+  logoutOtherDevices: () => Promise<{ message: string }>;
+
   // Theme Properties
   accentHex: string;
   accentRgb: string;
@@ -145,6 +172,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [avatarUrl, setAvatarUrlState] = useState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512');
   const [bio, setBioState] = useState('Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨');
   
+  // Personal Info States
+  const [username, setUsernameState] = useState('phm_thnh_trung_');
+  const [email, setEmailState] = useState('trungpt@gmail.com');
+  const [phone, setPhoneState] = useState('0987654321');
+  const [birthYear, setBirthYearState] = useState<number | undefined>(2003);
+  const [gender, setGenderState] = useState('Nam');
+  const [hometown, setHometownState] = useState('Hà Nội, Việt Nam');
+  const [createdAt, setCreatedAtState] = useState('2023-08-12T10:00:00.000Z');
+  const [devices, setDevicesState] = useState<any[]>([]);
+
   // Theme State
   const [accentHex, setAccentHexState] = useState('#00D8FF');
   const [accentRgb, setAccentRgbState] = useState('0, 216, 255');
@@ -279,6 +316,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const profile = await userRepository.getUserProfile(result.user.id);
         
         setUserNameState(profile.fullName);
+        if (profile.username) setUsernameState(profile.username);
+        if (profile.email) setEmailState(profile.email);
+        if (profile.phone) setPhoneState(profile.phone);
+        if (profile.birthYear !== undefined) setBirthYearState(profile.birthYear);
+        if (profile.gender) setGenderState(profile.gender);
+        if (profile.hometown) setHometownState(profile.hometown);
+        if (profile.createdAt) setCreatedAtState(profile.createdAt);
+
         setAvatarUrlState(getFullAvatarUrl(profile.avatarUrl));
         setBioState(profile.bio);
         setCoins(profile.coins);
@@ -319,6 +364,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const storedAvatar = await AsyncStorage.getItem('avatarUrl');
         
         setUserNameState(profile.fullName || result.user.fullName || userName);
+        if (profile.username) setUsernameState(profile.username);
+        if (profile.email) setEmailState(profile.email);
+        if (profile.phone) setPhoneState(profile.phone);
+        if (profile.birthYear !== undefined) setBirthYearState(profile.birthYear);
+        if (profile.gender) setGenderState(profile.gender);
+        if (profile.hometown) setHometownState(profile.hometown);
+        if (profile.createdAt) setCreatedAtState(profile.createdAt);
         
         let resolvedAvatar = profile.avatarUrl;
         if ((!resolvedAvatar || isDefaultAvatarUrl(resolvedAvatar)) && storedAvatar && !isDefaultAvatarUrl(storedAvatar)) {
@@ -387,11 +439,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.removeItem('coins');
       await AsyncStorage.removeItem('rewardPoints');
       await AsyncStorage.removeItem('vipTier');
+      await AsyncStorage.removeItem('username');
+      await AsyncStorage.removeItem('email');
+      await AsyncStorage.removeItem('phone');
+      await AsyncStorage.removeItem('birthYear');
+      await AsyncStorage.removeItem('gender');
+      await AsyncStorage.removeItem('hometown');
 
       // Khôi phục các biến state local về giá trị mặc định ban đầu
       setCurrentUser(null);
       setIsLoggedIn(false);
       setUserNameState('Phạm Thành Trung ✨');
+      setUsernameState('phm_thnh_trung_');
+      setEmailState('trungpt@gmail.com');
+      setPhoneState('0987654321');
+      setBirthYearState(2003);
+      setGenderState('Nam');
+      setHometownState('Hà Nội, Việt Nam');
+      setCreatedAtState('2023-08-12T10:00:00.000Z');
+      setDevicesState([]);
       setAvatarUrlState('https://ui-avatars.com/api/?name=Phạm+Thành+Trung&background=1E293B&color=fff&size=512');
       setBioState('Kẻ lữ hành tìm kiếm những chân trời mới. 🌍✨');
       setWalletBalance(1000000000);
@@ -570,6 +636,70 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
 
+  const updateUserProfile = async (data: {
+    fullName?: string;
+    username?: string;
+    bio?: string;
+    birthYear?: number;
+    gender?: string;
+    hometown?: string;
+  }) => {
+    const userId = currentUser?.id || 'mock_user_trung';
+    const updated = await userRepository.updateProfile(userId, data);
+    if (updated.fullName) setUserNameState(updated.fullName);
+    if (updated.username) setUsernameState(updated.username);
+    if (updated.bio !== undefined) setBioState(updated.bio);
+    if (updated.birthYear !== undefined) setBirthYearState(updated.birthYear);
+    if (updated.gender) setGenderState(updated.gender);
+    if (updated.hometown) setHometownState(updated.hometown);
+    return updated;
+  };
+
+  const checkUsernameAvailability = async (uname: string) => {
+    return await userRepository.checkUsername(uname);
+  };
+
+  const requestPhoneOtp = async (newPhone: string, password: string) => {
+    return await userRepository.requestPhoneOtp(newPhone, password);
+  };
+
+  const verifyPhoneOtp = async (newPhone: string, otp: string) => {
+    const res = await userRepository.verifyPhoneOtp(newPhone, otp);
+    setPhoneState(res.phone);
+    return res;
+  };
+
+  const requestEmailOtp = async (newEmail: string) => {
+    return await userRepository.requestEmailOtp(newEmail);
+  };
+
+  const verifyEmailOtp = async (newEmail: string, otp: string) => {
+    const res = await userRepository.verifyEmailOtp(newEmail, otp);
+    setEmailState(res.email);
+    return res;
+  };
+
+  const refreshDevices = async () => {
+    try {
+      const list = await userRepository.getDevices();
+      setDevicesState(list);
+    } catch (e) {
+      console.warn('Failed to get devices:', e);
+    }
+  };
+
+  const logoutDevice = async (deviceId: string) => {
+    const res = await userRepository.logoutDevice(deviceId);
+    await refreshDevices();
+    return res;
+  };
+
+  const logoutOtherDevices = async () => {
+    const res = await userRepository.logoutOtherDevices();
+    await refreshDevices();
+    return res;
+  };
+
   const setBio = async (newBio: string) => {
     if (!currentUser) return;
     try {
@@ -661,6 +791,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       userName, setUserName, 
       avatarUrl, setAvatarUrl, 
       bio, setBio,
+      username, email, phone, birthYear, gender, hometown, createdAt,
+      updateUserProfile, checkUsernameAvailability,
+      requestPhoneOtp, verifyPhoneOtp, requestEmailOtp, verifyEmailOtp,
+      devices, refreshDevices, logoutDevice, logoutOtherDevices,
       accentHex, accentRgb, setThemeColor,
       bgUrl, setBgUrl,
       walletBalance, paymentTransactions, addTransaction,

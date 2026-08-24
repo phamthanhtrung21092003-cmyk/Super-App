@@ -52,11 +52,62 @@ export const userRepository: IUserRepository = {
       if (merged.avatarUrl) {
         await AsyncStorage.setItem('avatarUrl', merged.avatarUrl);
       }
+      if (merged.bio) {
+        await AsyncStorage.setItem('bio', merged.bio);
+      }
       return merged;
     } catch (error) {
       console.error('[UserRepository] Failed to update profile:', error);
       throw error;
     }
+  },
+
+  async checkUsername(username: string) {
+    return await userService.checkUsername(username);
+  },
+
+  async requestPhoneOtp(newPhone: string, password: string) {
+    return await userService.requestPhoneOtp(newPhone, password);
+  },
+
+  async verifyPhoneOtp(newPhone: string, otp: string) {
+    const result = await userService.verifyPhoneOtp(newPhone, otp);
+    // Cập nhật số điện thoại trong cache profile
+    const stored = await AsyncStorage.getItem(PROFILE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      parsed.phone = result.phone;
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(parsed));
+    }
+    return result;
+  },
+
+  async requestEmailOtp(newEmail: string) {
+    return await userService.requestEmailOtp(newEmail);
+  },
+
+  async verifyEmailOtp(newEmail: string, otp: string) {
+    const result = await userService.verifyEmailOtp(newEmail, otp);
+    // Cập nhật email trong cache profile
+    const stored = await AsyncStorage.getItem(PROFILE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      parsed.email = result.email;
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(parsed));
+    }
+    return result;
+  },
+
+  async getDevices() {
+    return await userService.getDevices();
+  },
+
+  async logoutDevice(deviceId: string) {
+    return await userService.logoutDevice(deviceId);
+  },
+
+  async logoutOtherDevices() {
+    return await userService.logoutOtherDevices();
   },
 
   async getAddresses(userId: string): Promise<Address[]> {

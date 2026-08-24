@@ -1,5 +1,6 @@
 export interface LoginResponse {
   user: any;
+  deviceId?: string;
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
