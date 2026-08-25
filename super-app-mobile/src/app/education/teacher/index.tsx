@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Sta
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
+import { useUser } from '../../../context/UserContext';
 
 const T = {
   primary: '#0F172A',
@@ -16,6 +17,7 @@ const T = {
 
 export default function TeacherDashboard() {
   const router = useRouter();
+  const { userName } = useUser();
 
   return (
     <View style={S.root}>
@@ -31,7 +33,7 @@ export default function TeacherDashboard() {
         <ScrollView contentContainerStyle={S.scroll} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeInDown.duration(600)}>
             <Text style={S.welcome}>Mã GV: GV-001</Text>
-            <Text style={S.name}>Nguyễn Văn A</Text>
+            <Text style={S.name}>{userName}</Text>
             <Text style={S.subject}>Giáo viên bộ môn: Toán học</Text>
           </Animated.View>
 

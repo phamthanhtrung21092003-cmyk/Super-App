@@ -4,12 +4,19 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../context/ThemeContext';
+import { VERIFIED_FOODS } from '../../../modules/travel/data/verifiedDestinations';
 
-const FOODS = [
-  { id: '1', name: 'Bún chả Hương Liên', rating: 4.8, reviews: 1540, price: '40.000đ - 60.000đ', type: 'Đặc sản Hà Nội', image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cb431?w=400', tags: ['Michelin Guide', 'Ngõ nhỏ'], location: 'Hoàn Kiếm, Hà Nội' },
-  { id: '2', name: 'Nhà hàng Bún Bò Huế Oanh', rating: 4.7, reviews: 890, price: '50.000đ - 80.000đ', type: 'Đặc sản Huế', image: 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=400', tags: ['Đậm vị truyền thống', 'Rộng rãi'], location: 'TP Huế' },
-  { id: '3', name: 'Quán Hải Sản Làng Chài', rating: 4.6, reviews: 1200, price: '150.000đ - 500.000đ', type: 'Hải sản tươi sống', image: 'https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400', tags: ['View biển', 'Đang mở cửa'], location: 'Nha Trang' },
-];
+const FOODS = VERIFIED_FOODS.map(f => ({
+  id: f.id,
+  name: f.name,
+  rating: f.rating,
+  reviews: f.reviews,
+  price: f.priceFormatted,
+  type: f.tags[0] || 'Ẩm thực',
+  image: f.image.url,
+  tags: f.tags,
+  location: f.location,
+}));
 
 const FILTERS = ['Tất cả', 'Đặc sản', 'Hải sản', 'Đang mở cửa', 'View đẹp', 'Giá rẻ'];
 
@@ -108,7 +115,7 @@ export default function FoodScreen() {
 const S = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? Math.max((StatusBar.currentHeight || 0) + 10, 44) : 12 },
   backBtn: { padding: 4 },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600' },
   headerRight: { padding: 4 },

@@ -1,402 +1,517 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  StyleSheet, Text, View, TouchableOpacity, Platform, SafeAreaView,
-  StatusBar, ScrollView, Image, FlatList, Animated, Dimensions, Alert, Share
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+  Image,
+  Dimensions,
+  Alert,
+  Share,
 } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
+import { TravelBottomNav } from '../../components/travel/TravelBottomNav';
 
-const DAYS = [
+const DAYS_PLAN = [
   {
     day: 1,
-    title: 'Hà Nội → Tú Lệ',
-    date: 'Thứ Sáu, 15/11',
-    activities: [
-      { time: '06:00', icon: '🌅', title: 'Khởi hành từ Hà Nội', desc: 'Xuất phát từ Bến xe Mỹ Đình, di chuyển ~4 tiếng', type: 'transport', done: false },
-      { time: '10:30', icon: '⛽', title: 'Nghỉ chân Nghĩa Lộ', desc: 'Ăn sáng, tiếp nhiên liệu xe, thưởng thức đặc sản Yên Bái', type: 'food', done: false },
-      { time: '13:00', icon: '📸', title: 'Đèo Khau Phạ', desc: 'Một trong tứ đại đỉnh đèo của miền Bắc, tầm nhìn 360°', type: 'checkin', done: false },
-      { time: '15:00', icon: '🏠', title: 'Check-in Homestay Tú Lệ', desc: 'Nhà sàn truyền thống người Thái, view ruộng bậc thang', type: 'hotel', done: false },
-      { time: '19:00', icon: '🍽️', title: 'Ăn tối địa phương', desc: 'Xôi nếp Tú Lệ, gà đồi nướng, rượu ngô Mù Cang Chải', type: 'food', done: false },
-    ]
+    date: '12/09/2025',
+    title: 'Khám phá bán đảo Sơn Trà & Biển Mỹ Khê',
+    items: [
+      {
+        time: '08:30',
+        title: 'Chùa Linh Ứng & Bán đảo Sơn Trà',
+        location: 'Sơn Trà, Đà Nẵng',
+        desc: 'Chiêm ngưỡng tượng Phật Bà Quan Âm 67m ngắm toàn cảnh biển',
+        icon: 'camera-outline',
+        color: '#0284C7',
+        bg: '#E0F2FE',
+        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=400&auto=format&fit=crop',
+      },
+      {
+        time: '11:30',
+        title: 'Thưởng thức Mì Quảng ếch Bếp Trang',
+        location: 'Trần Phú, Hải Châu',
+        desc: 'Đặc sản Đà Nẵng đậm đà chuẩn vị',
+        icon: 'restaurant-outline',
+        color: '#D97706',
+        bg: '#FEF3C7',
+        image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?q=80&w=400&auto=format&fit=crop',
+      },
+      {
+        time: '15:00',
+        title: 'Tắm biển Mỹ Khê & Thể thao nước',
+        location: 'Bãi biển Mỹ Khê',
+        desc: 'Biển xanh trong, cát mịn màng ngập tràn nắng',
+        icon: 'water-outline',
+        color: '#0D9488',
+        bg: '#CCFBF1',
+        image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400&auto=format&fit=crop',
+      },
+      {
+        time: '19:30',
+        title: 'Cầu Rồng phun lửa & Phố đi bộ Bạch Đằng',
+        location: 'Cầu Rồng, Đà Nẵng',
+        desc: 'Thưởng thức màn trình diễn ánh sáng rực rỡ bên sông Hàn',
+        icon: 'sparkles-outline',
+        color: '#7C3AED',
+        bg: '#F3E8FF',
+        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=400&auto=format&fit=crop',
+      },
+    ],
   },
   {
     day: 2,
-    title: 'Mù Cang Chải - Lúa chín vàng',
-    date: 'Thứ Bảy, 16/11',
-    activities: [
-      { time: '05:30', icon: '🌄', title: 'Bình minh trên ruộng bậc thang', desc: 'Chụp ảnh lúa chín mùa đẹp nhất trong năm', type: 'checkin', done: false },
-      { time: '08:00', icon: '🥣', title: 'Bữa sáng với người Mông', desc: 'Thưởng thức bánh chưng đen, thắng cố, rau rừng', type: 'food', done: false },
-      { time: '10:00', icon: '🪂', title: 'Dù lượn Đèo Khau Phạ', desc: 'Trải nghiệm dù lượn nhìn toàn cảnh Mù Cang Chải từ trên cao', type: 'activity', done: false },
-      { time: '14:00', icon: '🚶', title: 'Trekking La Pán Tẩn', desc: 'Điểm ngắm ruộng bậc thang đẹp nhất, đi bộ ~2km', type: 'activity', done: false },
-      { time: '18:00', icon: '🏕️', title: 'Cắm trại đêm trên đồi', desc: 'Trải nghiệm ngủ giữa rừng núi, ngắm sao', type: 'hotel', done: false },
-    ]
+    date: '13/09/2025',
+    title: 'Hành trình phố cổ Hội An di sản',
+    items: [
+      {
+        time: '09:00',
+        title: 'Rừng dừa Bảy Mẫu Cẩm Thanh',
+        location: 'Cẩm Thanh, Hội An',
+        desc: 'Trải nghiệm múa thuyền thúng độc đáo trên sông',
+        icon: 'boat-outline',
+        color: '#16A34A',
+        bg: '#DCFCE7',
+        image: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?q=80&w=400&auto=format&fit=crop',
+      },
+      {
+        time: '14:30',
+        title: 'Check-in Phố Cổ Hội An & Chùa Cầu',
+        location: 'Trần Phú, Minh An, Hội An',
+        desc: 'Dạo bước ngắm nhà vàng hoa giấy và thưởng thức cà phê Faifo',
+        icon: 'walk-outline',
+        color: '#EA580C',
+        bg: '#FFEDD5',
+        image: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?q=80&w=400&auto=format&fit=crop',
+      },
+    ],
   },
-  {
-    day: 3,
-    title: 'Về Hà Nội',
-    date: 'Chủ Nhật, 17/11',
-    activities: [
-      { time: '07:00', icon: '♨️', title: 'Suối khoáng nóng Trạm Tấu', desc: 'Ngâm mình thư giãn tại suối khoáng tự nhiên', type: 'activity', done: false },
-      { time: '10:00', icon: '🛒', title: 'Mua quà về', desc: 'Gạo nếp Tú Lệ, mật ong rừng, thổ cẩm người Thái', type: 'activity', done: false },
-      { time: '11:00', icon: '🚗', title: 'Khởi hành về Hà Nội', desc: 'Di chuyển ~4.5 tiếng qua quốc lộ 32', type: 'transport', done: false },
-      { time: '16:00', icon: '🏠', title: 'Về đến Hà Nội', desc: 'Kết thúc chuyến đi đầy trải nghiệm!', type: 'hotel', done: false },
-    ]
-  }
 ];
 
-const TYPE_COLORS: Record<string, string> = {
-  transport: '#F59E0B',
-  food: '#10B981',
-  checkin: '#8B5CF6',
-  hotel: '#3B82F6',
-  activity: '#EC4899',
-};
-
-export default function ItineraryScreen() {
+export default function TravelItineraryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const width = Dimensions.get('window').width;
+  const { width } = Dimensions.get('window');
   const isDesktop = Platform.OS === 'web' && width > 768;
 
-  const [activeDay, setActiveDay] = useState(0);
-  const [daysState, setDaysState] = useState(DAYS);
-  const [doneItems, setDoneItems] = useState<Set<string>>(new Set());
-  const [expandedDay, setExpandedDay] = useState<number | null>(null);
+  const headerTopPadding = Platform.OS === 'android'
+    ? Math.max((StatusBar.currentHeight ?? 0) + 8, insets.top + 6, 40)
+    : Math.max(insets.top, 12);
 
-  const currentDay = daysState[activeDay];
+  const [activeDayIdx, setActiveDayIdx] = useState(0);
 
-  const toggleDone = (key: string) => {
-    setDoneItems(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
+  const handleCreateTrip = () => {
+    Alert.alert('Tạo lịch trình mới', 'Bạn muốn tự tạo lịch trình hay nhờ Trợ lý AI gợi ý tự động?', [
+      { text: 'Trợ lý AI Planner', onPress: () => router.push('/travel/budget' as any) },
+      { text: 'Tự lên lịch trình', onPress: () => Alert.alert('Đang mở bộ tạo lịch trình...') },
+      { text: 'Hủy', style: 'cancel' },
+    ]);
   };
 
-  const totalActivities = daysState.reduce((s, d) => s + d.activities.length, 0);
-  const doneCount = doneItems.size;
+  const currentDay = DAYS_PLAN[activeDayIdx] || DAYS_PLAN[0];
 
   return (
-    <View style={S.root}>
-      <SafeAreaView style={[S.safe, isDesktop && S.desktop]}>
-        <StatusBar barStyle="light-content" />
+    <View style={styles.webWrapper}>
+      <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
 
-        {/* HEADER */}
-        <LinearGradient colors={['#0F172A', '#0C4A6E']} style={S.header}>
-          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/travel'))} style={S.headerBack}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={S.headerTitle}>Lịch trình AI</Text>
-            <Text style={S.headerSub}>Mù Cang Chải • 3 ngày 2 đêm</Text>
+        {/* ── HEADER ── */}
+        <View style={[styles.header, { paddingTop: headerTopPadding }]}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Lịch trình của tôi</Text>
+            <Text style={styles.headerSubtitle}>Kế hoạch chuyến đi thông minh</Text>
           </View>
-          <TouchableOpacity style={S.shareBtn} onPress={() => Share.share({ message: `Lịch trình chuyến đi của tôi: ${daysState.length} ngày!` })}>
-            <Ionicons name="share-outline" size={22} color="#FFF" />
+          <TouchableOpacity
+            style={styles.createTripBtn}
+            onPress={handleCreateTrip}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add" size={18} color="#FFFFFF" />
+            <Text style={styles.createTripBtnText}>Tạo mới</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={S.shareBtn}>
-            <Ionicons name="ellipsis-vertical" size={22} color="#FFF" />
-          </TouchableOpacity>
-        </LinearGradient>
+        </View>
 
-        {/* PROGRESS BAR */}
-        <View style={S.progressBar}>
-          <LinearGradient colors={['#0C4A6E', '#0F172A']} style={S.progressBg}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
-              <View>
-                <Text style={{ color: '#94A3B8', fontSize: 11 }}>Tiến độ chuyến đi</Text>
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>{doneCount}/{totalActivities} hoạt động</Text>
+        <ScrollView
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          {/* ── ACTIVE TRIP HERO CARD ── */}
+          <View style={styles.activeTripCard}>
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=800&auto=format&fit=crop' }}
+              style={styles.activeTripBg}
+            />
+            <View style={styles.activeTripOverlay}>
+              <View style={styles.tripStatusPill}>
+                <Text style={styles.tripStatusText}>SẮP DIỄN RA</Text>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ color: '#14B8A6', fontSize: 20, fontWeight: '800' }}>{Math.round(doneCount / totalActivities * 100)}%</Text>
-                <Text style={{ color: '#64748B', fontSize: 10 }}>Hoàn thành</Text>
+              <Text style={styles.tripName}>Đà Nẵng – Hội An Rực Rỡ</Text>
+              <Text style={styles.tripDate}>📅 12/09 – 15/09/2025 • 3 ngày 2 đêm</Text>
+
+              <View style={styles.tripActionRow}>
+                <TouchableOpacity
+                  style={styles.shareBtn}
+                  onPress={() => Share.share({ message: 'Lịch trình Đà Nẵng 3N2Đ của tôi trên V-Life!' })}
+                >
+                  <Ionicons name="share-social-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.shareBtnText}>Chia sẻ</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.aiOptimizeBtn}
+                  onPress={() => Alert.alert('✨ AI Planner', 'Lịch trình đã được AI tối ưu hóa lộ trình ngắn nhất, tiết kiệm 35% thời gian di chuyển!')}
+                >
+                  <MaterialCommunityIcons name="robot-happy-outline" size={15} color="#0284C7" />
+                  <Text style={styles.aiOptimizeBtnText}>Tối ưu AI</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={S.progressTrack}>
-              <View style={[S.progressFill, { width: `${(doneCount / totalActivities * 100)}%` as any }]} />
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* DAY TABS */}
-        <View style={S.dayTabs}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
-            {daysState.map((d, i) => (
-              <TouchableOpacity key={i} onPress={() => setActiveDay(i)} style={[S.dayTab, activeDay === i && S.dayTabActive]}>
-                <Text style={[S.dayTabNum, activeDay === i && S.dayTabNumActive]}>Ngày {d.day}</Text>
-                <Text style={[S.dayTabDate, activeDay === i && { color: '#0EA5E9' }]}>{d.date.split(',')[0]}</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={S.addDayBtn} onPress={() => {
-              setDaysState(prev => [...prev, { day: prev.length + 1, title: 'Ngày tự do', date: 'Ngày mới', activities: [] }]);
-              setActiveDay(daysState.length);
-            }}>
-              <Ionicons name="add" size={20} color="#0EA5E9" />
-              <Text style={{ color: '#0EA5E9', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Thêm ngày</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-
-        {/* AI SUGGESTION BANNER */}
-        <View style={S.aiBanner}>
-          <LinearGradient colors={['#0E7490', '#0F766E']} style={S.aiBannerGrad}>
-            <Text style={{ fontSize: 18 }}>🤖</Text>
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={S.aiBannerTitle}>Gợi ý AI cho {currentDay.title}</Text>
-              <Text style={S.aiBannerSub}>Thời tiết đẹp, nên mang áo ấm và ủng đi rừng</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-          </LinearGradient>
-        </View>
-
-        {/* TIMELINE */}
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-          <View style={S.dayHeader}>
-            <Text style={S.dayTitle}>📅 Ngày {currentDay.day}: {currentDay.title}</Text>
-            <Text style={S.dayDate}>{currentDay.date}</Text>
           </View>
 
-          <View style={S.timeline}>
-            {currentDay.activities.map((act, idx) => {
-              const key = `${activeDay}-${idx}`;
-              const isDone = doneItems.has(key);
-              const typeColor = TYPE_COLORS[act.type] || '#0EA5E9';
+          {/* ── DAY SELECTOR TABS ── */}
+          <View style={styles.daysTabRow}>
+            {DAYS_PLAN.map((item, idx) => {
+              const isSelected = activeDayIdx === idx;
               return (
-                <View key={key} style={S.timelineRow}>
-                  {/* Left: Time + line */}
-                  <View style={S.timelineLeft}>
-                    <Text style={S.timeText}>{act.time}</Text>
-                    <View style={[S.timelineLine, idx === currentDay.activities.length - 1 && { backgroundColor: 'transparent' }]} />
-                  </View>
-
-                  {/* Dot */}
-                  <View style={[S.dot, { borderColor: typeColor, backgroundColor: isDone ? typeColor : '#0F172A' }]}>
-                    {isDone && <Ionicons name="checkmark" size={10} color="#FFF" />}
-                  </View>
-
-                  {/* Card */}
-                  <View style={[S.actCard, isDone && S.actCardDone]}>
-                    <View style={S.actCardHeader}>
-                      <View style={[S.actTypeBadge, { backgroundColor: typeColor + '22' }]}>
-                        <Text style={{ fontSize: 16 }}>{act.icon}</Text>
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={[S.actTitle, isDone && { textDecorationLine: 'line-through', color: '#64748B' }]}>{act.title}</Text>
-                        <Text style={S.actDesc} numberOfLines={2}>{act.desc}</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => toggleDone(key)} style={[S.doneBtn, { borderColor: typeColor }]}>
-                        <Ionicons name={isDone ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isDone ? typeColor : '#475569'} />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Action chips */}
-                    <View style={S.actChips}>
-                      {act.type === 'hotel' && (
-                        <TouchableOpacity style={S.actChip} onPress={() => router.push('/travel/booking')}>
-                          <Ionicons name="bed-outline" size={12} color="#0EA5E9" />
-                          <Text style={S.actChipTxt}>Đặt phòng</Text>
-                        </TouchableOpacity>
-                      )}
-                      {act.type === 'food' && (
-                        <TouchableOpacity style={S.actChip}>
-                          <Ionicons name="map-outline" size={12} color="#10B981" />
-                          <Text style={[S.actChipTxt, { color: '#10B981' }]}>Xem bản đồ</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity style={S.actChip}>
-                        <Ionicons name="pencil-outline" size={12} color="#94A3B8" />
-                        <Text style={[S.actChipTxt, { color: '#94A3B8' }]}>Chỉnh sửa</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.dayPill, isSelected && styles.dayPillActive]}
+                  onPress={() => setActiveDayIdx(idx)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.dayPillNum, isSelected && styles.dayPillNumActive]}>
+                    Ngày {item.day}
+                  </Text>
+                  <Text style={[styles.dayPillDate, isSelected && styles.dayPillDateActive]}>
+                    {item.date.split('/')[0]}/{item.date.split('/')[1]}
+                  </Text>
+                </TouchableOpacity>
               );
             })}
           </View>
 
-          {/* ADD ACTIVITY */}
-          <TouchableOpacity style={S.addActBtn} onPress={() => {
-            setDaysState(prev => prev.map((d, i) => i === activeDay ? { 
-              ...d, 
-              activities: [...d.activities, { time: '12:00', icon: '📍', title: 'Hoạt động mới', desc: 'Nhấn để chỉnh sửa', type: 'activity', done: false }]
-            } : d));
-          }}>
-            <Ionicons name="add-circle-outline" size={22} color="#0EA5E9" />
-            <Text style={S.addActTxt}>Thêm hoạt động vào Ngày {currentDay.day}</Text>
-          </TouchableOpacity>
+          {/* ── DAY TITLE ── */}
+          <View style={styles.daySummaryBox}>
+            <Ionicons name="compass" size={16} color="#0284C7" />
+            <Text style={styles.daySummaryText}>{currentDay.title}</Text>
+          </View>
 
-          {/* COST ESTIMATE */}
-          <View style={S.costCard}>
-            <Text style={S.costTitle}>💰 Chi phí ước tính</Text>
-            <View style={S.costRow}>
-              <Text style={S.costLabel}>Ăn uống</Text>
-              <Text style={S.costValue}>300.000đ</Text>
-            </View>
-            <View style={S.costRow}>
-              <Text style={S.costLabel}>Lưu trú</Text>
-              <Text style={S.costValue}>500.000đ</Text>
-            </View>
-            <View style={S.costRow}>
-              <Text style={S.costLabel}>Di chuyển</Text>
-              <Text style={S.costValue}>200.000đ</Text>
-            </View>
-            <View style={S.costRow}>
-              <Text style={S.costLabel}>Vui chơi</Text>
-              <Text style={S.costValue}>350.000đ</Text>
-            </View>
-            <View style={[S.costRow, { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 10, marginTop: 6 }]}>
-              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>Tổng ngày {currentDay.day}</Text>
-              <Text style={{ color: '#0EA5E9', fontWeight: '800', fontSize: 16 }}>1.350.000đ</Text>
-            </View>
+          {/* ── VERTICAL TIMELINE ── */}
+          <View style={styles.timelineContainer}>
+            {currentDay.items.map((act, index) => (
+              <View key={index} style={styles.timelineRow}>
+                {/* Time & Line */}
+                <View style={styles.timeCol}>
+                  <Text style={styles.timeText}>{act.time}</Text>
+                  {index < currentDay.items.length - 1 && <View style={styles.verticalLine} />}
+                </View>
+
+                {/* Card Item */}
+                <View style={styles.actCard}>
+                  <Image source={{ uri: act.image }} style={styles.actImg} />
+                  <View style={styles.actContent}>
+                    <View style={styles.actTopRow}>
+                      <View style={[styles.actIconBox, { backgroundColor: act.bg }]}>
+                        <Ionicons name={act.icon as any} size={15} color={act.color} />
+                      </View>
+                      <Text style={styles.actTitle} numberOfLines={1}>{act.title}</Text>
+                    </View>
+                    <View style={styles.actLocRow}>
+                      <Ionicons name="location-outline" size={12} color="#64748B" />
+                      <Text style={styles.actLocText} numberOfLines={1}>{act.location}</Text>
+                    </View>
+                    <Text style={styles.actDesc} numberOfLines={2}>{act.desc}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
           </View>
         </ScrollView>
 
-        {/* BOTTOM ACTION BAR */}
-        <View style={S.bottomBar}>
-          <View>
-            <Text style={{ color: '#94A3B8', fontSize: 11 }}>Tổng chi phí dự kiến</Text>
-            <Text style={{ color: '#0EA5E9', fontWeight: '800', fontSize: 18 }}>4.050.000đ</Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={S.outlineBtn} onPress={() => Share.share({ message: 'Đây là bản xuất PDF lịch trình (Text thay thế) của chuyến đi!' })}>
-              <Ionicons name="download-outline" size={18} color="#0EA5E9" />
-              <Text style={{ color: '#0EA5E9', fontWeight: '600', marginLeft: 4 }}>Xuất</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={S.bookBtn} onPress={() => router.push('/travel/booking')}>
-              <LinearGradient colors={['#0EA5E9', '#0C4A6E']} style={S.bookBtnGrad}>
-                <Text style={{ color: '#FFF', fontWeight: '700' }}>Đặt dịch vụ</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* BOTTOM NAV */}
-        <View style={S.bottomNav}>
-          {[
-            { icon: 'compass' as const, label: 'Khám phá', route: '/travel' },
-            { icon: 'search' as const, label: 'Tìm kiếm', route: '/travel/search' },
-            { icon: 'calendar' as const, label: 'Lịch trình', route: '/travel/itinerary' },
-            { icon: 'people' as const, label: 'Cộng đồng', route: '/travel/community' },
-            { icon: 'person' as const, label: 'Hồ sơ', route: '/travel/profile' },
-          ].map((tab, i) => {
-            const active = i === 2;
-            return (
-              <TouchableOpacity
-                key={i}
-                style={S.navItem}
-                onPress={() => {
-                  if (tab.route && i !== 2) router.replace(tab.route as any);
-                }}
-              >
-                {active && (
-                  <LinearGradient
-                    colors={['#0EA5E9', '#14B8A6']}
-                    style={S.navActiveIndicator}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  />
-                )}
-                <Ionicons
-                  name={active ? tab.icon : ((tab.icon + '-outline') as any)}
-                  size={22}
-                  color={active ? '#0EA5E9' : '#64748B'}
-                />
-                <Text style={[S.navLabel, active && S.navLabelActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
+        <TravelBottomNav activeTab="itinerary" />
       </SafeAreaView>
     </View>
   );
 }
 
-const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' && { paddingVertical: 20 }) },
-  safe: { flex: 1, backgroundColor: '#0F172A', width: '100%' },
-  desktop: { maxWidth: 390, maxHeight: 844, aspectRatio: 390 / 844, borderWidth: 12, borderColor: '#000', borderRadius: 44, overflow: 'hidden' },
-
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 40 : 12, paddingBottom: 14 },
-  headerBack: { padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)' },
-  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '800' },
-  headerSub: { color: '#94A3B8', fontSize: 12, marginTop: 2 },
-  shareBtn: { padding: 8, marginLeft: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20 },
-
-  progressBar: { backgroundColor: '#0F172A' },
-  progressBg: {},
-  progressTrack: { height: 4, backgroundColor: '#1E293B', marginHorizontal: 16, marginBottom: 10, borderRadius: 4 },
-  progressFill: { height: 4, backgroundColor: '#0EA5E9', borderRadius: 4 },
-
-  dayTabs: { backgroundColor: '#0F172A', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1E293B' },
-  dayTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1E293B', borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
-  dayTabActive: { backgroundColor: '#0C4A6E', borderColor: '#0EA5E9' },
-  dayTabNum: { color: '#94A3B8', fontSize: 13, fontWeight: '700' },
-  dayTabNumActive: { color: '#0EA5E9' },
-  dayTabDate: { color: '#64748B', fontSize: 10, marginTop: 2 },
-  addDayBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#0EA5E9', borderStyle: 'dashed' },
-
-  aiBanner: { padding: 12 },
-  aiBannerGrad: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 },
-  aiBannerTitle: { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  aiBannerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 },
-
-  dayHeader: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  dayTitle: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  dayDate: { color: '#64748B', fontSize: 12, marginTop: 4 },
-
-  timeline: { paddingLeft: 16 },
-  timelineRow: { flexDirection: 'row', marginBottom: 4 },
-  timelineLeft: { width: 50, alignItems: 'center', paddingTop: 14 },
-  timeText: { color: '#64748B', fontSize: 10, fontWeight: '600' },
-  timelineLine: { flex: 1, width: 1.5, backgroundColor: '#1E293B', marginTop: 4 },
-  dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, alignSelf: 'flex-start', marginTop: 14, marginHorizontal: 8, alignItems: 'center', justifyContent: 'center' },
-  actCard: { flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12, marginBottom: 10, marginRight: 12, borderWidth: 1, borderColor: '#334155' },
-  actCardDone: { opacity: 0.6 },
-  actCardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
-  actTypeBadge: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  actTitle: { color: '#E2E8F0', fontSize: 14, fontWeight: '700', lineHeight: 20 },
-  actDesc: { color: '#64748B', fontSize: 12, marginTop: 3, lineHeight: 16 },
-  doneBtn: { padding: 4, borderRadius: 12 },
-  actChips: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  actChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F172A', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  actChipTxt: { color: '#0EA5E9', fontSize: 11, fontWeight: '600', marginLeft: 4 },
-
-  addActBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#0EA5E9', borderStyle: 'dashed', marginTop: 4, marginBottom: 16 },
-  addActTxt: { color: '#0EA5E9', fontWeight: '600', marginLeft: 8 },
-
-  costCard: { marginHorizontal: 16, marginBottom: 20, backgroundColor: '#1E293B', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
-  costTitle: { color: '#FFF', fontSize: 15, fontWeight: '800', marginBottom: 12 },
-  costRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  costLabel: { color: '#94A3B8', fontSize: 13 },
-  costValue: { color: '#E2E8F0', fontSize: 13, fontWeight: '600' },
-
-  bottomBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#1E293B', borderTopWidth: 1, borderTopColor: '#334155' },
-  outlineBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, borderWidth: 1.5, borderColor: '#0EA5E9' },
-  bookBtn: { borderRadius: 25, overflow: 'hidden' },
-  bookBtnGrad: { paddingHorizontal: 20, paddingVertical: 10 },
-
-  // ── Bottom Nav
-  bottomNav: {
+const styles = StyleSheet.create({
+  webWrapper: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    width: '100%',
+  },
+  desktopFrame: {
+    maxWidth: 390,
+    maxHeight: 844,
+    aspectRatio: 390 / 844,
+    borderWidth: 10,
+    borderColor: '#1E293B',
+    borderRadius: 44,
+    overflow: 'hidden',
+  },
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#FAFCFF',
+  },
+  header: {
     flexDirection: 'row',
-    backgroundColor: '#0F172A',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingVertical: 8,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  navItem: { flex: 1, alignItems: 'center', gap: 3, position: 'relative' },
-  navActiveIndicator: {
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  createTripBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 18,
+    gap: 4,
+  },
+  createTripBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  activeTripCard: {
+    marginHorizontal: 20,
+    marginTop: 18,
+    height: 160,
+    borderRadius: 22,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#E2E8F0',
+  },
+  activeTripBg: {
+    width: '100%',
+    height: '100%',
+  },
+  activeTripOverlay: {
     position: 'absolute',
-    top: -8,
-    width: 32,
-    height: 3,
-    borderRadius: 2,
+    inset: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    padding: 16,
+    justifyContent: 'space-between',
   },
-  navLabel: { color: '#64748B', fontSize: 10, fontWeight: '500' },
-  navLabelActive: { color: '#0EA5E9', fontWeight: '700' },
+  tripStatusPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  tripStatusText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  tripName: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  tripDate: {
+    color: '#E2E8F0',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  tripActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  shareBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  aiOptimizeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  aiOptimizeBtnText: {
+    color: '#0284C7',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  daysTabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginTop: 18,
+    gap: 10,
+  },
+  dayPill: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+  },
+  dayPillActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
+  },
+  dayPillNum: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  dayPillNumActive: {
+    color: '#FFFFFF',
+  },
+  dayPillDate: {
+    fontSize: 10.5,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  dayPillDateActive: {
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  daySummaryBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    marginHorizontal: 20,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 14,
+    gap: 8,
+  },
+  daySummaryText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0284C7',
+    flex: 1,
+  },
+  timelineContainer: {
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  timeCol: {
+    width: 50,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  timeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0284C7',
+    marginBottom: 6,
+  },
+  verticalLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 1,
+  },
+  actCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    padding: 10,
+    flexDirection: 'row',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  actImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 14,
+    backgroundColor: '#E2E8F0',
+  },
+  actContent: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  actTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  actIconBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    flex: 1,
+  },
+  actLocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginBottom: 4,
+  },
+  actLocText: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  actDesc: {
+    fontSize: 11,
+    color: '#475569',
+    lineHeight: 15,
+  },
 });
-

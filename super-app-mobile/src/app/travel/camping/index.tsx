@@ -4,13 +4,19 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../context/ThemeContext';
+import { VERIFIED_CAMPING } from '../../../modules/travel/data/verifiedDestinations';
 
-const CAMPINGS = [
-  { id: '1', name: 'Đồng Mô Discovery', rating: 4.6, reviews: 312, price: 150000, type: 'Cắm trại ven hồ', image: 'https://images.unsplash.com/photo-1504280327387-5c3244266380?w=400', tags: ['Gần Hà Nội', 'Hồ nước rộng', 'Thuê lều'], location: 'Sơn Tây, Hà Nội' },
-  { id: '2', name: 'Núi Hàm Lợn', rating: 4.4, reviews: 205, price: 50000, type: 'Cắm trại trên núi', image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=400', tags: ['Tự do cắm trại', 'Đốt lửa trại', 'Trekking'], location: 'Sóc Sơn, Hà Nội' },
-  { id: '3', name: 'Cảnh Dương Beachcamp', rating: 4.7, reviews: 540, price: 200000, type: 'Cắm trại bãi biển', image: 'https://images.unsplash.com/photo-1533873984024-ce5f0436bc11?w=400', tags: ['Gần biển', 'BBQ hải sản', 'Glamping'], location: 'Phú Lộc, Thừa Thiên Huế' },
-  { id: '4', name: 'Đà Lạt Camp', rating: 4.9, reviews: 890, price: 500000, type: 'Cắm trại trong rừng', image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=400', tags: ['Rừng thông', 'Săn mây', 'Chill'], location: 'Lạc Dương, Lâm Đồng' },
-];
+const CAMPINGS = VERIFIED_CAMPING.map(c => ({
+  id: c.id,
+  name: c.name,
+  rating: c.rating,
+  reviews: c.reviews,
+  price: c.price,
+  type: c.type || 'Glamping',
+  image: c.image.url,
+  tags: c.tags,
+  location: c.location,
+}));
 
 const FILTERS = ['Tất cả', 'Ven biển', 'Bờ hồ', 'Trên núi', 'Trong rừng', 'Glamping (Tiện nghi)'];
 
@@ -114,7 +120,7 @@ const S = StyleSheet.create({
   safe: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 12,
+    paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? Math.max((StatusBar.currentHeight || 0) + 10, 44) : 12,
   },
   backBtn: { padding: 4 },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600' },

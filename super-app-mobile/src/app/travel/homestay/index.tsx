@@ -4,12 +4,19 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../context/ThemeContext';
+import { VERIFIED_HOMESTAYS } from '../../../modules/travel/data/verifiedDestinations';
 
-const HOMESTAYS = [
-  { id: '1', name: 'The K’ho Homestay', rating: 4.8, reviews: 210, price: 650000, type: 'Bungalow gỗ', image: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=400', tags: ['Săn mây', 'Giữa rừng thông', 'Vintage'], location: 'Đà Lạt' },
-  { id: '2', name: 'Mộc Châu Retreat', rating: 4.9, reviews: 345, price: 800000, type: 'Villa nguyên căn', image: 'https://images.unsplash.com/photo-1542314831-c6a4d1424164?w=400', tags: ['Nguyên căn', 'Phù hợp gia đình', 'Có BBQ'], location: 'Mộc Châu' },
-  { id: '3', name: 'Pù Luông Natura', rating: 4.7, reviews: 120, price: 1200000, type: 'Farmstay', image: 'https://images.unsplash.com/photo-1505843513577-22bb7d21e455?w=400', tags: ['Bể bơi vô cực', 'View ruộng bậc thang'], location: 'Thanh Hóa' },
-];
+const HOMESTAYS = VERIFIED_HOMESTAYS.map(h => ({
+  id: h.id,
+  name: h.name,
+  rating: h.rating,
+  reviews: h.reviews,
+  price: h.price,
+  type: h.type || 'Homestay',
+  image: h.image.url,
+  tags: h.tags,
+  location: h.location,
+}));
 
 const FILTERS = ['Tất cả', 'Bungalow', 'Villa nguyên căn', 'Farmstay', 'Săn mây', 'Gần suối'];
 
@@ -108,7 +115,7 @@ export default function HomestayScreen() {
 const S = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? Math.max((StatusBar.currentHeight || 0) + 10, 44) : 12 },
   backBtn: { padding: 4 },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600' },
   headerRight: { padding: 4 },

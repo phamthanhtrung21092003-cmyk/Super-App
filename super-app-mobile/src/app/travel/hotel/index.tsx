@@ -4,13 +4,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../context/ThemeContext';
+import { VERIFIED_HOTELS } from '../../../modules/travel/data/verifiedDestinations';
 
-const HOTELS = [
-  { id: '1', name: 'InterContinental Phú Quốc', rating: 5.0, reviews: 1240, price: 4200000, oldPrice: 5500000, image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400', tags: ['Khách sạn 5 sao', 'Bãi biển riêng', 'Buffet sáng'], location: 'Bãi Kem, An Thới', discount: 'Giảm 24%' },
-  { id: '2', name: 'Movenpick Resort Waverly', rating: 4.8, reviews: 892, price: 2800000, oldPrice: null, image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400', tags: ['Khách sạn 5 sao', 'Hồ bơi lớn', 'Buffet sáng'], location: 'Bãi Ông Lang', discount: null },
-  { id: '3', name: 'Salinda Resort', rating: 4.9, reviews: 560, price: 3500000, oldPrice: 4000000, image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400', tags: ['Khách sạn 5 sao', 'Eco-friendly', 'Gần trung tâm'], location: 'Cửa Lấp', discount: 'Giảm 12%' },
-  { id: '4', name: 'Amarin Resort & Spa', rating: 4.5, reviews: 320, price: 1500000, oldPrice: null, image: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=400', tags: ['Khách sạn 4 sao', 'Spa xịn', 'Bãi biển riêng'], location: 'Trần Hưng Đạo', discount: null },
-];
+const HOTELS = VERIFIED_HOTELS.map(h => ({
+  id: h.id,
+  name: h.name,
+  rating: h.rating,
+  reviews: h.reviews,
+  price: h.price,
+  oldPrice: h.oldPrice || null,
+  image: h.image.url,
+  tags: h.tags,
+  location: h.location,
+  discount: h.discount || null,
+}));
 
 const FILTERS = ['Tất cả', '5 sao', '4 sao', 'Có hồ bơi', 'Buffet sáng miễn phí', 'Giá dưới 2 triệu'];
 
@@ -148,7 +155,7 @@ const S = StyleSheet.create({
   safe: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 12,
+    paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? Math.max((StatusBar.currentHeight || 0) + 10, 44) : 12,
   },
   backBtn: { padding: 4 },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600' },

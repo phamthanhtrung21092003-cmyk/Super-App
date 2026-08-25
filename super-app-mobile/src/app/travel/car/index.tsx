@@ -4,13 +4,19 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../context/ThemeContext';
+import { VERIFIED_CARS } from '../../../modules/travel/data/verifiedDestinations';
 
-const CARS = [
-  { id: '1', name: 'Mazda 3 2023', type: 'Sedan • 5 chỗ', transmission: 'Tự động', price: 800000, rating: 4.9, reviews: 124, image: 'https://images.unsplash.com/photo-1598555310613-2287f37e4130?w=400', tags: ['Giao xe tận nơi', 'Miễn phí hủy'] },
-  { id: '2', name: 'Toyota Fortuner 2022', type: 'SUV • 7 chỗ', transmission: 'Tự động', price: 1200000, rating: 4.8, reviews: 85, image: 'https://images.unsplash.com/photo-1590362891991-f7055743a12a?w=400', tags: ['Rộng rãi', 'Leo dốc tốt'] },
-  { id: '3', name: 'Honda CR-V 2024', type: 'CUV • 7 chỗ', transmission: 'Tự động', price: 1100000, rating: 4.9, reviews: 200, image: 'https://images.unsplash.com/photo-1606540306385-d852a42dd7de?w=400', tags: ['Tiết kiệm xăng', 'Giao xe tận nơi'] },
-  { id: '4', name: 'Ford Ranger 2023', type: 'Bán tải • 5 chỗ', transmission: 'Số sàn', price: 1000000, rating: 4.7, reviews: 92, image: 'https://images.unsplash.com/photo-1603584852928-874cc66380c5?w=400', tags: ['Off-road', 'Chở đồ tốt'] },
-];
+const CARS = VERIFIED_CARS.map(car => ({
+  id: car.id,
+  name: car.name,
+  type: car.type || 'SUV',
+  transmission: 'Tự động',
+  price: car.price,
+  rating: car.rating,
+  reviews: car.reviews,
+  image: car.image.url,
+  tags: car.tags,
+}));
 
 const FILTERS = ['Tất cả', '4-5 chỗ', '7 chỗ', 'Số tự động', 'Giao xe tận nơi', 'SUV'];
 
@@ -130,7 +136,7 @@ const S = StyleSheet.create({
   safe: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 12,
+    paddingHorizontal: 16, paddingVertical: 12, paddingTop: Platform.OS === 'android' ? Math.max((StatusBar.currentHeight || 0) + 10, 44) : 12,
   },
   backBtn: { padding: 4 },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600' },

@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { getVerifiedDestination } from '../../modules/travel/data/verifiedDestinations';
 import { useTheme } from '../../context/ThemeContext';
 
 // ─────────────────────────── MOCK DATA ───────────────────────────
@@ -198,6 +199,8 @@ const RATING_BREAKDOWN = [
 // ─────────────────────────── COMPONENT ───────────────────────────
 export default function DestinationScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const activeDest = getVerifiedDestination(id || '1');
   const { theme } = useTheme();
 
   const [activeTab, setActiveTab] = useState('Giới thiệu');
@@ -233,7 +236,7 @@ export default function DestinationScreen() {
                 <Ionicons name="arrow-back" size={20} color="#fff" />
               </TouchableOpacity>
               <Text style={styles.floatingHeaderTitle} numberOfLines={1}>
-                {DESTINATION.name}
+                {activeDest.name}
               </Text>
               <TouchableOpacity style={styles.headerBtn} onPress={() => setIsBookmarked(!isBookmarked)}>
                 <Ionicons name={isBookmarked ? 'bookmark' : 'bookmark-outline'} size={20} color="#0EA5E9" />
@@ -254,7 +257,7 @@ export default function DestinationScreen() {
         {/* ══════ HERO ══════ */}
         <View style={styles.heroContainer}>
           <ImageBackground
-            source={{ uri: DESTINATION.heroImage }}
+            source={{ uri: activeDest.heroImage.url }}
             style={styles.heroImage}
             resizeMode="cover"
           >
@@ -299,7 +302,7 @@ export default function DestinationScreen() {
 
         {/* ══════ THÔNG TIN CƠ BẢN ══════ */}
         <Animated.View style={[styles.infoSection, { opacity: fadeAnim }]}>
-          <Text style={styles.destName}>{DESTINATION.name}</Text>
+          <Text style={styles.destName}>{activeDest.name}</Text>
           <View style={styles.addressRow}>
             <Ionicons name="location" size={14} color="#0EA5E9" />
             <Text style={styles.addressText}>{DESTINATION.address}</Text>
@@ -309,9 +312,9 @@ export default function DestinationScreen() {
           <View style={styles.ratingRow}>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={14} color="#EAB308" />
-              <Text style={styles.ratingValue}>{DESTINATION.rating}</Text>
+              <Text style={styles.ratingValue}>{activeDest.rating}</Text>
             </View>
-            <Text style={styles.ratingReviews}>{DESTINATION.reviews.toLocaleString()} đánh giá</Text>
+            <Text style={styles.ratingReviews}>{activeDest.reviews.toLocaleString()} đánh giá</Text>
             <TouchableOpacity style={styles.reviewLinkBtn}>
               <Text style={styles.reviewLinkText}>Xem review</Text>
               <Ionicons name="chevron-forward" size={13} color="#0EA5E9" />
@@ -323,19 +326,19 @@ export default function DestinationScreen() {
             <View style={styles.statItem}>
               <Text style={styles.statIcon}>📍</Text>
               <Text style={styles.statLabel}>Khoảng cách</Text>
-              <Text style={styles.statValue}>{DESTINATION.distance}</Text>
+              <Text style={styles.statValue}>{activeDest.distanceFromHanoi}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statIcon}>⏱️</Text>
               <Text style={styles.statLabel}>Thời gian đẹp</Text>
-              <Text style={styles.statValue}>{DESTINATION.bestTime}</Text>
+              <Text style={styles.statValue}>{activeDest.bestTime}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statIcon}>💰</Text>
               <Text style={styles.statLabel}>Giá từ</Text>
-              <Text style={styles.statValue}>{DESTINATION.priceFrom}</Text>
+              <Text style={styles.statValue}>{activeDest.priceFrom}</Text>
             </View>
           </View>
 
@@ -381,7 +384,7 @@ export default function DestinationScreen() {
           {/* ── Giới thiệu ── */}
           {activeTab === 'Giới thiệu' && (
             <View>
-              {DESTINATION.description.slice(0, descExpanded ? 4 : 2).map((para, i) => (
+              {activeDest.description.slice(0, descExpanded ? 4 : 2).map((para, i) => (
                 <Text key={i} style={styles.descPara}>{para}</Text>
               ))}
               <TouchableOpacity style={styles.expandBtn} onPress={() => setDescExpanded(!descExpanded)}>
@@ -426,9 +429,9 @@ export default function DestinationScreen() {
               <View style={styles.usefulCard}>
                 <Text style={styles.usefulTitle}>ℹ️ Thông tin hữu ích</Text>
                 {[
-                  { icon: 'time-outline', label: 'Giờ mở cửa', value: DESTINATION.usefulInfo.openHours },
-                  { icon: 'ticket-outline', label: 'Giá vé', value: DESTINATION.usefulInfo.ticketPrice },
-                  { icon: 'car-outline', label: 'Di chuyển', value: DESTINATION.usefulInfo.transport },
+                  { icon: 'time-outline', label: 'Giờ mở cửa', value: activeDest.usefulInfo.openHours },
+                  { icon: 'ticket-outline', label: 'Giá vé', value: activeDest.usefulInfo.ticketPrice },
+                  { icon: 'car-outline', label: 'Di chuyển', value: activeDest.usefulInfo.transport },
                 ].map((info) => (
                   <View key={info.label} style={styles.usefulRow}>
                     <Ionicons name={info.icon as any} size={16} color="#0EA5E9" style={{ marginRight: 10 }} />
@@ -465,13 +468,13 @@ export default function DestinationScreen() {
               {/* Rating overview */}
               <View style={styles.ratingOverview}>
                 <View style={styles.ratingBig}>
-                  <Text style={styles.ratingBigNum}>{DESTINATION.rating}</Text>
+                  <Text style={styles.ratingBigNum}>{activeDest.rating}</Text>
                   <View style={styles.starRow}>
                     {[1, 2, 3, 4, 5].map((s) => (
                       <Ionicons key={s} name="star" size={14} color="#EAB308" />
                     ))}
                   </View>
-                  <Text style={styles.ratingBigSub}>{DESTINATION.reviews.toLocaleString()} đánh giá</Text>
+                  <Text style={styles.ratingBigSub}>{activeDest.reviews.toLocaleString()} đánh giá</Text>
                 </View>
                 <View style={styles.ratingBars}>
                   {RATING_BREAKDOWN.map((rb) => (
@@ -673,7 +676,7 @@ export default function DestinationScreen() {
       <View style={styles.ctaBar}>
         <View style={styles.ctaLeft}>
           <Text style={styles.ctaLabel}>Giá từ</Text>
-          <Text style={styles.ctaPrice}>{DESTINATION.priceFrom}</Text>
+          <Text style={styles.ctaPrice}>{activeDest.priceFrom}</Text>
         </View>
         <TouchableOpacity
           onPress={() => router.push('/travel/booking')}

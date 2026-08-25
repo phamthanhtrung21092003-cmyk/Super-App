@@ -114,7 +114,7 @@ export default function HealthScreen() {
   const router = useRouter();
   const { width, height: SCREEN_H } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
-  const { userData } = useUser();
+  const { userName, avatarUrl } = useUser();
 
   const [state, setState] = useState<HealthState>('idle');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
@@ -202,8 +202,8 @@ export default function HealthScreen() {
                                   state === 'pharma_home' ? 'Nhà Thuốc 24/7' : 
                                   state === 'book_search' ? 'Đặt Lịch Khám' : 
                                   'Tư Vấn Trực Tuyến'}</Text>
-        <TouchableOpacity style={S.profileBtn}>
-          <Image source={{ uri: userData?.avatarUrl || 'https://i.pravatar.cc/150' }} style={S.avatar} />
+        <TouchableOpacity style={S.profileBtn} onPress={() => router.push('/account')}>
+          <Image source={{ uri: avatarUrl }} style={S.avatar} />
         </TouchableOpacity>
       </View>
     );
@@ -215,7 +215,7 @@ export default function HealthScreen() {
       <Animated.ScrollView entering={FadeIn} exiting={FadeOut} style={S.scrollArea} showsVerticalScrollIndicator={false}>
         {/* Greeting */}
         <View style={S.greetSection}>
-          <Text style={S.greetTxt}>{greeting}, {userData?.name?.split(' ')[0] || 'Trung'}!</Text>
+          <Text style={S.greetTxt}>{greeting}, {userName?.split(' ')[0] || 'Bạn'}!</Text>
           <Text style={S.subGreetTxt}>{subGreeting}</Text>
         </View>
 

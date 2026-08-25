@@ -75,9 +75,9 @@ export default function AIBudgetScreen() {
       const timer = setTimeout(() => {
         // AI Logic
         const dests = [
-          { min: 0, max: 4000000, title: 'Tam Đảo - Vĩnh Phúc', image: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=600' },
+          { min: 0, max: 4000000, title: 'Tam Đảo - Vĩnh Phúc', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600' },
           { min: 4000000, max: 8000000, title: 'Sapa - Lào Cai', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600' },
-          { min: 8000000, max: 15000000, title: 'Đà Lạt - Lâm Đồng', image: 'https://images.unsplash.com/photo-1582292705727-2c9dd81541f5?w=600' },
+          { min: 8000000, max: 15000000, title: 'Đà Lạt - Lâm Đồng', image: 'https://images.unsplash.com/photo-1511497584788-87676104235f?w=600' },
           { min: 15000000, max: 50000000, title: 'Phú Quốc - Kiên Giang', image: 'https://images.unsplash.com/photo-1540845511934-7721dd7adec3?w=600' },
           { min: 50000000, max: 999999999, title: 'Bali - Indonesia', image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600' }
         ];

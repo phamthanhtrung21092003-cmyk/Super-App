@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useCinema } from '../../context/CinemaContext';
+import { useUser } from '../../context/UserContext';
 
 type PaymentMode = 'vietqr' | 'momo' | 'vnpay' | 'demo';
 type UIStatus = 'IDLE' | 'PENDING' | 'CHECKING' | 'NOT_RECEIVED' | 'SUCCESS';
@@ -29,10 +30,11 @@ export default function CinemaCheckoutScreen() {
   const isDesktop = Platform.OS === 'web' && width > 768;
 
   const { booking, setCustomerDetails, getGrandTotal, setBooking } = useCinema();
+  const { userName, phone: userPhone, email: userEmail } = useUser();
 
-  const [fullName, setFullName] = useState(booking.customerInfo.fullName || 'Nguyễn Văn A');
-  const [phone, setPhone] = useState(booking.customerInfo.phone || '0987654321');
-  const [email, setEmail] = useState(booking.customerInfo.email || 'khachtest@gmail.com');
+  const [fullName, setFullName] = useState(booking.customerInfo.fullName || userName || '');
+  const [phone, setPhone] = useState(booking.customerInfo.phone || userPhone || '');
+  const [email, setEmail] = useState(booking.customerInfo.email || userEmail || '');
   
   // Payment selection mode (Default VietQR like Travel)
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<PaymentMode>('vietqr');
@@ -103,8 +105,8 @@ export default function CinemaCheckoutScreen() {
   };
 
   const completeBookingWithCode = (code: string, methodStr: string) => {
-    const nameToUse = fullName.trim() || 'Nguyễn Văn A';
-    const phoneToUse = phone.trim() || '0987654321';
+    const nameToUse = fullName.trim() || userName || 'Khách hàng';
+    const phoneToUse = phone.trim() || userPhone || '';
 
     setBooking(prev => ({
       ...prev,

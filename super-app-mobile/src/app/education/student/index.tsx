@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useUser } from '../../../context/UserContext';
 
 const T = {
   primary: '#0F172A',
@@ -20,6 +21,7 @@ const MOCK_COURSES = [
 
 export default function EducationHome() {
   const router = useRouter();
+  const { userName } = useUser();
 
   return (
     <View style={S.root}>
@@ -32,7 +34,7 @@ export default function EducationHome() {
             </TouchableOpacity>
             <View>
               <Text style={S.greeting}>Chào buổi sáng,</Text>
-              <Text style={S.name}>Nguyễn Văn A</Text>
+              <Text style={S.name}>{userName}</Text>
               <Text style={S.studentId}>Mã HS: HS-001</Text>
             </View>
           </View>
