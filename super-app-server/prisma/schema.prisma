@@ -150,6 +150,16 @@ model User {
   wallet             Wallet?
   bookings           Booking[]
   devices            UserDevice[]
+  videos             Video[]
+  videoLikes         VideoLike[]
+  videoComments      VideoComment[]
+  videoCommentLikes  VideoCommentLike[]
+  videoSaves         VideoSave[]
+  videoViews         VideoView[]
+  videoShares        VideoShare[]
+  videoReports       VideoReport[]
+  followers          Follow[]           @relation("UserFollowers")
+  following          Follow[]           @relation("UserFollowing")
 }
 
 model UserDevice {
@@ -303,6 +313,7 @@ model Service {
   isAvailable Boolean     @default(true)
   metadata    Json?
   bookings    Booking[]
+  videos      Video[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -453,4 +464,217 @@ model Notification {
 
   @@index([recipientId])
   @@index([recipientType])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODELS BỔ SUNG: MODULE VIDEO (V-LIFE SHORT VIDEOS)
+// ══════════════════════════════════════════════════════════════════════════════
+
+enum VideoStatus {
+  DRAFT
+  PROCESSING
+  PUBLISHED
+  BLOCKED
+  DELETED
+}
+
+model Video {
+  id            String            @id @default(uuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  caption       String?
+  musicTitle    String?           @default("Âm thanh gốc")
+  location      String?
+  status        VideoStatus       @default(PUBLISHED)
+  
+  serviceId     String?
+  service       Service?          @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  viewsCount    Int               @default(0)
+  likesCount    Int               @default(0)
+  commentsCount Int               @default(0)
+  sharesCount   Int               @default(0)
+  savesCount    Int               @default(0)
+
+  media         VideoMedia[]
+  processing    VideoProcessing?
+  likes         VideoLike[]
+  comments      VideoComment[]
+  saves         VideoSave[]
+  views         VideoView[]
+  shares        VideoShare[]
+  hashtags      VideoHashtag[]
+  reports       VideoReport[]
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@index([serviceId])
+}
+
+model VideoMedia {
+  id              String   @id @default(uuid())
+  videoId         String
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  url             String
+  thumbnailUrl    String?
+  duration        Float?
+  width           Int?
+  height          Int?
+  sizeBytes       BigInt?
+  mimeType        String?  @default("video/mp4")
+  storageProvider String   @default("LOCAL")
+  isOriginal      Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+
+  @@index([videoId])
+}
+
+model VideoProcessing {
+  id           String   @id @default(uuid())
+  videoId      String   @unique
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  status       String   @default("COMPLETED")
+  progress     Int      @default(100)
+  errorMessage String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model VideoLike {
+  id        String   @id @default(uuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId])
+  @@index([videoId])
+}
+
+model VideoComment {
+  id         String             @id @default(uuid())
+  videoId    String
+  video      Video              @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  parentId   String?
+  parent     VideoComment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    VideoComment[]     @relation("CommentReplies")
+  
+  content    String
+  likesCount Int                @default(0)
+  likes      VideoCommentLike[]
+  
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([videoId, createdAt])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model VideoCommentLike {
+  id        String       @id @default(uuid())
+  commentId String
+  comment   VideoComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, commentId])
+}
+
+model VideoSave {
+  id        String   @id @default(uuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId])
+  @@index([userId])
+}
+
+model VideoView {
+  id            String   @id @default(uuid())
+  videoId       String
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress     String?
+  watchDuration Float?
+  createdAt     DateTime @default(now())
+
+  @@index([videoId, createdAt])
+  @@index([userId])
+}
+
+model VideoShare {
+  id        String   @id @default(uuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  platform  String?
+  createdAt DateTime @default(now())
+
+  @@index([videoId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  follower    User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Hashtag {
+  id         String         @id @default(uuid())
+  name       String         @unique
+  usageCount Int            @default(0)
+  videos     VideoHashtag[]
+  createdAt  DateTime       @default(now())
+
+  @@index([name])
+}
+
+model VideoHashtag {
+  videoId   String
+  video     Video   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  hashtagId String
+  hashtag   Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([videoId, hashtagId])
+}
+
+model VideoReport {
+  id        String   @id @default(uuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason    String
+  details   String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  @@index([videoId])
+  @@index([status])
 }

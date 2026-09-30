@@ -391,7 +391,7 @@ export default function PremiumHome() {
         <SafeAreaView style={{ backgroundColor: '#00B14F' }}>
           <View style={S.headerGreenRow}>
             {/* Back to main app */}
-            <TouchableOpacity onPress={() => router.replace('/utilities')} style={{ paddingRight: 6 }}>
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/home')} style={{ paddingRight: 6 }}>
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
             

@@ -8,6 +8,8 @@ import LowStockAlerts from './LowStockAlerts';
 import InventoryTransactions from './InventoryTransactions';
 import ReceiveInventoryModal from './ReceiveInventoryModal';
 import AdjustInventoryModal from './AdjustInventoryModal';
+import { useToast } from '../../context/ToastContext';
+import { exportInventoryCSV } from '../../utils/exportCsv';
 
 export default function InventoryManager({ 
   existingProducts = [], 
@@ -16,6 +18,7 @@ export default function InventoryManager({
   onNavigateTab, 
   onOpenAddProductModal 
 }) {
+  const toast = useToast();
   // Core Data States
   const [inventoryItems, setInventoryItems] = useState([]);
   const [transactionsList, setTransactionsList] = useState([]);
@@ -209,7 +212,10 @@ export default function InventoryManager({
       {/* 1. Header Area (Requirement 4) */}
       <InventoryHeader 
         onOpenReceiveModal={() => handleOpenReceive()}
-        onExportReport={() => alert(`📥 Đã xuất báo cáo tồn kho cho ${inventoryItems.length} sản phẩm định dạng Excel (.xlsx)...`)}
+        onExportReport={() => {
+          exportInventoryCSV(inventoryItems);
+          toast.success(`📥 Đã xuất thành công báo cáo tồn kho cho ${inventoryItems.length} sản phẩm ra file CSV!`);
+        }}
       />
 
       {/* 2. 4 KPI Stats Cards (Requirement 5) */}

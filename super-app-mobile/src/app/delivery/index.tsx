@@ -47,7 +47,7 @@ export default function DeliveryHome() {
         <TouchableOpacity
           onPress={() => {
             if (router.canGoBack()) router.back();
-            else router.replace('/home');
+            else router.replace('/transport');
           }}
           style={styles.floatingBackBtn}
         >

@@ -16,11 +16,13 @@ import BankAccountManager from './BankAccountManager';
 import DebtOverview from './DebtOverview';
 import ExportReportModal from './ExportReportModal';
 import { Download, CheckCircle2, Settings, Search, Filter, RotateCcw, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function FinanceManager({ 
   existingOrders = [], 
   onNavigateToTab 
 }) {
+  const toast = useToast();
   const [balance, setBalance] = useState({ available: 62850000, pending: 35620000, receivable: 5000000 });
   const [transactionsList, setTransactionsList] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
@@ -75,7 +77,7 @@ export default function FinanceManager({
   const handleWithdrawConfirm = (amount, bankAccountId) => {
     const numAmt = Number(amount);
     if (numAmt > balance.available) {
-      alert('Số tiền rút vượt quá số dư khả dụng!');
+      toast.error('Số tiền rút vượt quá số dư khả dụng!');
       return;
     }
     const newAvail = balance.available - numAmt;
@@ -93,17 +95,19 @@ export default function FinanceManager({
     };
     setTransactionsList([newTx, ...transactionsList]);
     setIsWithdrawOpen(false);
-    alert(`✅ Đã gửi yêu cầu rút ${numAmt.toLocaleString('vi-VN')} đ về tài khoản ngân hàng thành công!`);
+    toast.success(`✅ Đã gửi yêu cầu rút ${numAmt.toLocaleString('vi-VN')} đ về tài khoản ngân hàng thành công!`);
   };
 
   const handleAddBankAccount = (accountData) => {
     const newAcc = { id: `bank_${Date.now()}`, ...accountData, isDefault: false, verificationStatus: '🟢 Đã xác minh' };
     setBankAccounts([...bankAccounts, newAcc]);
+    toast.success('✅ Đã thêm tài khoản ngân hàng nhận tiền mới thành công!');
   };
 
   const handleSetDefaultBank = (accId) => {
     const updated = bankAccounts.map(a => ({ ...a, isDefault: a.id === accId }));
     setBankAccounts(updated);
+    toast.success('✅ Đã đặt tài khoản ngân hàng mặc định!');
   };
 
   return (
@@ -124,7 +128,11 @@ export default function FinanceManager({
             <CheckCircle2 size={15} /> Đối soát
           </button>
 
-          <button className="nav-btn-primary" onClick={() => alert('Mở cài đặt tài chính & ví gian hàng...')}>
+          <button 
+            className="nav-btn-primary" 
+            onClick={() => onNavigateToTab ? onNavigateToTab('settings') : null}
+            title="Mở cài đặt tài khoản nhận tiền và thuế"
+          >
             <Settings size={15} /> Cài đặt
           </button>
         </div>

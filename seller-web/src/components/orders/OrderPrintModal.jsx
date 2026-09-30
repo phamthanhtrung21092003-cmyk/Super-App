@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Printer, Barcode, Package, FileText, X, Check } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function OrderPrintModal({ order, onClose }) {
+  const toast = useToast();
   const [printType, setPrintType] = useState('shipping_label'); // 'shipping_label' | 'packing_slip'
 
   if (!order) return null;
@@ -12,8 +14,10 @@ export default function OrderPrintModal({ order, onClose }) {
   const provider = order.shipping?.providerName || 'V-life Delivery';
 
   const handlePrint = () => {
-    alert(`🖨️ Đã gửi lệnh in ${printType === 'shipping_label' ? 'Nhãn vận chuyển' : 'Phiếu đóng gói'} cho đơn hàng ${order.code || order.id}!`);
-    onClose();
+    toast.success(`🖨️ Đang mở lệnh in ${printType === 'shipping_label' ? 'Nhãn vận chuyển' : 'Phiếu đóng gói'} cho đơn #${order.code || order.id}!`);
+    setTimeout(() => {
+      window.print();
+    }, 200);
   };
 
   return (
@@ -50,7 +54,7 @@ export default function OrderPrintModal({ order, onClose }) {
 
           {/* Paper Preview Card */}
           <div className="paper-print-preview-container">
-            <div className="paper-sheet">
+            <div className="paper-sheet printable-shipping-label">
               {printType === 'shipping_label' ? (
                 <div className="label-preview-content">
                   <div className="label-header">

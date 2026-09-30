@@ -9,6 +9,8 @@ import HandoverModal from './HandoverModal';
 import ReturnRequestModal from './ReturnRequestModal';
 import OrderPrintModal from './OrderPrintModal';
 import { ChevronLeft, ChevronRight, ChevronDown, Package, Clock, Eye, CheckCircle2, Box, Truck, ShieldAlert } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { exportOrdersCSV } from '../../utils/exportCsv';
 
 export default function OrderTable({ 
   orders = [], 
@@ -17,6 +19,7 @@ export default function OrderTable({
   onUpdateOrderStatus,
   onBulkUpdateStatus
 }) {
+  const toast = useToast();
   const [selectedIds, setSelectedIds] = useState([]);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,6 +52,7 @@ export default function OrderTable({
 
   const handleBulkConfirmAll = () => {
     onBulkUpdateStatus(selectedIds, 'Chờ đóng gói');
+    toast.success(`✅ Đã xác nhận hàng loạt ${selectedIds.length} đơn hàng sang trạng thái "Chờ đóng gói"!`);
     setSelectedIds([]);
   };
 
@@ -59,7 +63,13 @@ export default function OrderTable({
   };
 
   const handleBulkExportSelected = () => {
-    alert(`📥 Đã xuất dữ liệu cho ${selectedIds.length} đơn hàng đã chọn.`);
+    const selectedOrders = orders.filter(o => selectedIds.includes(o.id));
+    if (selectedOrders.length > 0) {
+      exportOrdersCSV(selectedOrders);
+      toast.success(`📥 Đã xuất thành công ${selectedOrders.length} đơn hàng ra file CSV!`);
+    } else {
+      toast.warning('Vui lòng tích chọn ít nhất 1 đơn hàng để xuất dữ liệu.');
+    }
   };
 
   return (

@@ -135,6 +135,9 @@ export default function ChatWindow({
         onOpenProductPicker={onOpenProductPicker}
         onOpenOrderPicker={onOpenOrderPicker}
         quickReplies={quickReplies}
+        lastCustomerMessage={
+          [...messages].reverse().find(m => m.sender === 'customer' || m.isCustomer)?.content || (conversation?.lastMessage || '')
+        }
       />
     </div>
   );

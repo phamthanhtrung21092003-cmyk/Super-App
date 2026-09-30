@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import { NotificationService } from '../notification/notification.service';
 
 interface PendingOtp {
   hashedOtp: string;
@@ -34,7 +35,9 @@ export class UserService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: Logger,
+    private readonly notificationService: NotificationService,
   ) {}
+
 
   async getMyProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -551,4 +554,94 @@ export class UserService {
       message: 'Đã đăng xuất khỏi tất cả các thiết bị khác.',
     };
   }
+
+  async followUser(followerId: string, targetUserId: string) {
+    if (followerId === targetUserId) {
+      throw new BadRequestException('Không thể tự theo dõi chính mình');
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, fullName: true, username: true },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('Không tìm thấy người dùng cần theo dõi');
+    }
+
+    const existing = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId,
+          followingId: targetUserId,
+        },
+      },
+    });
+
+    if (!existing) {
+      try {
+        await this.prisma.follow.create({
+          data: {
+            followerId,
+            followingId: targetUserId,
+          },
+        });
+
+        // Gửi thông báo
+        try {
+          const follower = await this.prisma.user.findUnique({
+            where: { id: followerId },
+            select: { fullName: true, username: true },
+          });
+          const followerName = follower?.fullName || follower?.username || 'Một người dùng';
+          await this.notificationService.createNotification({
+            recipientId: targetUserId,
+            recipientType: 'USER',
+            title: 'Người theo dõi mới 👤',
+            body: `${followerName} đã bắt đầu theo dõi bạn`,
+            data: { followerId, type: 'NEW_FOLLOWER' },
+            eventKey: `user_follow_${followerId}_${targetUserId}`,
+          });
+        } catch (err: any) {
+          this.logger.warn(`Failed to send follow notification: ${err?.message}`);
+        }
+      } catch (err: any) {
+        if (err?.code !== 'P2002') throw err;
+      }
+    }
+
+    return {
+      success: true,
+      isFollowing: true,
+      message: 'Đã theo dõi người dùng thành công',
+    };
+  }
+
+  async unfollowUser(followerId: string, targetUserId: string) {
+    const existing = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId,
+          followingId: targetUserId,
+        },
+      },
+    });
+
+    if (existing) {
+      try {
+        await this.prisma.follow.delete({
+          where: { id: existing.id },
+        });
+      } catch (err: any) {
+        if (err?.code !== 'P2025') throw err;
+      }
+    }
+
+    return {
+      success: true,
+      isFollowing: false,
+      message: 'Đã hủy theo dõi người dùng',
+    };
+  }
 }
+

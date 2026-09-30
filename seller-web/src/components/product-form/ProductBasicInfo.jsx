@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText, Tag, Layers, Info, Check, Sparkles } from 'lucide-react';
+import { generateProductDescription } from '../../services/geminiService';
 
 export default function ProductBasicInfo({ formData, onChange }) {
   const categories = [
@@ -136,7 +137,37 @@ export default function ProductBasicInfo({ formData, onChange }) {
         <div className="form-group-item">
           <div className="form-label-row">
             <label className="form-field-label required">Mô tả sản phẩm</label>
-            <span className="field-counter-text">{(formData.description || '').length}/3000 ký tự</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button 
+                type="button" 
+                className="ai-suggest-btn"
+                style={{
+                  background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)',
+                  border: '1px solid #C7D2FE',
+                  color: '#4338CA',
+                  fontWeight: '700',
+                  padding: '5px 12px',
+                  borderRadius: '8px'
+                }}
+                onClick={async () => {
+                  if (!formData.name) {
+                    alert('Vui lòng nhập Tên sản phẩm trước để AI có thể tạo mô tả!');
+                    return;
+                  }
+                  const res = await generateProductDescription({
+                    name: formData.name,
+                    category: formData.category,
+                    features: formData.description,
+                    price: formData.price
+                  });
+                  onChange('description', res);
+                }}
+                title="Gemini AI viết bài mô tả hoàn chỉnh chuẩn SEO"
+              >
+                <Sparkles size={13} /> ✨ Gemini AI: Tự động viết mô tả
+              </button>
+              <span className="field-counter-text">{(formData.description || '').length}/3000 ký tự</span>
+            </div>
           </div>
 
           <div className="editor-quick-toolbar">

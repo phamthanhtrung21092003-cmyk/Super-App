@@ -12,11 +12,13 @@ import PromotionCreateWizard from './PromotionCreateWizard';
 import PromotionDetailDrawer from './PromotionDetailDrawer';
 import PromotionPerformanceModal from './PromotionPerformanceModal';
 import { HelpCircle, Plus } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function PromotionsManager({ 
   existingProducts = [], 
   onNavigateToTab 
 }) {
+  const toast = useToast();
   const [promotions, setPromotions] = useState([]);
   const [overview, setOverview] = useState({});
 
@@ -86,26 +88,26 @@ export default function PromotionsManager({
     const updated = [newPromo, ...promotions];
     refreshPromotions(updated);
     setIsCreateWizardOpen(false);
-    alert(`✅ Đã tạo thành công chương trình khuyến mãi "${newPromo.name}" (${newPromo.code})!`);
+    toast.success(`✅ Đã tạo thành công chương trình khuyến mãi "${newPromo.name}" (${newPromo.code})!`);
   };
 
   const handlePausePromo = (id) => {
     const updated = promotions.map(p => p.id === id ? { ...p, status: 'Tạm dừng' } : p);
     refreshPromotions(updated);
-    alert('🔴 Đã tạm dừng chương trình khuyến mãi!');
+    toast.info('🔴 Đã tạm dừng chương trình khuyến mãi!');
   };
 
   const handleResumePromo = (id) => {
     const updated = promotions.map(p => p.id === id ? { ...p, status: 'Đang diễn ra' } : p);
     refreshPromotions(updated);
-    alert('🟢 Đã tiếp tục kích hoạt chương trình khuyến mãi!');
+    toast.success('🟢 Đã tiếp tục kích hoạt chương trình khuyến mãi!');
   };
 
   const handleDeletePromo = (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa chương trình khuyến mãi này không?')) {
       const updated = promotions.filter(p => p.id !== id);
       refreshPromotions(updated);
-      alert('🗑️ Đã xóa chương trình khuyến mãi thành công.');
+      toast.warning('🗑️ Đã xóa chương trình khuyến mãi thành công.');
     }
   };
 

@@ -50,6 +50,8 @@ import LivestreamManager from './components/livestream/LivestreamManager';
 import ReportManager from './components/reports/ReportManager';
 import SettingsManager from './components/settings/SettingsManager';
 import ShopSetupPage from './components/shop-setup/ShopSetupPage';
+import { useToast } from './context/ToastContext';
+import { exportOrdersCSV } from './utils/exportCsv';
 import sellerService, { 
   MOCK_ORDERS_DEMO, 
   MOCK_SHIPPING_DEMO, 
@@ -89,6 +91,7 @@ const INITIAL_PRODUCTS = [
 ];
 
 export default function App() {
+  const toast = useToast();
   // Persistent Auth & Mode State (Keeps user logged in during code changes & reloads)
   const [mode, setMode] = useState(() => {
     return localStorage.getItem('seller_mode') || 'dashboard';
@@ -494,7 +497,7 @@ export default function App() {
       });
     }
     setShowWithdrawModal(false);
-    alert(`Đã gửi yêu cầu rút ${numAmount.toLocaleString('vi-VN')}đ về tài khoản ngân hàng thành công!`);
+    toast.success(`Đã gửi yêu cầu rút ${numAmount.toLocaleString('vi-VN')}đ về tài khoản ngân hàng thành công!`);
   };
 
   // Address Modal States
@@ -643,7 +646,7 @@ export default function App() {
   const handleCreateProduct = (e) => {
     e.preventDefault();
     if (!newProdName || !newProdPrice) {
-      alert('Vui lòng nhập tên và giá bán sản phẩm.');
+      toast.warning('Vui lòng nhập tên và giá bán sản phẩm.');
       return;
     }
     const priceVal = parseFloat(newProdPrice) || 0;
@@ -670,12 +673,12 @@ export default function App() {
     setNewProdOrigPrice('');
     setNewProdImage('');
     setNewProdDesc('');
-    alert('✅ Đã đăng bán sản phẩm mới thành công trên S-shopping Kênh Người Bán!');
+    toast.success('✅ Đã đăng bán sản phẩm mới thành công trên S-shopping Kênh Người Bán!');
   };
 
   const handleFulfillOrder = (id) => {
     setOrders(orders.map(o => o.id === id ? { ...o, status: 'Đã giao ĐVVC' } : o));
-    alert(`🖨️ Đã in nhãn đơn hàng ${id} và chuyển cho Đơn vị vận chuyển!`);
+    toast.success(`🖨️ Đã in nhãn đơn hàng ${id} và chuyển cho Đơn vị vận chuyển!`);
   };
 
   // Filter products
@@ -1717,7 +1720,7 @@ export default function App() {
               )}
 
               {/* TAB: MESSAGES CENTER MODULE (TRUNG TÂM TIN NHẮN) */}
-              {activeTab === 'messages' && (
+              {(activeTab === 'messages' || activeTab === 'chat') && (
                 <MessagesPage 
                   existingProducts={products}
                   existingOrders={activeOrdersDataset}
@@ -1745,7 +1748,7 @@ export default function App() {
               )}
 
               {/* TAB 3: STATS */}
-              {(activeTab === 'stats' || activeTab === 'analytics') && (
+              {activeTab === 'stats' && (
                 <div>
                   <h2 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '20px' }}>TỔNG QUAN HIỆU SUẤT KINH DOANH S-SHOPPING</h2>
                   <div className="metrics-row-grid">
@@ -1780,7 +1783,10 @@ export default function App() {
                     totalOrders={activeOrdersDataset.length}
                     isDemoState={isDemoOrderState}
                     onToggleDemoState={() => setIsDemoOrderState(!isDemoOrderState)}
-                    onExportData={() => alert(`📥 Đang xuất dữ liệu của ${activeOrdersDataset.length} đơn hàng ra file Excel...`)}
+                    onExportData={() => {
+                      exportOrdersCSV(activeOrdersDataset);
+                      toast.success(`📥 Đã xuất thành công ${activeOrdersDataset.length} đơn hàng ra file CSV!`);
+                    }}
                     onOpenSettings={() => setActiveTab('shipping')}
                   />
 
@@ -1866,6 +1872,10 @@ export default function App() {
                     order={selectedOrderDetail}
                     onClose={() => setSelectedOrderDetail(null)}
                     onUpdateStatus={handleUpdateSingleOrderStatus}
+                    onNavigateToMessages={(customerName) => {
+                      setActiveTab('messages');
+                      toast.info(`💬 Mở cuộc trò chuyện với khách hàng ${customerName}`);
+                    }}
                   />
                 </div>
               )}
@@ -1938,22 +1948,6 @@ export default function App() {
                   onNavigateTab={(tab) => setActiveTab(tab)}
                   onOpenAddProduct={handleOpenAddProduct}
                 />
-              )}
-
-              {/* TAB 6: CHAT TIN NHẮN (CONNECTED TO PENDING ACTIONS) */}
-              {activeTab === 'chat' && (
-                <div className="catalog-table-card" style={{ padding: '32px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                    <MessageSquare size={24} style={{ color: 'var(--primary)' }} />
-                    <h2 style={{ fontSize: '20px', fontWeight: '900' }}>TRUNG TÂM TIN NHẮN CHAT SELLER CENTER</h2>
-                  </div>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Quản lý tin nhắn chưa trả lời từ khách hàng mua sắm S-Shopping</p>
-                  
-                  <div style={{ marginTop: '24px', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
-                    <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--primary)' }}>💬 Bạn có 8 tin nhắn chưa trả lời từ khách hàng</span>
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Hộp thoại chat trực tiếp sẽ được tích hợp đầy đủ trong Phase tiếp theo.</p>
-                  </div>
-                </div>
               )}
 
             </main>

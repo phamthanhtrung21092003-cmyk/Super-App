@@ -3,13 +3,16 @@ import {
   X, MessageSquare, Copy, CheckCircle2, Truck, 
   MapPin, Phone, User, Package, Printer, Check, Box, Send, ShieldAlert, AlertCircle 
 } from 'lucide-react';
+import OrderPrintModal from './OrderPrintModal';
 
 export default function OrderDetailDrawer({ 
   order, 
   onClose, 
-  onUpdateStatus 
+  onUpdateStatus,
+  onNavigateToMessages 
 }) {
   const [copySuccess, setCopySuccess] = useState('');
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   if (!order) return null;
 
@@ -80,7 +83,12 @@ export default function OrderDetailDrawer({
             <button 
               type="button" 
               className="chat-with-customer-btn"
-              onClick={() => alert(`Mở cửa sổ Chat với khách hàng ${customer.name}`)}
+              onClick={() => {
+                if (onNavigateToMessages) {
+                  onNavigateToMessages(customer.name, order);
+                }
+                onClose();
+              }}
             >
               <MessageSquare size={15} /> Chat với khách
             </button>
@@ -332,7 +340,7 @@ export default function OrderDetailDrawer({
           <button 
             type="button" 
             className="nav-btn-secondary drawer-print-btn" 
-            onClick={() => alert(`🖨️ Đang in phiếu giao hàng cho đơn #${order.code || order.id}`)}
+            onClick={() => setShowPrintModal(true)}
           >
             <Printer size={16} /> In phiếu giao
           </button>
@@ -342,6 +350,13 @@ export default function OrderDetailDrawer({
           </button>
         </div>
       </div>
+
+      {showPrintModal && (
+        <OrderPrintModal 
+          order={order}
+          onClose={() => setShowPrintModal(false)}
+        />
+      )}
     </div>
   );
 }

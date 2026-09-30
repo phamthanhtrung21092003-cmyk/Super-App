@@ -12,3 +12,6 @@ Antigravity-x64.exe
 android-sdk/
 platform-tools/
 jdk-17.0.2/
+node_modules/
+node-v*/
+uploads/

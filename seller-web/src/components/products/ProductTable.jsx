@@ -98,6 +98,7 @@ export default function ProductTable({
 
       {hasProducts ? (
         <>
+          {/* Table Body */}
           <div className="table-responsive-wrapper">
             <table className="product-data-table">
               <thead>
@@ -121,51 +122,85 @@ export default function ProductTable({
               </thead>
 
               <tbody>
-                {products.map(product => (
-                  <ProductRow 
-                    key={product.id}
-                    product={product}
-                    isSelected={selectedIds.includes(product.id)}
-                    onToggleSelect={handleToggleSelect}
-                    onViewDetail={(prod) => setSelectedDetailProduct(prod)}
-                    onEdit={onEditProduct}
-                    onToggleStatus={onToggleStatusProduct}
-                    onDelete={(prod) => setDeletingProduct(prod)}
-                  />
+                {products
+                  .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                  .map(product => (
+                    <ProductRow 
+                      key={product.id}
+                      product={product}
+                      isSelected={selectedIds.includes(product.id)}
+                      onToggleSelect={handleToggleSelect}
+                      onViewDetail={(prod) => setSelectedDetailProduct(prod)}
+                      onEdit={onEditProduct}
+                      onToggleStatus={onToggleStatusProduct}
+                      onDelete={(prod) => setDeletingProduct(prod)}
+                    />
                 ))}
               </tbody>
             </table>
           </div>
 
           {/* Table Pagination Footer */}
-          <div className="table-pagination-footer">
-            <div className="pagination-info-text">
-              Hiển thị 1 - {products.length} của {products.length} sản phẩm
-            </div>
+          {(() => {
+            const totalPages = Math.ceil(products.length / pageSize) || 1;
+            const startItem = products.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+            const endItem = Math.min(currentPage * pageSize, products.length);
 
-            <div className="pagination-controls-group">
-              <button className="page-nav-btn" disabled>
-                <ChevronLeft size={16} />
-              </button>
-              <button className="page-number-btn active">1</button>
-              <button className="page-nav-btn" disabled>
-                <ChevronRight size={16} />
-              </button>
+            return (
+              <div className="table-pagination-footer">
+                <div className="pagination-info-text">
+                  Hiển thị {startItem} - {endItem} của {products.length} sản phẩm
+                </div>
 
-              <div className="page-size-selector">
-                <select 
-                  value={pageSize} 
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="page-size-select"
-                >
-                  <option value={10}>10 / trang</option>
-                  <option value={20}>20 / trang</option>
-                  <option value={50}>50 / trang</option>
-                </select>
-                <ChevronDown size={14} className="select-chevron" />
+                <div className="pagination-controls-group">
+                  <button 
+                    className="page-nav-btn" 
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    title="Trang trước"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, idx) => idx + 1).slice(0, 5).map(pageNum => (
+                    <button 
+                      key={pageNum}
+                      className={`page-number-btn ${currentPage === pageNum ? 'active' : ''}`}
+                      onClick={() => setCurrentPage(pageNum)}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+
+                  <button 
+                    className="page-nav-btn" 
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    title="Trang tiếp theo"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+
+                  <div className="page-size-selector">
+                    <select 
+                      value={pageSize} 
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="page-size-select"
+                    >
+                      <option value={5}>5 / trang</option>
+                      <option value={10}>10 / trang</option>
+                      <option value={20}>20 / trang</option>
+                      <option value={50}>50 / trang</option>
+                    </select>
+                    <ChevronDown size={14} className="select-chevron" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
         </>
       ) : (
         <ProductEmptyState onOpenAddProductModal={onOpenAddProductModal} />

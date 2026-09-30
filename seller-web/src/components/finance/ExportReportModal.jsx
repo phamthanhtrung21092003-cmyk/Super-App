@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Download, FileSpreadsheet, Calendar, X } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { exportFinanceCSV } from '../../utils/exportCsv';
 
-export default function ExportReportModal({ onClose }) {
+export default function ExportReportModal({ onClose, transactions = [], balance = 0 }) {
+  const toast = useToast();
   const [reportType, setReportType] = useState('revenue');
   const [fromDate, setFromDate] = useState('2026-08-01');
   const [toDate, setToDate] = useState('2026-08-13');
@@ -9,7 +12,8 @@ export default function ExportReportModal({ onClose }) {
 
   const handleExport = (e) => {
     e.preventDefault();
-    alert(`📥 Đã xuất báo cáo tài chính loại "${reportType.toUpperCase()}" định dạng ${fileFormat.toUpperCase()} từ ${fromDate} đến ${toDate}!`);
+    exportFinanceCSV(transactions, typeof balance === 'object' ? balance.available : balance);
+    toast.success(`📥 Đã xuất thành công báo cáo tài chính "${reportType.toUpperCase()}" ra file CSV!`);
     onClose();
   };
 

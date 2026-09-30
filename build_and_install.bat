@@ -37,7 +37,8 @@ echo.
 cd ..\..
 
 echo [3/3] Cai APK vao dien thoai...
-set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
+set ADB=F:\duan\Project\platform-tools\adb.exe
+if not exist "%ADB%" set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
 "%ADB%" install -r "super-app-mobile\android\app\build\outputs\apk\debug\app-debug.apk"
 if %ERRORLEVEL% NEQ 0 (
     echo [LOI] Cai APK that bai!

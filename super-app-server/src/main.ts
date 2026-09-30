@@ -19,10 +19,16 @@ async function bootstrap() {
   // Enable CORS
   app.enableCors();
 
-  // Ensure uploads/avatars directory exists on startup
-  const avatarsDir = path.join(process.cwd(), 'uploads', 'avatars');
-  if (!fs.existsSync(avatarsDir)) {
-    fs.mkdirSync(avatarsDir, { recursive: true });
+  // Ensure uploads directories exist on startup
+  const dirsToEnsure = [
+    path.join(process.cwd(), 'uploads', 'avatars'),
+    path.join(process.cwd(), 'uploads', 'videos'),
+    path.join(process.cwd(), 'uploads', 'thumbnails'),
+  ];
+  for (const dir of dirsToEnsure) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   }
 
   // Expose static files

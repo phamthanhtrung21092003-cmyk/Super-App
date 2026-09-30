@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Sliders, PlusCircle, Package } from 'lucide-react';
 import InventoryBulkActions from './InventoryBulkActions';
 import InventoryDetailDrawer from './InventoryDetailDrawer';
+import { useToast } from '../../context/ToastContext';
+import { exportInventoryCSV } from '../../utils/exportCsv';
 
 export default function InventoryTable({ 
   items = [], 
@@ -11,6 +13,7 @@ export default function InventoryTable({
   onOpenAddProductModal,
   onBulkAction
 }) {
+  const toast = useToast();
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectedDetailItem, setSelectedDetailItem] = useState(null);
 
@@ -67,7 +70,13 @@ export default function InventoryTable({
           }
         }}
         onBulkExport={() => {
-          alert(`📥 Đã xuất báo cáo tồn kho Excel cho ${selectedIds.length} SKU đã chọn.`);
+          const selectedItems = items.filter(i => selectedIds.includes(i.id || i.sku));
+          if (selectedItems.length > 0) {
+            exportInventoryCSV(selectedItems);
+            toast.success(`📥 Đã xuất thành công báo cáo tồn kho cho ${selectedItems.length} SKU ra file CSV!`);
+          } else {
+            toast.warning('Vui lòng chọn ít nhất 1 SKU để xuất dữ liệu.');
+          }
         }}
       />
 

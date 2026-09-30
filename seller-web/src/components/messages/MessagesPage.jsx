@@ -6,6 +6,7 @@ import ChatWindow from './ChatWindow';
 import CustomerInfo from './CustomerInfo';
 import ProductPickerModal from './ProductPickerModal';
 import OrderPickerModal from './OrderPickerModal';
+import { useToast } from '../../context/ToastContext';
 
 export default function MessagesPage({
   existingProducts = [],
@@ -14,6 +15,7 @@ export default function MessagesPage({
   onViewProduct,
   onViewOrder
 }) {
+  const toast = useToast();
   // 1. Data States
   const [conversations, setConversations] = useState(MOCK_CONVERSATIONS_DATA);
   const [activeConversationId, setActiveConversationId] = useState('conv_1');
@@ -86,7 +88,7 @@ export default function MessagesPage({
   const handleMarkAllAsRead = async () => {
     const updated = await sellerService.markAllConversationsAsRead(conversations);
     setConversations(updated);
-    alert('✅ Đã đánh dấu tất cả cuộc trò chuyện là đã đọc.');
+    toast.success('✅ Đã đánh dấu tất cả cuộc trò chuyện là đã đọc.');
   };
 
   const handleSendMessage = async (msgData) => {

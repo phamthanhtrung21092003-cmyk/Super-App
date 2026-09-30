@@ -191,4 +191,23 @@ export class UserController {
     const avatarUrl = `/uploads/avatars/${file.filename}`;
     return this.userService.updateAvatar(userId, avatarUrl);
   }
+
+  @Post(':id/follow')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Theo dõi (Follow) một người dùng / creator' })
+  async followUser(@Req() req: any, @Param('id') targetUserId: string) {
+    const followerId = req.user.id || req.user.sub;
+    return this.userService.followUser(followerId, targetUserId);
+  }
+
+  @Delete(':id/follow')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Hủy theo dõi (Unfollow) một người dùng / creator' })
+  async unfollowUser(@Req() req: any, @Param('id') targetUserId: string) {
+    const followerId = req.user.id || req.user.sub;
+    return this.userService.unfollowUser(followerId, targetUserId);
+  }
 }
+

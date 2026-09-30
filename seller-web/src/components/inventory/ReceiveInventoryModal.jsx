@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PlusCircle, X } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function ReceiveInventoryModal({ 
   existingProducts = [], 
@@ -7,6 +8,7 @@ export default function ReceiveInventoryModal({
   onClose, 
   onConfirmReceive 
 }) {
+  const toast = useToast();
   const initialProduct = existingProducts.find(p => p.sku === prefilledSku) || existingProducts[0] || {};
   const [selectedProductId, setSelectedProductId] = useState(initialProduct.id || 'p1');
   const [selectedSku, setSelectedSku] = useState(prefilledSku || initialProduct.sku || 'SKU-001');
@@ -27,7 +29,7 @@ export default function ReceiveInventoryModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (numQty <= 0) {
-      alert('Số lượng nhập kho phải lớn hơn 0.');
+      toast.warning('Số lượng nhập kho phải lớn hơn 0.');
       return;
     }
     onConfirmReceive(selectedProductId, selectedSku, numQty, reason, note);

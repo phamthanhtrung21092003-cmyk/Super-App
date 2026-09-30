@@ -10,11 +10,13 @@ import LiveControlPanelModal from './LiveControlPanelModal';
 import SuperAppLiveModal from './SuperAppLiveModal';
 import LivestreamAnalyticsModal from './LivestreamAnalyticsModal';
 import { HelpCircle, Plus, Smartphone, CheckCircle2 } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function LivestreamManager({ 
   existingProducts = [], 
   onNavigateToTab 
 }) {
+  const toast = useToast();
   const [livestreams, setLivestreams] = useState([]);
   const [overview, setOverview] = useState({});
 
@@ -79,20 +81,20 @@ export default function LivestreamManager({
     const updated = [newLive, ...livestreams];
     refreshList(updated);
     setIsCreateModalOpen(false);
-    alert(`✅ Đã tạo thành công buổi Livestream "${newLive.title}" (ID: ${newLive.id})!`);
+    toast.success(`✅ Đã tạo thành công buổi Livestream "${newLive.title}" (ID: ${newLive.id})!`);
   };
 
   const handleEndLive = (id) => {
     const updated = livestreams.map(l => l.id === id ? { ...l, status: 'ENDED' } : l);
     refreshList(updated);
-    alert('⚫ Buổi Livestream đã kết thúc!');
+    toast.info('⚫ Buổi Livestream đã kết thúc!');
   };
 
   const handleCancelLive = (id) => {
     if (window.confirm('Bạn có chắc chắn muốn Hủy buổi Livestream này không?')) {
       const updated = livestreams.map(l => l.id === id ? { ...l, status: 'CANCELLED' } : l);
       refreshList(updated);
-      alert('🔴 Đã hủy buổi Livestream.');
+      toast.warning('🔴 Đã hủy buổi Livestream.');
     }
   };
 
