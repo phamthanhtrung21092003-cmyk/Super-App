@@ -160,6 +160,7 @@ model User {
   videoReports       VideoReport[]
   followers          Follow[]           @relation("UserFollowers")
   following          Follow[]           @relation("UserFollowing")
+  foodOrders         FoodOrder[]
 }
 
 model UserDevice {
@@ -219,7 +220,8 @@ model Driver {
   role               Role     @default(DRIVER)
   hashedRefreshToken String?
   createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  updatedAt          DateTime    @updatedAt
+  foodOrders         FoodOrder[]
 }
 
 model Wallet {
@@ -678,3 +680,150 @@ model VideoReport {
   @@index([videoId])
   @@index([status])
 }
+
+// ============================================================================
+// PHÂN HỆ ĐẶT ĐỒ ĂN (FOOD DELIVERY ECOSYSTEM)
+// ============================================================================
+
+enum FoodOrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  FINDING_DRIVER
+  DRIVER_ACCEPTED
+  PICKED_UP
+  COMPLETED
+  CANCELLED
+}
+
+enum FoodPaymentMethod {
+  COD
+  WALLET
+  VIETQR
+}
+
+model Restaurant {
+  id           String         @id @default(uuid())
+  name         String
+  slug         String         @unique
+  avatar       String?
+  coverImage   String?
+  address      String
+  latitude     Float
+  longitude    Float
+  rating       Float          @default(5.0)
+  totalReviews Int            @default(0)
+  openingHours String         @default("07:00 - 22:00")
+  isActive     Boolean        @default(true)
+  categories   MenuCategory[]
+  items        MenuItem[]
+  orders       FoodOrder[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([latitude, longitude])
+  @@index([isActive])
+}
+
+model MenuCategory {
+  id           String     @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  sortOrder    Int        @default(0)
+  items        MenuItem[]
+
+  @@index([restaurantId])
+}
+
+model MenuItem {
+  id            String            @id @default(uuid())
+  restaurantId  String
+  restaurant    Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  categoryId    String?
+  category      MenuCategory?     @relation(fields: [categoryId], references: [id])
+  name          String
+  description   String?
+  price         Float
+  originalPrice Float?
+  image         String?
+  calories      String?
+  isAvailable   Boolean           @default(true)
+  optionGroups  ItemOptionGroup[]
+  orderItems    FoodOrderItem[]
+  createdAt     DateTime          @default(now())
+
+  @@index([restaurantId])
+  @@index([categoryId])
+}
+
+model ItemOptionGroup {
+  id         String       @id @default(uuid())
+  menuItemId String
+  menuItem   MenuItem     @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name       String
+  required   Boolean      @default(false)
+  maxSelect  Int          @default(1)
+  options    ItemOption[]
+
+  @@index([menuItemId])
+}
+
+model ItemOption {
+  id      String          @id @default(uuid())
+  groupId String
+  group   ItemOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name    String
+  price   Float           @default(0)
+
+  @@index([groupId])
+}
+
+model FoodOrder {
+  id              String            @id @default(uuid())
+  orderCode       String            @unique
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  restaurantId    String
+  restaurant      Restaurant        @relation(fields: [restaurantId], references: [id])
+  driverId        String?
+  driver          Driver?           @relation(fields: [driverId], references: [id])
+  status          FoodOrderStatus   @default(PENDING)
+  paymentMethod   FoodPaymentMethod @default(COD)
+  paymentStatus   String            @default("UNPAID")
+  deliveryAddress String
+  deliveryLat     Float
+  deliveryLng     Float
+  distanceKm      Float             @default(0)
+  subtotal        Float
+  shippingFee     Float
+  discountAmount  Float             @default(0)
+  totalAmount     Float
+  noteForMerchant String?
+  noteForDriver   String?
+  items           FoodOrderItem[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([restaurantId])
+  @@index([driverId])
+  @@index([status])
+}
+
+model FoodOrderItem {
+  id          String    @id @default(uuid())
+  orderId     String
+  order       FoodOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId  String
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  name        String
+  price       Float
+  quantity    Int
+  notes       String?
+  optionsJson Json?
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+

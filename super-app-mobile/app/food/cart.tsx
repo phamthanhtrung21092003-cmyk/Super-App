@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
+import { useFood } from '../../src/context/FoodContext';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -13,16 +14,81 @@ export default function CartScreen() {
   const isDesktop = Platform.OS === 'web' && width > 768;
   const accentColor = '#F97316';
 
-  const CART_ITEMS = [
-    { id: '1', name: 'Pizza Hải Sản Viền Phô Mai', details: 'Size L, Thêm Xúc Xích', price: 255000, qty: 1, img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=200&q=80' },
-    { id: '2', name: 'Trà Đào Cam Sả', details: 'Size M, Ít đá', price: 45000, qty: 2, img: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=200&q=80' },
+  const { 
+    cart, 
+    restaurant, 
+    subtotal, 
+    shippingFeeInfo, 
+    updateQuantity, 
+    removeFromCart, 
+    clearCart,
+    addToCart 
+  } = useFood();
+
+  const progress = Math.min((subtotal / shippingFeeInfo.freeshipThreshold) * 100, 100);
+
+  // Món gợi ý thông minh bù tiền Freeship (Smart Upsell)
+  const UPSELL_ITEMS = [
+    {
+      id: 'up_tea',
+      name: 'Trà Đào Cam Sả Mát Lạnh',
+      price: 45000,
+      img: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=200&q=80',
+    },
+    {
+      id: 'up_garlic_bread',
+      name: 'Bánh Mì Bơ Tỏi Nướng Giòn',
+      price: 35000,
+      img: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?auto=format&fit=crop&w=200&q=80',
+    },
   ];
 
-  const subtotal = CART_ITEMS.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const shipping = 15000;
-  const freeshipThreshold = 400000;
-  const remainingForFreeship = freeshipThreshold - subtotal;
-  const progress = Math.min((subtotal / freeshipThreshold) * 100, 100);
+  const handleAddUpsell = (item: typeof UPSELL_ITEMS[0]) => {
+    if (!restaurant) return;
+    addToCart(
+      {
+        menuItemId: item.id,
+        name: item.name,
+        basePrice: item.price,
+        image: item.img,
+        quantity: 1,
+        toppings: [],
+      },
+      restaurant
+    );
+  };
+
+  if (cart.length === 0) {
+    return (
+      <View style={styles.webWrapper}>
+        <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+          
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/food')}>
+              <Ionicons name="arrow-back" size={24} color="#0F172A" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Giỏ Hàng</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons name="cart-outline" size={64} color="#CBD5E1" />
+            </View>
+            <Text style={styles.emptyTitle}>Giỏ hàng đang trống</Text>
+            <Text style={styles.emptyDesc}>Hãy khám phá thực đơn phong phú và chọn những món ăn ngon lành nhé!</Text>
+            <TouchableOpacity 
+              style={[styles.emptyBtn, { backgroundColor: accentColor }]}
+              onPress={() => router.replace('/food')}
+            >
+              <Text style={styles.emptyBtnText}>Khám phá món ngon ngay</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.webWrapper}>
@@ -34,13 +100,18 @@ export default function CartScreen() {
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/food')}>
             <Ionicons name="arrow-back" size={24} color="#0F172A" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Giỏ Hàng</Text>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => alert('Đã xóa toàn bộ giỏ hàng')}>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={styles.headerTitle}>Giỏ Hàng</Text>
+            {restaurant && (
+              <Text style={styles.headerSub} numberOfLines={1}>{restaurant.name}</Text>
+            )}
+          </View>
+          <TouchableOpacity style={styles.iconBtn} onPress={clearCart}>
             <Ionicons name="trash-outline" size={20} color="#EF4444" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: '#FFF' }}>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
           <View style={styles.content}>
             
             {/* AI Freeship Progress */}
@@ -48,12 +119,12 @@ export default function CartScreen() {
               <View style={styles.aiFreeshipHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="sparkles" size={16} color="#10B981" />
-                  <Text style={styles.aiFreeshipTitle}>AI Tối ưu Khuyến mãi</Text>
+                  <Text style={styles.aiFreeshipTitle}>ƯU ĐÃI FREESHIP ({shippingFeeInfo.distanceKm} KM)</Text>
                 </View>
                 <Text style={styles.aiFreeshipSub}>
-                  {remainingForFreeship > 0 
-                    ? `Mua thêm ${remainingForFreeship.toLocaleString('vi-VN')}đ để Freeship!` 
-                    : 'Tuyệt vời! Đơn của bạn đã được Freeship'}
+                  {shippingFeeInfo.remainingForFreeship > 0 
+                    ? `Mua thêm ${shippingFeeInfo.remainingForFreeship.toLocaleString('vi-VN')}đ để được Freeship (đơn từ ${shippingFeeInfo.freeshipThreshold.toLocaleString('vi-VN')}đ)!` 
+                    : `🎉 Đơn hàng đã đạt điều kiện Freeship (tiết kiệm ${shippingFeeInfo.discountAmount.toLocaleString('vi-VN')}đ)!`}
                 </Text>
               </View>
               <View style={styles.progressBg}>
@@ -61,78 +132,137 @@ export default function CartScreen() {
               </View>
             </Animated.View>
 
-            {/* Items */}
-            <Animated.View entering={FadeInUp.duration(400)} style={styles.itemsWrapper}>
-              {CART_ITEMS.map((item, idx) => (
-                <View key={item.id} style={[styles.cartItem, idx === CART_ITEMS.length - 1 && { borderBottomWidth: 0 }]}>
-                  <Image source={{ uri: item.img }} style={styles.itemImg} />
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                    <Text style={styles.itemDetails}>{item.details}</Text>
-                    <Text style={styles.itemPrice}>{(item.price * item.qty).toLocaleString('vi-VN')}đ</Text>
-                  </View>
-                  <View style={styles.qtyBox}>
-                    <TouchableOpacity style={styles.qtyBtn} onPress={() => alert('Giảm số lượng')}>
-                      <Ionicons name="remove" size={16} color="#0F172A" />
-                    </TouchableOpacity>
-                    <Text style={styles.qtyText}>{item.qty}</Text>
-                    <TouchableOpacity style={styles.qtyBtn} onPress={() => alert('Tăng số lượng')}>
-                      <Ionicons name="add" size={16} color="#0F172A" />
-                    </TouchableOpacity>
-                  </View>
+            {/* Smart Upsell: Gợi ý món bù tiền để đạt Freeship */}
+            {shippingFeeInfo.remainingForFreeship > 0 && (
+              <View style={styles.upsellWrapper}>
+                <View style={styles.upsellHeader}>
+                  <Ionicons name="bulb-outline" size={16} color="#F97316" />
+                  <Text style={styles.upsellTitle}>Gợi ý thêm để đủ điều kiện Freeship</Text>
                 </View>
-              ))}
-              <TouchableOpacity style={styles.addMoreBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/food')}>
-                <Ionicons name="add-circle-outline" size={20} color={accentColor} />
-                <Text style={{ color: accentColor, fontWeight: '700', marginLeft: 8 }}>Thêm món khác</Text>
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Voucher Selection */}
-            <Animated.View entering={FadeInUp.delay(100).duration(400)} style={styles.voucherBox}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Ionicons name="ticket" size={24} color="#F59E0B" />
-                <View>
-                  <Text style={styles.voucherTitle}>Mã khuyến mãi</Text>
-                  <Text style={styles.voucherSub}>AI đã tự động chọn mã tốt nhất</Text>
-                </View>
+                {UPSELL_ITEMS.map((up) => (
+                  <View key={up.id} style={styles.upsellItem}>
+                    <Image source={{ uri: up.img }} style={styles.upsellImg} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.upsellName} numberOfLines={1}>{up.name}</Text>
+                      <Text style={styles.upsellPrice}>{up.price.toLocaleString('vi-VN')}đ</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.upsellAddBtn}
+                      onPress={() => handleAddUpsell(up)}
+                    >
+                      <Ionicons name="add" size={18} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#64748B" />
-            </Animated.View>
+            )}
 
-            {/* Summary */}
-            <Animated.View entering={FadeInUp.delay(200).duration(400)} style={styles.summaryBox}>
+            {/* Danh sách món trong giỏ */}
+            <View style={styles.itemsWrapper}>
+              <Text style={styles.sectionHeading}>Món đã chọn ({cart.reduce((s, i) => s + i.quantity, 0)})</Text>
+              
+              {cart.map((item) => {
+                const optionsDescription = [
+                  item.size ? item.size.name : '',
+                  item.toppings.length > 0 ? item.toppings.map(t => t.name).join(', ') : '',
+                  item.notes ? `Ghi chú: ${item.notes}` : ''
+                ].filter(Boolean).join(' • ');
+
+                return (
+                  <View key={item.cartItemId} style={styles.cartItem}>
+                    {item.image && <Image source={{ uri: item.image }} style={styles.itemImg} />}
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      {optionsDescription ? (
+                        <Text style={styles.itemDetails} numberOfLines={2}>{optionsDescription}</Text>
+                      ) : null}
+                      <Text style={styles.itemPrice}>{item.totalPrice.toLocaleString('vi-VN')}đ</Text>
+                    </View>
+
+                    <View style={styles.qtyBox}>
+                      <TouchableOpacity 
+                        style={styles.qtyBtn}
+                        onPress={() => updateQuantity(item.cartItemId, -1)}
+                      >
+                        <Ionicons 
+                          name={item.quantity === 1 ? "trash-outline" : "remove"} 
+                          size={16} 
+                          color={item.quantity === 1 ? "#EF4444" : "#0F172A"} 
+                        />
+                      </TouchableOpacity>
+                      <Text style={styles.qtyText}>{item.quantity}</Text>
+                      <TouchableOpacity 
+                        style={styles.qtyBtn}
+                        onPress={() => updateQuantity(item.cartItemId, 1)}
+                      >
+                        <Ionicons name="add" size={16} color="#0F172A" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+
+              <TouchableOpacity 
+                style={styles.addMoreBtn}
+                onPress={() => router.canGoBack() ? router.back() : router.replace('/food')}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={accentColor} />
+                <Text style={[styles.addMoreText, { color: accentColor }]}>Thêm món khác từ quán</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Chi tiết thanh toán tạm tính */}
+            <View style={styles.summaryBox}>
+              <Text style={styles.sectionHeading}>Tóm tắt hóa đơn</Text>
+              
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Tạm tính</Text>
+                <Text style={styles.summaryLabel}>Tiền món ({cart.length} món)</Text>
                 <Text style={styles.summaryVal}>{subtotal.toLocaleString('vi-VN')}đ</Text>
               </View>
+
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Phí giao hàng</Text>
-                <Text style={styles.summaryVal}>{shipping.toLocaleString('vi-VN')}đ</Text>
+                <Text style={styles.summaryLabel}>Phí giao hàng (~{shippingFeeInfo.distanceKm} km)</Text>
+                <Text style={styles.summaryVal}>{shippingFeeInfo.originalShippingFee.toLocaleString('vi-VN')}đ</Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Khuyến mãi (AI Tự động)</Text>
-                <Text style={[styles.summaryVal, { color: '#10B981' }]}>-{shipping.toLocaleString('vi-VN')}đ</Text>
-              </View>
-              
+
+              {shippingFeeInfo.discountAmount > 0 && (
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: '#10B981' }]}>Khuyến mãi Freeship</Text>
+                  <Text style={[styles.summaryVal, { color: '#10B981' }]}>
+                    -{shippingFeeInfo.discountAmount.toLocaleString('vi-VN')}đ
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.divider} />
-              
+
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Tổng thanh toán</Text>
-                <Text style={styles.totalVal}>{subtotal.toLocaleString('vi-VN')}đ</Text>
+                <Text style={styles.totalVal}>
+                  {(subtotal + shippingFeeInfo.finalShippingFee).toLocaleString('vi-VN')}đ
+                </Text>
               </View>
-            </Animated.View>
+            </View>
 
-            <View style={{ height: 120 }} />
+            <View style={{ height: 100 }} />
           </View>
         </ScrollView>
 
-        {/* Checkout Bottom */}
+        {/* Checkout Bottom Bar */}
         <View style={styles.checkoutBar}>
-          <TouchableOpacity style={[styles.checkoutBtn, { backgroundColor: accentColor }]} onPress={() => {
-            alert('Tính năng Thanh toán (Phase 3) đang được phát triển!');
-          }}>
-            <Text style={styles.checkoutText}>Đặt đơn • {subtotal.toLocaleString('vi-VN')}đ</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.barTotalLabel}>Tổng cộng</Text>
+            <Text style={styles.barTotalVal}>
+              {(subtotal + shippingFeeInfo.finalShippingFee).toLocaleString('vi-VN')}đ
+            </Text>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.checkoutBtn, { backgroundColor: accentColor }]} 
+            onPress={() => router.push('/food/checkout' as any)}
+          >
+            <Text style={styles.checkoutText}>Giao đến bạn</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
         </View>
 
@@ -142,48 +272,93 @@ export default function CartScreen() {
 }
 
 const styles = StyleSheet.create({
-  webWrapper: { flex: 1, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' && { paddingVertical: 40 }) },
-  safeArea: { flex: 1, backgroundColor: '#FFF', width: '100%', position: 'relative' },
-  desktopFrame: { maxWidth: 414, maxHeight: 896, aspectRatio: 414 / 896, borderWidth: 10, borderColor: '#E2E8F0', borderRadius: 55, overflow: 'hidden' },
-  
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 10 : 30, paddingBottom: 15, backgroundColor: '#FFF' },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
-  headerTitle: { color: '#0F172A', fontSize: 18, fontWeight: '800' },
-  
+  webWrapper: { flex: 1, backgroundColor: '#020617', alignItems: 'center' },
+  safeArea: { flex: 1, width: '100%', backgroundColor: '#F8FAFC' },
+  desktopFrame: { maxWidth: 500, borderWidth: 1, borderColor: '#1E293B' },
+
+  header: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF', 
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9' 
+  },
+  iconBtn: { 
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', 
+    justifyContent: 'center', alignItems: 'center' 
+  },
+  headerTitle: { color: '#0F172A', fontSize: 17, fontWeight: '800' },
+  headerSub: { color: '#64748B', fontSize: 12, marginTop: 2, maxWidth: 220 },
+
   content: { padding: 16 },
 
-  aiFreeshipBox: { backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', marginBottom: 20 },
-  aiFreeshipHeader: { marginBottom: 12 },
-  aiFreeshipTitle: { color: '#10B981', fontSize: 13, fontWeight: '800' },
-  aiFreeshipSub: { color: '#0F172A', fontSize: 14, fontWeight: '600', marginTop: 4 },
-  progressBg: { height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#10B981', borderRadius: 4 },
+  aiFreeshipBox: { 
+    backgroundColor: '#ECFDF5', padding: 14, borderRadius: 16, 
+    borderWidth: 1, borderColor: '#A7F3D0', marginBottom: 16 
+  },
+  aiFreeshipHeader: { marginBottom: 10 },
+  aiFreeshipTitle: { color: '#059669', fontSize: 12, fontWeight: '800' },
+  aiFreeshipSub: { color: '#0F172A', fontSize: 13, fontWeight: '600', marginTop: 4 },
+  progressBg: { height: 6, backgroundColor: '#D1FAE5', borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#10B981', borderRadius: 3 },
 
-  itemsWrapper: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', padding: 16, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  cartItem: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  itemImg: { width: 60, height: 60, borderRadius: 12 },
+  upsellWrapper: { 
+    backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginBottom: 16, 
+    borderWidth: 1, borderColor: '#FED7AA' 
+  },
+  upsellHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  upsellTitle: { fontSize: 13, fontWeight: '700', color: '#C2410C' },
+  upsellItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  upsellImg: { width: 44, height: 44, borderRadius: 8 },
+  upsellName: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  upsellPrice: { fontSize: 12, color: '#F97316', fontWeight: '700', marginTop: 2 },
+  upsellAddBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
+
+  itemsWrapper: { 
+    backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', 
+    padding: 16, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6 
+  },
+  sectionHeading: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
+  cartItem: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', alignItems: 'center' },
+  itemImg: { width: 60, height: 60, borderRadius: 10 },
   itemInfo: { flex: 1, marginLeft: 12, justifyContent: 'center' },
-  itemName: { color: '#0F172A', fontSize: 15, fontWeight: '700' },
-  itemDetails: { color: '#64748B', fontSize: 12, marginTop: 4 },
-  itemPrice: { color: '#F97316', fontSize: 14, fontWeight: '700', marginTop: 6 },
-  qtyBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, height: 32, alignSelf: 'flex-end', marginBottom: 4 },
+  itemName: { color: '#0F172A', fontSize: 14, fontWeight: '700' },
+  itemDetails: { color: '#64748B', fontSize: 12, marginTop: 3 },
+  itemPrice: { color: '#F97316', fontSize: 14, fontWeight: '800', marginTop: 4 },
+  qtyBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, height: 32 },
   qtyBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
   qtyText: { color: '#0F172A', fontSize: 14, fontWeight: '700', width: 24, textAlign: 'center' },
-  addMoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 16 },
+  addMoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 14, gap: 6 },
+  addMoreText: { fontSize: 13, fontWeight: '700' },
 
-  voucherBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', padding: 16, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  voucherTitle: { color: '#0F172A', fontSize: 15, fontWeight: '700' },
-  voucherSub: { color: '#64748B', fontSize: 12, marginTop: 2 },
+  summaryBox: { 
+    backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', 
+    padding: 16, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6 
+  },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  summaryLabel: { color: '#64748B', fontSize: 13 },
+  summaryVal: { color: '#0F172A', fontSize: 13, fontWeight: '600' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 8 },
+  totalLabel: { color: '#0F172A', fontSize: 15, fontWeight: '800' },
+  totalVal: { color: '#F97316', fontSize: 17, fontWeight: '800' },
 
-  summaryBox: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  summaryLabel: { color: '#64748B', fontSize: 14 },
-  summaryVal: { color: '#0F172A', fontSize: 14, fontWeight: '600' },
-  divider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 8 },
-  totalLabel: { color: '#0F172A', fontSize: 16, fontWeight: '700' },
-  totalVal: { color: '#F97316', fontSize: 18, fontWeight: '800' },
+  checkoutBar: { 
+    position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', 
+    borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingHorizontal: 16, 
+    paddingVertical: Platform.OS === 'ios' ? 24 : 14, flexDirection: 'row', 
+    alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10 
+  },
+  barTotalLabel: { fontSize: 11, color: '#64748B' },
+  barTotalVal: { fontSize: 18, fontWeight: '800', color: '#F97316' },
+  checkoutBtn: { 
+    flexDirection: 'row', alignItems: 'center', borderRadius: 12, 
+    paddingVertical: 12, paddingHorizontal: 22 
+  },
+  checkoutText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
 
-  checkoutBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 30 : 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: -4 } },
-  checkoutBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  checkoutText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  // Empty State
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  emptyIconWrap: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 18 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
+  emptyDesc: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  emptyBtn: { paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14 },
+  emptyBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
 });

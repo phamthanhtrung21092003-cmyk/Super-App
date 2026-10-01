@@ -4,6 +4,7 @@ import { UserProvider, useUser } from '../context/UserContext';
 import { ShoppingProvider } from '../context/ShoppingContext';
 import { EducationProvider } from '../context/EducationContext';
 import { CinemaProvider } from '../context/CinemaContext';
+import { FoodProvider } from '../context/FoodContext';
 import { WalletSecurityProvider } from '../context/WalletSecurityContext';
 import { WalletActivationProvider } from '../context/WalletActivationContext';
 import React, { useEffect, useRef } from 'react';
@@ -59,7 +60,9 @@ export default function RootLayout() {
             <ShoppingProvider>
               <EducationProvider>
                 <CinemaProvider>
-                  <AppNavigation />
+                  <FoodProvider>
+                    <AppNavigation />
+                  </FoodProvider>
                 </CinemaProvider>
               </EducationProvider>
             </ShoppingProvider>

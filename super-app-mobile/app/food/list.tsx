@@ -62,7 +62,7 @@ export default function FoodListScreen() {
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
         <LinearGradient
           colors={['#FFF9F5', '#FFFFFF']}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 

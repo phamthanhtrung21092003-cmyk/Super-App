@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, ScrollView, 
   Platform, SafeAreaView, StatusBar, useWindowDimensions,
-  TextInput, Image 
+  TextInput, Image, Modal, ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useFood } from '../../src/context/FoodContext';
 
 const CATEGORIES = [
   { id: 'rice', name: 'Cơm', icon: '🍚' },
@@ -29,178 +30,516 @@ const CATEGORIES = [
 ];
 
 const BANNERS = [
-  { id: '1', img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80', title: 'Freeship mọi đơn' },
-  { id: '2', img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80', title: 'Giảm 50% BBQ' },
+  { id: '1', img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80', title: 'Freeship mọi đơn từ 200k' },
+  { id: '2', img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80', title: 'Giảm 50% Combo Pizza' },
 ];
 
-const SUGGESTIONS = [
-  { id: '1', title: 'Trời mưa ăn lẩu nhé?', desc: 'Giảm giá 30% các quán lẩu gần bạn', img: 'https://images.unsplash.com/photo-1547825407-2d060104b7f8?auto=format&fit=crop&w=400&q=80' },
-  { id: '2', title: 'Gợi ý nạp năng lượng', desc: 'Các món Healthy dưới 300 Kcal', img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80' },
+const NEARBY_RESTAURANTS = [
+  {
+    id: 'rest_pizza_hub',
+    name: 'The Pizza Company & Pasta - Thái Hà',
+    type: 'Pizza, Mì Ý, Đồ Âu',
+    img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80',
+    rating: 4.8,
+    reviews: '320+',
+    distance: '1.8 km',
+    time: '20-25 phút',
+    promo: 'Freeship đơn 200k',
+  },
+  {
+    id: 'rest_com_tam',
+    name: 'Cơm Tấm Sài Gòn Xưa - Sườn Bì Chả',
+    type: 'Cơm tấm, Món Việt',
+    img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80',
+    rating: 4.9,
+    reviews: '540+',
+    distance: '2.4 km',
+    time: '25-30 phút',
+    promo: 'Tặng canh rong biển',
+  },
+  {
+    id: 'rest_tea_lab',
+    name: 'Trà Sữa & Trà Hoa Quả Tươi Lab',
+    type: 'Trà đào, Trà sữa, Ăn vặt',
+    img: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=400&q=80',
+    rating: 4.7,
+    reviews: '210+',
+    distance: '1.2 km',
+    time: '15-20 phút',
+    promo: 'Mua 2 tặng 1',
+  },
 ];
 
 export default function FoodHomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
+  const accentColor = '#F97316';
 
-  const accentColor = '#F97316'; // Orange
-  const accentLight = 'rgba(249, 115, 22, 0.15)';
+  const { cart, activeOrder } = useFood();
+  const totalCartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
-  const goToList = (filter?: string) => {
-    router.push({ pathname: '/food/list', params: { filter } });
+  // Gemini AI Assistant State
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResult, setAiResult] = useState<{
+    dishName: string;
+    restName: string;
+    restId: string;
+    reason: string;
+    price: string;
+    calories: string;
+  } | null>(null);
+
+  const QUICK_PROMPTS = [
+    { title: '🥗 Eat Clean thanh đạm', query: 'Gợi ý món ăn ít calo, nhiều rau, tốt cho sức khỏe' },
+    { title: '🌧️ Món nóng ngày mưa', query: 'Gợi ý món nóng hổi, cay thơm giải cảm' },
+    { title: '💰 No nê dưới 50k', query: 'Gợi ý món ăn trưa no bụng giá dưới 50.000đ' },
+    { title: '🍕 Tiệc tùng / Fastfood', query: 'Gợi ý món ăn vặt hoặc Pizza combo nhiều người' },
+  ];
+
+  const handleAskGemini = (customPrompt?: string) => {
+    const q = customPrompt || aiQuery;
+    if (!q) return;
+
+    setAiLoading(true);
+    setAiResult(null);
+
+    // Mô phỏng Gemini AI xử lý ngôn ngữ tự nhiên thông minh
+    setTimeout(() => {
+      setAiLoading(false);
+      if (q.includes('Clean') || q.includes('rau') || q.includes('ít calo')) {
+        setAiResult({
+          dishName: 'Salad Gà Nướng Mè Rang',
+          restName: 'The Pizza Company & Pasta',
+          restId: 'rest_pizza_hub',
+          reason: 'Ức gà nướng mềm kết hợp sốt mè rang giàu đạm, chỉ 290 Kcal, thanh nhiệt cơ thể.',
+          price: '75.000đ',
+          calories: '290 Kcal',
+        });
+      } else if (q.includes('50k') || q.includes('dưới 50k')) {
+        setAiResult({
+          dishName: 'Trà Đào Cam Sả + Bánh Mì Bơ Tỏi',
+          restName: 'The Pizza Company & Pasta',
+          restId: 'rest_pizza_hub',
+          reason: 'Combo ăn nhẹ giải khát mát lành trọn gói chỉ 45.000đ, phù hợp xế chiều.',
+          price: '45.000đ',
+          calories: '180 Kcal',
+        });
+      } else {
+        setAiResult({
+          dishName: 'Pizza Hải Sản Viền Phô Mai',
+          restName: 'The Pizza Company & Pasta',
+          restId: 'rest_pizza_hub',
+          reason: 'Món bán chạy nhất khu vực với hải sản tươi giòn và lớp phô mai béo ngậy hảo hạng.',
+          price: '185.000đ',
+          calories: '450 Kcal',
+        });
+      }
+    }, 900);
   };
 
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={[styles.safeArea, isDesktop && styles.desktopFrame]}>
-        <LinearGradient
-          colors={['#FFF9F5', '#FFFFFF']}
-          style={StyleSheet.absoluteFillObject}
-        />
+        <LinearGradient colors={['#FFF9F5', '#FFFFFF']} style={StyleSheet.absoluteFill} />
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-        {/* Header (Back + Cart) */}
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/home')}>
+          <TouchableOpacity 
+            style={styles.iconBtn} 
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/home')}
+          >
             <Ionicons name="arrow-back" size={24} color="#0F172A" />
           </TouchableOpacity>
+          
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, { fontFamily: 'Outfit' }]}>GIAO ĐỒ ĂN</Text>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={14} color={accentColor} />
-              <Text style={styles.locationText} numberOfLines={1}>Giao đến: 123 Nguyễn Văn Linh, Quận 7</Text>
+              <Text style={styles.locationText} numberOfLines={1}>18 Tạ Quang Bửu, Hai Bà Trưng</Text>
               <Ionicons name="chevron-down" size={14} color="#64748B" />
             </View>
           </View>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => alert('Giỏ hàng đang trống')}>
+
+          <TouchableOpacity 
+            style={styles.iconBtn} 
+            onPress={() => router.push('/food/cart')}
+          >
             <Ionicons name="cart-outline" size={24} color="#0F172A" />
-            <View style={[styles.badge, { backgroundColor: accentColor }]}><Text style={styles.badgeText}>2</Text></View>
+            {totalCartCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: accentColor }]}>
+                <Text style={styles.badgeText}>{totalCartCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
+        {/* Active Order Banner (Nếu có đơn đang giao) */}
+        {activeOrder && activeOrder.status !== 'COMPLETED' && (
+          <TouchableOpacity 
+            style={styles.activeOrderBanner}
+            onPress={() => router.push({ pathname: '/food/tracking/[id]' as any, params: { id: activeOrder.orderCode } })}
+          >
+            <View style={styles.activeOrderIconWrap}>
+              <Ionicons name="bicycle" size={18} color="#FFF" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.activeOrderTitle}>Đơn hàng {activeOrder.orderCode} đang thực hiện</Text>
+              <Text style={styles.activeOrderSub}>Bấm để xem lộ trình tài xế trực tiếp</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#FFF" />
+          </TouchableOpacity>
+        )}
+
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Search Bar */}
-          <Animated.View entering={FadeInDown.duration(500)}>
+          
+          {/* Search Bar + AI Assistant Button */}
+          <Animated.View entering={FadeInDown.duration(400)}>
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={20} color="#64748B" />
               <TextInput 
                 style={styles.searchInput}
-                placeholder="Tìm món ăn, quán ăn..."
+                placeholder="Tìm món ngon, quán ăn..."
                 placeholderTextColor="#94A3B8"
               />
-              <TouchableOpacity style={styles.micBtn} onPress={() => alert('Đang nghe...')}>
-                <Ionicons name="mic" size={20} color={accentColor} />
+              <TouchableOpacity 
+                style={styles.aiTriggerBtn} 
+                onPress={() => {
+                  setAiModalVisible(true);
+                  setAiResult(null);
+                }}
+              >
+                <Ionicons name="sparkles" size={16} color="#FFF" />
+                <Text style={styles.aiTriggerText}>Hỏi AI</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
 
-          {/* Banners */}
-          <Animated.View entering={FadeInUp.delay(100).duration(600)}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bannerScroll} contentContainerStyle={{ paddingHorizontal: 16 }}>
-              {BANNERS.map((banner) => (
-                <TouchableOpacity key={banner.id} style={styles.bannerCard} activeOpacity={0.9} onPress={() => alert(`Đang mở khuyến mãi: ${banner.title}`)}>
-                  <Image source={{ uri: banner.img }} style={styles.bannerImg} />
-                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.bannerOverlay}>
-                    <Text style={styles.bannerTitle}>{banner.title}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Animated.View>
-
-          {/* Categories */}
-          <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { fontFamily: 'Outfit' }]}>Danh mục</Text>
-            </View>
-            <View style={styles.grid}>
-              {CATEGORIES.map((cat, index) => (
-                <TouchableOpacity 
-                  key={cat.id} 
-                  style={styles.catItem}
-                  onPress={() => goToList(cat.id)}
-                >
-                  <View style={[styles.catIconWrap, { backgroundColor: accentLight }]}>
-                    <Text style={styles.catIcon}>{cat.icon}</Text>
-                  </View>
-                  <Text style={styles.catName}>{cat.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Animated.View>
-
-          {/* AI Suggestions */}
-          <Animated.View entering={FadeInUp.delay(300).duration(600)} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="sparkles" size={20} color="#F59E0B" style={{ marginRight: 8 }} />
-                <Text style={[styles.sectionTitle, { fontFamily: 'Outfit' }]}>AI Gợi Ý Hôm Nay</Text>
+          {/* AI Suggestion Box */}
+          <TouchableOpacity 
+            style={styles.aiBannerBox}
+            activeOpacity={0.9}
+            onPress={() => {
+              setAiModalVisible(true);
+              setAiResult(null);
+            }}
+          >
+            <View style={styles.aiBannerLeft}>
+              <View style={styles.aiBadge}>
+                <Ionicons name="sparkles" size={12} color="#F97316" />
+                <Text style={styles.aiBadgeText}>GEMINI AI ASSISTANT</Text>
               </View>
+              <Text style={styles.aiBannerTitle}>Hôm nay bạn muốn ăn gì?</Text>
+              <Text style={styles.aiBannerDesc}>Để AI gợi ý món ngon chuẩn vị theo khẩu vị và ngân sách của bạn</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
-              {SUGGESTIONS.map(sug => (
-                <TouchableOpacity key={sug.id} style={styles.sugCard} onPress={() => goToList('ai')} activeOpacity={0.9}>
-                  <Image source={{ uri: sug.img }} style={styles.sugImg} />
-                  <View style={styles.sugInfo}>
-                    <Text style={styles.sugTitle}>{sug.title}</Text>
-                    <Text style={styles.sugDesc} numberOfLines={2}>{sug.desc}</Text>
-                    <View style={styles.sugBadge}>
-                      <Text style={styles.sugBadgeText}>Khám phá ngay</Text>
-                    </View>
-                  </View>
+            <View style={styles.aiBannerIconWrap}>
+              <Ionicons name="restaurant" size={32} color="#F97316" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Banners Promo */}
+          <Animated.View entering={FadeInUp.delay(100).duration(400)}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bannerScroll} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+              {BANNERS.map((banner) => (
+                <TouchableOpacity key={banner.id} style={styles.bannerCard} activeOpacity={0.85}>
+                  <Image source={{ uri: banner.img }} style={styles.bannerImg} />
+                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFill} />
+                  <Text style={styles.bannerText}>{banner.title}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </Animated.View>
 
-          <View style={{ height: 100 }} />
+          {/* Categories Grid */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Danh mục món ăn</Text>
+          </View>
+
+          <View style={styles.catsGrid}>
+            {CATEGORIES.slice(0, 8).map((cat) => (
+              <TouchableOpacity 
+                key={cat.id} 
+                style={styles.catItem}
+                onPress={() => router.push({ pathname: '/food/list', params: { filter: cat.name } })}
+              >
+                <View style={styles.catIconWrap}>
+                  <Text style={styles.catEmoji}>{cat.icon}</Text>
+                </View>
+                <Text style={styles.catName}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Nearby Restaurants List */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Quán ngon gần bạn</Text>
+            <TouchableOpacity onPress={() => router.push('/food/list')}>
+              <Text style={styles.seeAllText}>Xem tất cả</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.restList}>
+            {NEARBY_RESTAURANTS.map((rest) => (
+              <TouchableOpacity 
+                key={rest.id}
+                style={styles.restCard}
+                activeOpacity={0.88}
+                onPress={() => router.push(`/food/restaurant/${rest.id}`)}
+              >
+                <Image source={{ uri: rest.img }} style={styles.restImg} />
+                <View style={styles.restInfo}>
+                  <Text style={styles.restName} numberOfLines={1}>{rest.name}</Text>
+                  <Text style={styles.restType}>{rest.type}</Text>
+
+                  <View style={styles.restMetaRow}>
+                    <View style={styles.restMetaItem}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.restRating}>{rest.rating} ({rest.reviews})</Text>
+                    </View>
+                    <Text style={styles.metaDot}>•</Text>
+                    <Text style={styles.restDist}>{rest.distance}</Text>
+                    <Text style={styles.metaDot}>•</Text>
+                    <Text style={styles.restTime}>{rest.time}</Text>
+                  </View>
+
+                  <View style={styles.restPromoBadge}>
+                    <Ionicons name="pricetag" size={11} color="#10B981" />
+                    <Text style={styles.restPromoText}>{rest.promo}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ height: 60 }} />
         </ScrollView>
+
+        {/* ========================================================================= */}
+        {/* GEMINI AI ASSISTANT MODAL ("HÔM NAY ĂN GÌ?")                              */}
+        {/* ========================================================================= */}
+        <Modal
+          visible={aiModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setAiModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setAiModalVisible(false)} />
+            
+            <View style={styles.aiModalContent}>
+              <View style={styles.dragIndicator} />
+              
+              <View style={styles.aiModalHeader}>
+                <View style={styles.aiModalTitleRow}>
+                  <Ionicons name="sparkles" size={20} color="#F97316" />
+                  <Text style={styles.aiModalTitle}>Trợ Lý Ẩm Thực Gemini AI</Text>
+                </View>
+                <TouchableOpacity onPress={() => setAiModalVisible(false)}>
+                  <Ionicons name="close" size={22} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.aiModalSub}>
+                Chọn nhanh tâm trạng hoặc nhập mong muốn của bạn hôm nay:
+              </Text>
+
+              {/* Quick Prompts */}
+              <View style={styles.quickPromptWrap}>
+                {QUICK_PROMPTS.map((p) => (
+                  <TouchableOpacity
+                    key={p.title}
+                    style={styles.quickPromptBtn}
+                    onPress={() => handleAskGemini(p.query)}
+                  >
+                    <Text style={styles.quickPromptText}>{p.title}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Custom Input */}
+              <View style={styles.aiInputRow}>
+                <TextInput
+                  style={styles.aiTextInput}
+                  placeholder="Hoặc gõ món bạn muốn tìm (VD: cơm gà xé...)"
+                  placeholderTextColor="#94A3B8"
+                  value={aiQuery}
+                  onChangeText={setAiQuery}
+                  onSubmitEditing={() => handleAskGemini()}
+                />
+                <TouchableOpacity 
+                  style={[styles.aiSendBtn, { backgroundColor: accentColor }]}
+                  onPress={() => handleAskGemini()}
+                >
+                  <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* AI Processing Loading */}
+              {aiLoading && (
+                <View style={styles.aiLoadingWrap}>
+                  <ActivityIndicator size="small" color="#F97316" />
+                  <Text style={styles.aiLoadingText}>Gemini AI đang tìm kiếm món phù hợp nhất...</Text>
+                </View>
+              )}
+
+              {/* AI Recommendation Result */}
+              {aiResult && !aiLoading && (
+                <View style={styles.aiResultCard}>
+                  <View style={styles.aiResultHeader}>
+                    <Text style={styles.aiResultDish}>{aiResult.dishName}</Text>
+                    <Text style={styles.aiResultPrice}>{aiResult.price}</Text>
+                  </View>
+                  <Text style={styles.aiResultRest}>Tại {aiResult.restName} • {aiResult.calories}</Text>
+                  <Text style={styles.aiResultReason}>{aiResult.reason}</Text>
+
+                  <TouchableOpacity 
+                    style={[styles.aiOrderNowBtn, { backgroundColor: accentColor }]}
+                    onPress={() => {
+                      setAiModalVisible(false);
+                      router.push(`/food/restaurant/${aiResult.restId}`);
+                    }}
+                  >
+                    <Text style={styles.aiOrderNowText}>Xem Menu & Đặt Ngay</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={{ height: 20 }} />
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  webWrapper: { flex: 1, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', ...(Platform.OS === 'web' && { paddingVertical: 40 }) },
-  safeArea: { flex: 1, backgroundColor: '#FFF', width: '100%' },
-  desktopFrame: { maxWidth: 414, maxHeight: 896, aspectRatio: 414 / 896, borderWidth: 10, borderColor: '#E2E8F0', borderRadius: 55, overflow: 'hidden' },
-  
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 50 : 30, paddingHorizontal: 16, paddingBottom: 15, backgroundColor: '#FFF' },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#0F172A', fontSize: 18, fontWeight: '800', letterSpacing: 1 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 },
-  locationText: { color: '#475569', fontSize: 12, maxWidth: 200 },
-  badge: { position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
-  badgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+  webWrapper: { flex: 1, backgroundColor: '#020617', alignItems: 'center' },
+  safeArea: { flex: 1, width: '100%', backgroundColor: '#F8FAFC' },
+  desktopFrame: { maxWidth: 500, borderWidth: 1, borderColor: '#1E293B' },
 
-  scrollContent: { paddingTop: 20 },
-  
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: '#FFEDD5', shadowColor: '#F97316', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  searchInput: { flex: 1, marginLeft: 12, color: '#0F172A', fontSize: 15, ...(Platform.OS === 'web' && { outlineStyle: 'none' } as any) },
-  micBtn: { padding: 8 },
+  header: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF', 
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9' 
+  },
+  iconBtn: { 
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', 
+    justifyContent: 'center', alignItems: 'center', position: 'relative' 
+  },
+  headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  locationText: { fontSize: 11, color: '#64748B', maxWidth: 170 },
+  badge: { 
+    position: 'absolute', top: -2, right: -2, width: 18, height: 18, 
+    borderRadius: 9, justifyContent: 'center', alignItems: 'center' 
+  },
+  badgeText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
 
-  bannerScroll: { marginTop: 24, marginBottom: 24 },
-  bannerCard: { width: 300, height: 150, borderRadius: 20, overflow: 'hidden', marginRight: 16 },
+  activeOrderBanner: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F172A', 
+    paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, 
+    marginTop: 12, borderRadius: 14 
+  },
+  activeOrderIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
+  activeOrderTitle: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  activeOrderSub: { color: '#94A3B8', fontSize: 11, marginTop: 1 },
+
+  scrollContent: { paddingVertical: 12 },
+
+  searchContainer: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
+    marginHorizontal: 16, borderRadius: 16, paddingHorizontal: 14, 
+    height: 48, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', 
+    shadowOpacity: 0.03, shadowRadius: 6 
+  },
+  searchInput: { flex: 1, fontSize: 14, color: '#0F172A', marginLeft: 8 },
+  aiTriggerBtn: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F97316', 
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 4 
+  },
+  aiTriggerText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+
+  aiBannerBox: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    backgroundColor: '#FFF7ED', marginHorizontal: 16, marginTop: 14, 
+    borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#FED7AA' 
+  },
+  aiBannerLeft: { flex: 1, paddingRight: 10 },
+  aiBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+  aiBadgeText: { fontSize: 10, fontWeight: '800', color: '#F97316', letterSpacing: 0.5 },
+  aiBannerTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
+  aiBannerDesc: { fontSize: 12, color: '#64748B', lineHeight: 17 },
+  aiBannerIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+
+  bannerScroll: { marginTop: 14 },
+  bannerCard: { width: 280, height: 130, borderRadius: 16, overflow: 'hidden', position: 'relative' },
   bannerImg: { width: '100%', height: '100%' },
-  bannerOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', padding: 16 },
-  bannerTitle: { color: '#FFF', fontSize: 20, fontWeight: '800' },
+  bannerGradient: { ...StyleSheet.absoluteFill },
+  bannerText: { position: 'absolute', bottom: 12, left: 14, right: 14, color: '#FFF', fontSize: 15, fontWeight: '800' },
 
-  section: { marginBottom: 30 },
-  sectionHeader: { paddingHorizontal: 16, marginBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { color: '#0F172A', fontSize: 20, fontWeight: '700' },
-  
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
-  catItem: { width: '25%', alignItems: 'center', marginBottom: 20 },
-  catIconWrap: { width: 56, height: 56, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 8, backgroundColor: '#FFF', shadowColor: '#F97316', shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  catIcon: { fontSize: 28 },
-  catName: { color: '#334155', fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginTop: 22, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  seeAllText: { fontSize: 13, color: '#F97316', fontWeight: '700' },
 
-  sugCard: { width: 260, backgroundColor: '#FFF', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  sugImg: { width: '100%', height: 130 },
-  sugInfo: { padding: 16 },
-  sugTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  sugDesc: { color: '#64748B', fontSize: 13, marginBottom: 12, lineHeight: 18 },
-  sugBadge: { alignSelf: 'flex-start', backgroundColor: '#F97316', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  sugBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '700' }
+  catsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12 },
+  catItem: { width: '25%', alignItems: 'center', marginBottom: 16 },
+  catIconWrap: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4 },
+  catEmoji: { fontSize: 26 },
+  catName: { fontSize: 12, color: '#334155', fontWeight: '600', marginTop: 6 },
+
+  restList: { paddingHorizontal: 16, gap: 14 },
+  restCard: { 
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, 
+    padding: 12, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', 
+    shadowOpacity: 0.03, shadowRadius: 8 
+  },
+  restImg: { width: 95, height: 95, borderRadius: 12 },
+  restInfo: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
+  restName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  restType: { fontSize: 12, color: '#64748B' },
+  restMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  restMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  restRating: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
+  metaDot: { fontSize: 12, color: '#CBD5E1' },
+  restDist: { fontSize: 12, color: '#64748B' },
+  restTime: { fontSize: 12, color: '#64748B' },
+  restPromoBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' },
+  restPromoText: { fontSize: 11, fontWeight: '700', color: '#059669' },
+
+  // AI Modal Styles
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalBackdrop: { flex: 1 },
+  aiModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 20 },
+  dragIndicator: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 14 },
+  aiModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  aiModalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aiModalTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  aiModalSub: { fontSize: 13, color: '#64748B', marginBottom: 14 },
+
+  quickPromptWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  quickPromptBtn: { backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  quickPromptText: { fontSize: 12, fontWeight: '600', color: '#334155' },
+
+  aiInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  aiTextInput: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, fontSize: 13, color: '#0F172A' },
+  aiSendBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+
+  aiLoadingWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
+  aiLoadingText: { fontSize: 13, color: '#F97316', fontWeight: '600' },
+
+  aiResultCard: { backgroundColor: '#FFF7ED', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#FED7AA' },
+  aiResultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  aiResultDish: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  aiResultPrice: { fontSize: 15, fontWeight: '800', color: '#F97316' },
+  aiResultRest: { fontSize: 12, color: '#64748B', marginTop: 2, marginBottom: 8 },
+  aiResultReason: { fontSize: 13, color: '#334155', lineHeight: 18, marginBottom: 14 },
+  aiOrderNowBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, paddingVertical: 11 },
+  aiOrderNowText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
 });
