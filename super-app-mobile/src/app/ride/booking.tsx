@@ -8,10 +8,14 @@ import {
   ScrollView,
   Platform,
   Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebMap, { MapPoint } from '../../components/WebMap';
+import { createRideBooking } from '../../modules/ride/services/realRideService';
 
 export default function RideBooking() {
   const router = useRouter();
@@ -124,20 +128,98 @@ export default function RideBooking() {
     },
   ];
 
-  const handleBookNow = () => {
-    router.push({
-      pathname: '/ride/tracking',
-      params: {
-        vehicleName: currentVehicleData.name,
-        price: currentVehicleData.price.toString(),
-        destinationName: destinationName,
-        destinationAddress: destinationAddress,
-        distanceKm: distance.toString(),
-        paymentName: selectedPayment.name,
-      },
-    });
+  const [isBooking, setIsBooking] = useState(false);
+
+  const handleBookNow = async () => {
+    setIsBooking(true);
+    try {
+      // Lấy thông tin người dùng từ storage
+      const userStr = await AsyncStorage.getItem('currentUser').catch(() => null);
+      const user = userStr ? JSON.parse(userStr) : null;
+
+      // Gọi API đặt chuyến
+      const trip = await createRideBooking({
+        pickupAddress: locationName,
+        pickupLat: 21.028511,
+        pickupLng: 105.804817,
+        dropoffAddress: destinationAddress,
+        dropoffLat: params.dropLat ? parseFloat(params.dropLat) : 21.0028,
+        dropoffLng: params.dropLng ? parseFloat(params.dropLng) : 105.8155,
+        vehicleType: selectedVehicle,
+        serviceType: 'RIDE',
+        fareAmount: currentVehicleData.price,
+        distanceKm: distance,
+        paymentMethod: selectedPayment.id === 'superpay' ? 'SUPERPAY' :
+                       selectedPayment.id === 'cash' ? 'CASH' : 'CARD',
+        customerName: user?.fullName || 'Khách hàng V-Life',
+        customerPhone: user?.phone || '0988000000',
+      }, user?.id);
+
+      // Lưu tripId vào storage để có thể resume nếu app bị tắt
+      await AsyncStorage.setItem('@active_trip_id', trip.id);
+      await AsyncStorage.setItem('@active_trip_data', JSON.stringify(trip));
+
+      // Chuyển tới màn hình tracking với tripId thực
+      router.push({
+        pathname: '/ride/tracking',
+        params: {
+          tripId: trip.id,
+          bookingCode: trip.bookingCode,
+          vehicleName: currentVehicleData.name,
+          price: trip.finalAmount.toString(),
+          destinationName: destinationName,
+          destinationAddress: destinationAddress,
+          distanceKm: distance.toString(),
+          paymentName: selectedPayment.name,
+          paymentMethod: trip.paymentMethod,
+          pickupLat: '21.028511',
+          pickupLng: '105.804817',
+          dropLat: params.dropLat || '21.0028',
+          dropLng: params.dropLng || '105.8155',
+        },
+      });
+    } catch (error: any) {
+      // Nếu API lỗi (server chưa chạy), vẫn cho phép navigate với mock data
+      const isNetworkError = !error.response && error.request;
+      if (isNetworkError) {
+        Alert.alert(
+          'Không thể kết nối server',
+          'Server đang offline. Chạy ở chế độ demo để trải nghiệm?\n\n(Trong production: kiểm tra server đang chạy và cấu hình IP trong .env)',
+          [
+            { text: 'Hủy', style: 'cancel' },
+            {
+              text: 'Demo mode',
+              onPress: () => {
+                const demoTripId = `DEMO-${Date.now()}`;
+                router.push({
+                  pathname: '/ride/tracking',
+                  params: {
+                    tripId: demoTripId,
+                    bookingCode: '#VR-DEMO',
+                    vehicleName: currentVehicleData.name,
+                    price: currentVehicleData.price.toString(),
+                    destinationName,
+                    destinationAddress,
+                    distanceKm: distance.toString(),
+                    paymentName: selectedPayment.name,
+                    paymentMethod: selectedPayment.id.toUpperCase(),
+                    isDemo: 'true',
+                  },
+                });
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Đặt chuyến thất bại', error.response?.data?.message || 'Có lỗi xảy ra khi đặt chuyến. Vui lòng thử lại.');
+      }
+    } finally {
+      setIsBooking(false);
+    }
   };
 
+  // Tên vị trí hiện tại (lấy từ params hoặc default)
+  const locationName = '72 Trần Thái Tông, Dịch Vọng Hậu, Cầu Giấy, Hà Nội';
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -257,10 +339,18 @@ export default function RideBooking() {
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.bookButton} onPress={handleBookNow}>
-            <Text style={styles.bookButtonText}>
-              Đặt {currentVehicleData.name} • {formatPrice(currentVehicleData.price)}
-            </Text>
+          <TouchableOpacity
+            style={[styles.bookButton, isBooking && { opacity: 0.7 }]}
+            onPress={handleBookNow}
+            disabled={isBooking}
+          >
+            {isBooking ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.bookButtonText}>
+                Đặt {currentVehicleData.name} • {formatPrice(currentVehicleData.price)}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>

@@ -161,6 +161,7 @@ model User {
   followers          Follow[]           @relation("UserFollowers")
   following          Follow[]           @relation("UserFollowing")
   foodOrders         FoodOrder[]
+  rideBookings       RideBooking[]
 }
 
 model UserDevice {
@@ -217,11 +218,19 @@ model Driver {
   avatarUrl          String?
   licensePlate       String
   vehicleType        String
-  role               Role     @default(DRIVER)
+  role               Role        @default(DRIVER)
   hashedRefreshToken String?
-  createdAt          DateTime @default(now())
+  isOnline           Boolean     @default(false)
+  currentLat         Float?
+  currentLng         Float?
+  heading            Float?
+  walletBalance      Decimal     @default(0)
+  rating             Float       @default(5.0)
+  totalTrips         Int         @default(0)
+  createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
   foodOrders         FoodOrder[]
+  rideBookings       RideBooking[]
 }
 
 model Wallet {
@@ -826,4 +835,42 @@ model FoodOrderItem {
   @@index([orderId])
   @@index([menuItemId])
 }
+
+model RideBooking {
+  id              String   @id @default(uuid())
+  bookingCode     String   @unique
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  driverId        String?
+  driver          Driver?  @relation(fields: [driverId], references: [id])
+  serviceType     String   @default("RIDE")
+  vehicleType     String   @default("ev")
+  status          String   @default("SEARCHING")
+  pickupAddress   String
+  pickupLat       Float
+  pickupLng       Float
+  dropoffAddress  String
+  dropoffLat      Float
+  dropoffLng      Float
+  distanceKm      Float
+  durationMin     Int      @default(15)
+  fareAmount      Float
+  tipAmount       Float    @default(0)
+  discountAmount  Float    @default(0)
+  finalAmount     Float
+  paymentMethod   String   @default("CASH")
+  paymentStatus   String   @default("PENDING")
+  customerName    String
+  customerPhone   String
+  driverRating    Int?
+  driverReview    String?
+  cancelReason    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([driverId])
+  @@index([status])
+}
+
 

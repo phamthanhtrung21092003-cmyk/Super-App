@@ -179,6 +179,13 @@ export default function TransportHome() {
         >
           <Ionicons name="time-outline" size={22} color="#0F172A" />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.floatingCircleBtn, { backgroundColor: '#F59E0B', borderColor: '#F59E0B', marginLeft: 8 }]}
+          onPress={() => router.push('/partner/dashboard')}
+        >
+          <Ionicons name="car" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       {/* 3. Bottom Sheet Panel */}

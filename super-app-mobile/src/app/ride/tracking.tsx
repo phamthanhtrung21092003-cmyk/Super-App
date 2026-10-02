@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -26,6 +26,9 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import rideSocketService, { TripStatusUpdatePayload, DriverLocationPayload } from '../../services/rideSocketService';
+import { cancelTrip, rateDriver, getTripById } from '../../modules/ride/services/realRideService';
+
 
 interface ChatMessage {
   id: string;
@@ -37,13 +40,24 @@ interface ChatMessage {
 export default function RideTracking() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    tripId?: string;
+    bookingCode?: string;
     vehicleName?: string;
     price?: string;
     destinationName?: string;
     destinationAddress?: string;
     distanceKm?: string;
     paymentName?: string;
+    paymentMethod?: string;
+    pickupLat?: string;
+    pickupLng?: string;
+    dropLat?: string;
+    dropLng?: string;
+    isDemo?: string;
   }>();
+
+  const tripId = params.tripId;
+  const isDemo = params.isDemo === 'true' || !tripId || tripId.startsWith('DEMO-');
 
   const destinationName = params.destinationName || 'Royal City';
   const destinationAddress =
@@ -61,8 +75,15 @@ export default function RideTracking() {
   const [isPriority, setIsPriority] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
 
-  // Auto-play / Simulation toggle
-  const [autoPlay, setAutoPlay] = useState(true);
+  // Real driver info from server
+  const [assignedDriver, setAssignedDriver] = useState<{
+    name: string; phone: string; vehicle: string; plate: string; avatar: string; rating: number;
+  } | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  // Auto-play / Simulation toggle (bật khi demo, tắt khi có real socket)
+  const [autoPlay, setAutoPlay] = useState(isDemo);
 
   // Modals
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -112,6 +133,78 @@ export default function RideTracking() {
     transform: [{ scale: radarScale.value }],
     opacity: radarOpacity.value,
   }));
+
+  // ─────────────────────────────────────────
+  // REAL-TIME: Kết nối WebSocket nhận cập nhật trip
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    if (isDemo || !tripId) {
+      // Chế độ demo: không kết nối socket
+      return;
+    }
+
+    // Kết nối socket và tham gia phòng trip
+    rideSocketService.connect('customer');
+    rideSocketService.joinTripRoom(tripId);
+    setSocketConnected(rideSocketService.isConnected);
+
+    // Nhận cập nhật trạng thái trip từ server
+    const unsubStatus = rideSocketService.onTripStatusUpdated((data: TripStatusUpdatePayload) => {
+      if (data.tripId !== tripId) return;
+
+      switch (data.status) {
+        case 'ACCEPTED':
+          setTripState('assigned');
+          setAutoPlay(false); // Dừng simulation khi có driver thực
+          if (data.driverName) {
+            setAssignedDriver({
+              name: data.driverName,
+              phone: data.driverPhone || '0988123456',
+              vehicle: data.vehicleName || 'VinFast VF 8',
+              plate: data.licensePlate || '29A-999.88',
+              avatar: data.avatarUrl || 'https://i.pravatar.cc/150?img=60',
+              rating: data.driverRating || 4.95,
+            });
+          }
+          break;
+        case 'ARRIVED_PICKUP':
+          setTripState('assigned');
+          break;
+        case 'IN_TRIP':
+          setTripState('driving');
+          break;
+        case 'COMPLETED':
+          setTripState('completed');
+          setTimeout(() => setShowRatingModal(true), 800);
+          // Xóa tripId khỏi storage
+          AsyncStorage.removeItem('@active_trip_id').catch(() => {});
+          break;
+        case 'CANCELLED':
+          Alert.alert(
+            'Chuyến xe đã bị hủy',
+            data.cancelReason || 'Tài xế đã hủy chuyến. Chúng tôi sẽ tìm tài xế khác cho bạn.',
+            [{ text: 'OK', onPress: () => router.replace('/transport') }]
+          );
+          break;
+      }
+    });
+
+    // Nhận cập nhật vị trí tài xế realtime
+    const unsubLocation = rideSocketService.onDriverLocationUpdate((data: DriverLocationPayload) => {
+      setDriverLocation({ lat: data.lat, lng: data.lng });
+    });
+
+    // Track connection state
+    const unsubConn = rideSocketService.onConnectionChange(setSocketConnected);
+
+    // Cleanup khi unmount
+    return () => {
+      unsubStatus();
+      unsubLocation();
+      unsubConn();
+      rideSocketService.disconnect();
+    };
+  }, [tripId, isDemo]);
 
   // Auto-progression flow (End-to-End Simulation)
   useEffect(() => {
@@ -224,10 +317,19 @@ export default function RideTracking() {
   const handleConfirmRating = async () => {
     setShowRatingModal(false);
 
-    // Save completed ride to AsyncStorage history
+    // Gọi API lưu đánh giá thực (nếu không phải demo)
+    if (!isDemo && tripId) {
+      try {
+        await rateDriver(tripId, rating, ratingComment, selectedTags, ratingTip > 0 ? ratingTip : undefined);
+      } catch (e) {
+        // Lỗi API đánh giá không nghiêm trọng, vẫn tiếp tục
+      }
+    }
+
+    // Lưu vào AsyncStorage history
     try {
       const completedTrip = {
-        id: `TRIP-${Date.now()}`,
+        id: tripId || `TRIP-${Date.now()}`,
         destinationName,
         destinationAddress,
         distanceKm,
@@ -236,45 +338,53 @@ export default function RideTracking() {
         paymentName,
         rating,
         date: new Date().toLocaleDateString('vi-VN'),
-        driver: 'Nguyễn Văn Hùng',
-        plate: '29A-999.88',
+        driver: assignedDriver?.name || 'Nguyễn Văn Hùng',
+        plate: assignedDriver?.plate || '29A-999.88',
       };
 
       const existingData = await AsyncStorage.getItem('@recent_rides');
       const list = existingData ? JSON.parse(existingData) : [];
       list.unshift(completedTrip);
       await AsyncStorage.setItem('@recent_rides', JSON.stringify(list.slice(0, 10)));
-    } catch (e) {
-      // Ignore storage error
-    }
+      await AsyncStorage.removeItem('@active_trip_id');
+      await AsyncStorage.removeItem('@active_trip_data');
+    } catch (e) {}
 
     Alert.alert(
       'Hoàn tất chuyến đi 🎉',
-      `Cảm ơn bạn đã đánh giá ${rating} sao cho tài xế Nguyễn Văn Hùng!\nTổng thanh toán: ${finalTotal.toLocaleString(
-        'vi-VN'
-      )}đ\nCuốc xe đã kết thúc an toàn.`,
-      [
-        {
-          text: 'Về trang Vận chuyển',
-          onPress: () => router.replace('/transport'),
-        },
-      ]
+      `Cảm ơn bạn đã đánh giá ${rating} sao cho tài xế ${assignedDriver?.name || 'Nguyễn Văn Hùng'}!\nTổng thanh toán: ${finalTotal.toLocaleString('vi-VN')}đ\nCuốc xe đã kết thúc an toàn.`,
+      [{ text: 'Về trang Vận chuyển', onPress: () => router.replace('/transport') }]
     );
   };
 
   // Cancellation handler
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     setShowCancelModal(false);
+
+    // Gọi API hủy chuyến thực (nếu không phải demo)
+    if (!isDemo && tripId) {
+      try {
+        await cancelTrip(tripId, 'Khách hủy chuyến', 'customer');
+      } catch (e) {
+        // Lỗi API không ngăn user khỏi ứng dụng
+      }
+    }
+
+    // Xóa trip khỏi storage
+    await AsyncStorage.removeItem('@active_trip_id').catch(() => {});
+    await AsyncStorage.removeItem('@active_trip_data').catch(() => {});
+
     Alert.alert('Đã hủy chuyến', 'Cuốc xe của bạn đã được hủy thành công. Không phát sinh chi phí.', [
-      {
-        text: 'Đồng ý',
-        onPress: () => router.replace('/transport'),
-      },
+      { text: 'Đồng ý', onPress: () => router.replace('/transport') },
     ]);
   };
 
-  // Map markers depending on state
+  // Map markers depending on state (dùng real driver GPS nếu có)
   const getMapPoints = () => {
+    const driverLat = driverLocation?.lat || 21.024511;
+    const driverLng = driverLocation?.lng || 21.800817;
+    const driverLabel = `Tài xế ${assignedDriver?.name || 'đang đến'}`;
+
     if (tripState === 'searching') {
       return [
         { lat: 21.028511, lng: 105.804817, label: 'Điểm đón của bạn', color: '#3B82F6' },
@@ -283,7 +393,7 @@ export default function RideTracking() {
     } else if (tripState === 'assigned') {
       return [
         { lat: 21.028511, lng: 105.804817, label: 'Điểm đón của bạn', color: '#3B82F6' },
-        { lat: 21.024511, lng: 105.800817, label: 'Tài xế Nguyễn Văn Hùng', color: '#10B981' },
+        { lat: driverLat, lng: driverLng || 105.800817, label: driverLabel, color: '#10B981' },
       ];
     } else {
       return [

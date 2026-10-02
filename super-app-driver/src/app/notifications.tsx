@@ -1,102 +1,110 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  ActivityIndicator,
-  RefreshControl,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { partnerNotificationService, Notification } from '../services/notificationService';
 
-export default function PartnerNotificationsScreen() {
+export default function DriverNotificationsScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'TRIP' | 'WALLET' | 'SYSTEM'>('ALL');
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await partnerNotificationService.getNotifications();
-      setNotifications(res.notifications);
-    } catch (error) {
-      console.log('Fetch partner notifications error:', error);
-      setNotifications([
-        {
-          id: 'pn-1',
-          title: 'Bạn đã nhận được tiền 💰',
-          body: 'Payout đơn #VL202608031001 thành công. Số tiền: +4.500.000đ',
-          data: { bookingCode: 'VL202608031001' },
-          isRead: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'pn-2',
-          title: 'Bạn có đơn đặt dịch vụ mới',
-          body: 'Đơn #VL202608031002 đang chờ thanh toán từ khách hàng.',
-          data: { bookingCode: 'VL202608031002' },
-          isRead: false,
-          createdAt: new Date(Date.now() - 1800000).toISOString(),
-        },
-        {
-          id: 'pn-3',
-          title: 'Payout của đơn đang gặp lỗi ⚠️',
-          body: 'Payout đơn #VL202608031003 thất bại. V-life sẽ xử lý và thử lại.',
-          data: { bookingCode: 'VL202608031003' },
-          isRead: true,
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-      ]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const [notifications, setNotifications] = useState([
+    {
+      id: 'notif-1',
+      type: 'TRIP',
+      icon: 'car-sport',
+      iconColor: '#0088FF',
+      iconBg: '#EFF6FF',
+      title: 'Đã hoàn thành cuốc xe #VR-8899',
+      body: 'Khách hàng Hoàng Linh đã đánh giá bạn 5 sao kèm lời khen: "Lái xe an toàn, lịch sự".',
+      time: '14:35 Hôm nay',
+      isRead: false,
+      tripId: 'VR-8899',
+    },
+    {
+      id: 'notif-2',
+      type: 'WALLET',
+      icon: 'gift',
+      iconColor: '#059669',
+      iconBg: '#ECFDF5',
+      title: 'Thưởng nóng mốc 5 cuốc trưa cao điểm 🎉',
+      body: 'Bạn đã nhận được +50.000đ tiền thưởng vào Ví Ký Quỹ từ chương trình V-Driver Giờ Vàng.',
+      time: '12:30 Hôm nay',
+      isRead: false,
+      action: 'wallet',
+    },
+    {
+      id: 'notif-3',
+      type: 'WALLET',
+      icon: 'card',
+      iconColor: '#10B981',
+      iconBg: '#D1FAE5',
+      title: 'Cộng tiền cước trực tuyến cuốc #VR-8898',
+      body: 'Khách hàng thanh toán qua VNPay. Ví của bạn đã được cộng +96.000đ.',
+      time: '13:35 Hôm nay',
+      isRead: true,
+      tripId: 'VR-8898',
+    },
+    {
+      id: 'notif-4',
+      type: 'SYSTEM',
+      icon: 'flame',
+      iconColor: '#EF4444',
+      iconBg: '#FEF2F2',
+      title: 'Nhu cầu tăng đột biến tại Quận Cầu Giấy 🔥',
+      body: 'Khu vực Duy Tân - Trần Thái Tông đang có hơn 35 đơn chờ. Hệ số nhân giá 1.3x đang kích hoạt.',
+      time: '11:45 Hôm nay',
+      isRead: true,
+      action: 'map',
+    },
+    {
+      id: 'notif-5',
+      type: 'SYSTEM',
+      icon: 'shield-checkmark',
+      iconColor: '#6366F1',
+      iconBg: '#EEF2FF',
+      title: 'Cập nhật chính sách an toàn tài xế 2026',
+      body: 'Bảo hiểm tai nạn tự động kích hoạt cho mọi cuốc xe hợp lệ trên hệ thống.',
+      time: 'Hôm qua',
+      isRead: true,
+      action: 'info',
+    },
+  ]);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchNotifications();
-  };
-
-  const handleNotifPress = async (notif: Notification) => {
-    if (!notif.isRead) {
-      await partnerNotificationService.markAsRead(notif.id).catch(() => {});
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
-      );
-    }
-    if (notif.data?.bookingCode) {
-      router.push(`/booking-detail?id=${notif.data.bookingCode}`);
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    await partnerNotificationService.markAllAsRead().catch(() => {});
+  const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
-  const getNotifIcon = (title: string) => {
-    if (title.includes('tiền') || title.includes('Payout')) return 'cash';
-    if (title.includes('đơn')) return 'document-text';
-    if (title.includes('lỗi') || title.includes('⚠️')) return 'warning';
-    return 'notifications';
+  const handlePressItem = (item: any) => {
+    // Mark as read
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
+    );
+
+    if (item.tripId) {
+      router.push(`/booking-detail?id=${item.tripId}`);
+    } else if (item.action === 'wallet') {
+      router.push('/(tabs)/wallet');
+    } else if (item.action === 'map') {
+      router.push('/(tabs)');
+    }
   };
 
-  const getNotifColor = (title: string, isRead: boolean) => {
-    if (isRead) return '#94A3B8';
-    if (title.includes('lỗi') || title.includes('⚠️')) return '#EF4444';
-    if (title.includes('tiền')) return '#10B981';
-    return '#0088FF';
-  };
+  const filtered = notifications.filter((n) => {
+    if (activeFilter === 'ALL') return true;
+    if (activeFilter === 'TRIP') return n.type === 'TRIP';
+    if (activeFilter === 'WALLET') return n.type === 'WALLET';
+    if (activeFilter === 'SYSTEM') return n.type === 'SYSTEM';
+    return true;
+  });
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -104,117 +112,136 @@ export default function PartnerNotificationsScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          Thông Báo {unreadCount > 0 ? `(${unreadCount})` : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Thông Báo Tài Xế</Text>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
+
         {unreadCount > 0 && (
           <TouchableOpacity onPress={handleMarkAllRead}>
-            <Text style={styles.readAllText}>Đọc tất cả</Text>
+            <Text style={styles.markAllReadText}>Đọc tất cả</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#0088FF" />
-        </View>
-      ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-off-outline" size={64} color="#94A3B8" />
-              <Text style={styles.emptyText}>Chưa có thông báo nào</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Filters */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          {[
+            { id: 'ALL', label: 'Tất cả' },
+            { id: 'TRIP', label: 'Cuốc xe' },
+            { id: 'WALLET', label: 'Ví & Thưởng' },
+            { id: 'SYSTEM', label: 'Hệ thống' },
+          ].map((f) => (
+            <TouchableOpacity
+              key={f.id}
+              style={[styles.filterChip, activeFilter === f.id && styles.filterChipActive]}
+              onPress={() => setActiveFilter(f.id as any)}
+            >
+              <Text style={[styles.filterChipText, activeFilter === f.id && styles.filterChipTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* List */}
+        {filtered.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={[styles.notifCard, !item.isRead && styles.notifCardUnread]}
+            activeOpacity={0.8}
+            onPress={() => handlePressItem(item)}
+          >
+            <View style={[styles.notifIconWrap, { backgroundColor: item.iconBg }]}>
+              <Ionicons name={item.icon as any} size={22} color={item.iconColor} />
             </View>
-          }
-          renderItem={({ item }) => {
-            const iconName = getNotifIcon(item.title) as any;
-            const iconColor = getNotifColor(item.title, item.isRead);
-            return (
-              <TouchableOpacity
-                style={[styles.notifCard, !item.isRead && styles.notifCardUnread]}
-                onPress={() => handleNotifPress(item)}
-              >
+
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Text style={[styles.notifTitle, !item.isRead && styles.notifTitleBold]}>
+                  {item.title}
+                </Text>
                 {!item.isRead && <View style={styles.unreadDot} />}
-                <View style={[styles.iconWrap, { backgroundColor: `${iconColor}20` }]}>
-                  <Ionicons name={iconName} size={22} color={iconColor} />
-                </View>
-                <View style={styles.notifContent}>
-                  <Text style={[styles.notifTitle, !item.isRead && styles.notifTitleBold]}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text>
-                  <Text style={styles.notifTime}>
-                    {new Date(item.createdAt).toLocaleString('vi-VN')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
+              </View>
+              <Text style={styles.notifBody}>{item.body}</Text>
+              <Text style={styles.notifTime}>{item.time}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
-    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 40 : 16,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#FFF',
+    borderBottomColor: '#F1F5F9',
   },
-  backBtn: { padding: 4, marginRight: 8 },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: 'bold', color: '#1E293B' },
-  readAllText: { color: '#0088FF', fontSize: 13, fontWeight: '600' },
-  listContent: { padding: 12 },
-  emptyContainer: { alignItems: 'center', marginTop: 80 },
-  emptyText: { color: '#94A3B8', fontSize: 14, marginTop: 12 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  unreadBadge: { backgroundColor: '#EF4444', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
+  unreadBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  markAllReadText: { fontSize: 13, fontWeight: '700', color: '#0088FF' },
+  content: { padding: 16 },
+
+  filterScroll: { flexDirection: 'row', marginBottom: 16 },
+  filterChip: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  filterChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  filterChipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  filterChipTextActive: { color: '#FFFFFF' },
+
   notifCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    position: 'relative',
   },
-  notifCardUnread: { borderColor: '#BFDBFE', backgroundColor: '#F0F9FF' },
-  unreadDot: {
-    position: 'absolute',
-    top: 12,
-    left: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0088FF',
+  notifCardUnread: {
+    backgroundColor: '#F8FAFF',
+    borderColor: '#BFDBFE',
   },
-  iconWrap: {
+  notifIconWrap: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    marginLeft: 4,
+    justifyContent: 'center',
   },
-  notifContent: { flex: 1 },
-  notifTitle: { fontSize: 14, fontWeight: '500', color: '#64748B', marginBottom: 4 },
-  notifTitleBold: { fontWeight: 'bold', color: '#1E293B' },
-  notifBody: { fontSize: 13, color: '#64748B', lineHeight: 18 },
-  notifTime: { fontSize: 11, color: '#94A3B8', marginTop: 6 },
+  notifTitle: { fontSize: 14, color: '#334155', fontWeight: '600', flex: 1, paddingRight: 8 },
+  notifTitleBold: { fontWeight: '800', color: '#0F172A' },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#0088FF', marginTop: 4 },
+  notifBody: { fontSize: 13, color: '#64748B', marginTop: 4, lineHeight: 18 },
+  notifTime: { fontSize: 11, color: '#94A3B8', marginTop: 8 },
 });

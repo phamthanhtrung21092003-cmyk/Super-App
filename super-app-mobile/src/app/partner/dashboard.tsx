@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, ScrollView, 
   Platform, SafeAreaView, StatusBar, useWindowDimensions,
-  Image, Modal, TextInput
+  Image, Modal, TextInput, Vibration, Linking, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebMap from '../../components/WebMap';
 import Animated, { FadeIn, SlideInDown, Layout } from 'react-native-reanimated';
+import rideSocketService, { IncomingOrderPayload } from '../../services/rideSocketService';
+import realRideApiService from '../../modules/ride/services/realRideService';
+
 
 export default function DriverDashboard() {
   const router = useRouter();
@@ -25,8 +29,13 @@ export default function DriverDashboard() {
 
   // Simulated Dispatch Matching State
   const [matchingOrder, setMatchingOrder] = useState<any>(null);
+  const [orderCountdown, setOrderCountdown] = useState<number>(20);
   const [activeTrip, setActiveTrip] = useState<any>(null);
   const [tripStep, setTripStep] = useState<number>(0);
+
+  // VietQR Topup Modal
+  const [showTopupModal, setShowTopupModal] = useState(false);
+  const [topupAmount, setTopupAmount] = useState('200000');
 
   // Driver wallet & earnings logs
   const [walletBalance, setWalletBalance] = useState(1280000);
@@ -72,97 +81,300 @@ export default function DriverDashboard() {
     { lat: 21.0322, lng: 105.8010, label: 'Điểm nóng: Cầu Giấy (12 đơn chờ 🛵)', color: '#EF4444' }
   ];
 
-  // Auto trigger matching order after going online
+  // Audio sound synthesizer for incoming order alert
+  const playIncomingOrderSound = () => {
+    try {
+      if (typeof window !== 'undefined' && (window.AudioContext || (window as any).webkitAudioContext)) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      }
+    } catch (e) {}
+  };
+
+  // Google Maps Deep-link navigation
+  const openGoogleMaps = (destinationAddress: string, lat?: number, lng?: number) => {
+    const query = lat && lng ? `${lat},${lng}` : encodeURIComponent(destinationAddress);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
+    Linking.openURL(url).catch(() => {
+      if (typeof window !== 'undefined') window.open(url, '_blank');
+    });
+  };
+
+  // Call passenger
+  const callPassenger = (phone: string = '0988123456') => {
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      if (typeof window !== 'undefined') window.alert(`Gọi điện cho khách hàng: ${phone}`);
+    });
+  };
+
+  // Load persistent trip from storage on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const storedTrip = await AsyncStorage.getItem('@vlife_driver_active_trip');
+        if (storedTrip) {
+          const parsed = JSON.parse(storedTrip);
+          if (parsed && parsed.trip) {
+            setActiveTrip(parsed.trip);
+            setTripStep(parsed.step || 1);
+            setIsOnline(true);
+          }
+        }
+      } catch (e) {}
+    })();
+  }, []);
+
+  // Save persistent trip on changes
+  useEffect(() => {
+    (async () => {
+      try {
+        if (activeTrip) {
+          await AsyncStorage.setItem('@vlife_driver_active_trip', JSON.stringify({ trip: activeTrip, step: tripStep }));
+        } else {
+          await AsyncStorage.removeItem('@vlife_driver_active_trip');
+        }
+      } catch (e) {}
+    })();
+  }, [activeTrip, tripStep]);
+
+  // Countdown timer for incoming order (20s) with Sound & Vibration
+  useEffect(() => {
+    let interval: any;
+    if (matchingOrder) {
+      setOrderCountdown(20);
+      playIncomingOrderSound();
+      try { Vibration.vibrate([0, 400, 200, 400]); } catch (e) {}
+
+      interval = setInterval(() => {
+        setOrderCountdown((prev) => {
+          if (prev <= 1) {
+            setMatchingOrder(null);
+            return 20;
+          }
+          if (prev % 3 === 0) {
+            playIncomingOrderSound();
+            try { Vibration.vibrate([0, 250, 100, 250]); } catch (e) {}
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [matchingOrder]);
+
+  // ─────────────────────────────────────────
+  // REAL-TIME: Kết nối WebSocket khi tài xế online
+  // ─────────────────────────────────────────
+  const [socketConnected, setSocketConnected] = useState(false);
+  const driverIdRef = useRef('driver-demo-1');
+
+  useEffect(() => {
+    if (!isOnline) {
+      // Khi offline → ngắt kết nối
+      rideSocketService.disconnect();
+      setSocketConnected(false);
+      return;
+    }
+
+    // Khi online → kết nối socket và join drivers_pool
+    rideSocketService.connect('driver');
+    rideSocketService.joinAsDriver(driverIdRef.current, 21.0285, 105.7801);
+    setSocketConnected(rideSocketService.isConnected);
+
+    // Thông báo server tài xế online qua REST (backup)
+    realRideApiService.toggleDriverOnline(driverIdRef.current, true).catch(() => {});
+
+    // Lắng nghe cuốc xe mới từ server (realtime dispatch)
+    const unsubOrder = rideSocketService.onIncomingOrder((order: IncomingOrderPayload) => {
+      if (!activeTrip && isOnline) {
+        // Chuyển đổi format IncomingOrderPayload → format matchingOrder
+        setMatchingOrder({
+          id: order.tripId,
+          tripId: order.tripId,
+          type: order.serviceType?.toLowerCase().includes('delivery') ? 'delivery' : 'passenger',
+          title: order.serviceType === 'DELIVERY' ? 'Giao hàng Siêu Tốc' : 'Chở khách V-Ride',
+          pickup: order.pickup,
+          dropoff: order.dropoff,
+          pickupLat: order.pickupLat,
+          pickupLng: order.pickupLng,
+          dropoffLat: order.dropoffLat,
+          dropoffLng: order.dropoffLng,
+          distance: `${order.distanceKm} km`,
+          eta: `${order.durationMin} phút`,
+          price: order.fareAmount,
+          finalAmount: order.finalAmount,
+          deal: 0,
+          tip: 0,
+          profitScore: order.profitScore || 90,
+          paymentMethod: order.paymentMethod,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          desc: order.paymentMethod === 'CASH' ? 'Thu tiền mặt trực tiếp' : 'Khách đã thanh toán qua ví',
+          isRealOrder: true, // Đánh dấu đây là cuốc thực
+        });
+      }
+    });
+
+    // Lắng nghe khi khách hủy cuốc
+    const unsubCancel = rideSocketService.onTripCancelledByCustomer(({ tripId, reason }) => {
+      if (activeTrip && activeTrip.tripId === tripId) {
+        setActiveTrip(null);
+        setTripStep(0);
+        Alert.alert('Khách đã hủy chuyến', reason || 'Khách hàng đã hủy yêu cầu.');
+      }
+    });
+
+    // Track connection state
+    const unsubConn = rideSocketService.onConnectionChange(setSocketConnected);
+
+    return () => {
+      unsubOrder();
+      unsubCancel();
+      unsubConn();
+      rideSocketService.disconnect();
+      realRideApiService.toggleDriverOnline(driverIdRef.current, false).catch(() => {});
+    };
+  }, [isOnline]);
+
+  // GPS broadcast khi đang có active trip
+  const locationIntervalRef = useRef<any>(null);
+  useEffect(() => {
+    if (activeTrip?.tripId && isOnline) {
+      locationIntervalRef.current = setInterval(() => {
+        // Gửi vị trí GPS giả lập (trong production: dùng expo-location)
+        const baseLat = 21.0285;
+        const baseLng = 105.7801;
+        const jitter = () => (Math.random() - 0.5) * 0.002;
+        rideSocketService.sendDriverLocation(
+          driverIdRef.current,
+          baseLat + jitter(),
+          baseLng + jitter(),
+          Math.random() * 360,
+          30 + Math.random() * 20,
+          activeTrip.tripId,
+        );
+      }, 5000); // Gửi vị trí mỗi 5 giây
+    } else {
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+    };
+  }, [activeTrip?.tripId, isOnline]);
+
+  // Fallback: Auto trigger simulation nếu không kết nối được socket (offline demo)
   useEffect(() => {
     let timer: any;
-    if (isOnline && !matchingOrder && !activeTrip) {
+    if (isOnline && !matchingOrder && !activeTrip && !socketConnected) {
+      // Chỉ chạy simulation khi KHÔNG có socket (offline/demo mode)
       timer = setTimeout(() => {
-        // Trigger a random order
-        const orderTypes = ['passenger', 'delivery', 'food'];
-        const randomType = orderTypes[Math.floor(Math.random() * orderTypes.length)];
-        
-        if (randomType === 'passenger') {
-          setMatchingOrder({
-            id: 'ORD-988',
-            type: 'passenger',
-            title: 'Chở khách',
-            pickup: '72 Trần Thái Tông, Cầu Giấy',
-            dropoff: 'Keangnam Landmark 72',
-            distance: '3.2 km',
-            eta: '8 phút',
-            price: 65000,
-            deal: 10000,
-            tip: 5000,
-            profitScore: 94,
-            profitStars: 5,
-            desc: 'Được trả thêm Tip từ khách'
-          });
-        } else if (randomType === 'delivery') {
-          setMatchingOrder({
-            id: 'ORD-989',
-            type: 'delivery',
-            title: 'Giao hàng Siêu Tốc',
-            pickup: 'Cửa hàng Bánh, 10 Duy Tân',
-            dropoff: '15 Mễ Trì, Nam Từ Liêm',
-            distance: '4.5 km',
-            eta: '12 phút',
-            price: 45000,
-            deal: 5000,
-            tip: 0,
-            profitScore: 88,
-            profitStars: 4,
-            desc: 'Đơn ghép nối tuyến tối ưu'
-          });
-        } else {
-          setMatchingOrder({
-            id: 'ORD-990',
-            type: 'food',
-            title: 'Giao đồ ăn (Bún chả)',
-            pickup: 'Bún chả Sinh Từ, 2 Nguyễn Phong Sắc',
-            dropoff: 'Tòa nhà FPT, Cầu Giấy',
-            distance: '1.8 km',
-            eta: '6 phút',
-            price: 25000,
-            deal: 0,
-            tip: 5000,
-            profitScore: 98,
-            profitStars: 5,
-            desc: 'Được ghép đơn tự động trưa'
-          });
-        }
+        setMatchingOrder({
+          id: 'DEMO-ORD-988',
+          tripId: null, // Null = demo order
+          type: 'passenger',
+          title: 'Chở khách V-Ride (Demo)',
+          pickup: '72 Trần Thái Tông, Cầu Giấy',
+          dropoff: 'Keangnam Landmark 72, Mễ Trì',
+          distance: '3.2 km',
+          eta: '8 phút',
+          price: 65000,
+          finalAmount: 50000,
+          deal: 10000,
+          tip: 5000,
+          profitScore: 94,
+          paymentMethod: 'CASH',
+          customerName: 'Khách Demo',
+          customerPhone: '0988123456',
+          desc: 'Demo mode - Server chưa kết nối',
+          isRealOrder: false,
+        });
       }, 4000);
     }
     return () => clearTimeout(timer);
-  }, [isOnline, matchingOrder, activeTrip]);
+  }, [isOnline, matchingOrder, activeTrip, socketConnected]);
 
-  const handleAcceptOrder = () => {
-    setActiveTrip(matchingOrder);
+  const handleAcceptOrder = async () => {
+    const order = matchingOrder;
+    setActiveTrip(order);
     setMatchingOrder(null);
     setTripStep(1); // 1 = Go to pickup
+
+    // Gọi API nhận cuốc thực (chỉ khi có tripId thực)
+    if (order?.tripId && order?.isRealOrder) {
+      try {
+        await realRideApiService.acceptRide(order.tripId, {
+          driverId: driverIdRef.current,
+          driverName: 'Nguyễn Văn Hùng',
+          vehicleName: 'VinFast VF 8 Xanh SM',
+          licensePlate: '29A-999.88',
+          avatarUrl: 'https://i.pravatar.cc/150?img=60',
+          rating: 4.95,
+        });
+        // Server sẽ tự broadcast tới khách qua WebSocket
+      } catch (e) {
+        console.log('[Driver] Accept ride API error (non-critical):', e);
+      }
+    }
   };
 
   const handleRejectOrder = () => {
     setMatchingOrder(null);
   };
 
-  const handleAdvanceTrip = () => {
+  // Status mapping: tripStep → server status
+  const STEP_TO_STATUS: Record<number, string> = {
+    1: 'ACCEPTED',
+    2: 'ARRIVED_PICKUP',
+    3: 'IN_TRIP',
+  };
+
+  const handleAdvanceTrip = async () => {
     if (!activeTrip) return;
-    
+
     if (activeTrip.type === 'passenger') {
       if (tripStep === 1) {
         setTripStep(2); // Arrived at pickup
+        // Gọi API cập nhật trạng thái
+        if (activeTrip.tripId && activeTrip.isRealOrder) {
+          realRideApiService.updateTripStatus(activeTrip.tripId, 'ARRIVED_PICKUP').catch(() => {});
+        }
       } else if (tripStep === 2) {
-        setTripStep(3); // Start trip
+        setTripStep(3); // Start trip - IN_TRIP
+        if (activeTrip.tripId && activeTrip.isRealOrder) {
+          realRideApiService.updateTripStatus(activeTrip.tripId, 'IN_TRIP').catch(() => {});
+        }
       } else if (tripStep === 3) {
-        // Complete trip
-        const finalEarning = activeTrip.price + activeTrip.deal + activeTrip.tip;
+        // Complete trip → COMPLETED
+        if (activeTrip.tripId && activeTrip.isRealOrder) {
+          try {
+            const completed = await realRideApiService.updateTripStatus(activeTrip.tripId, 'COMPLETED');
+            // Cập nhật ví từ server response
+          } catch (e) {}
+        }
+
+        // Cập nhật ví local (luôn chạy, kể cả demo)
+        const finalEarning = (activeTrip.finalAmount || activeTrip.price) - Math.round((activeTrip.price || 0) * 0.15);
         setWalletBalance(prev => prev + finalEarning);
         setDailyEarnings(prev => prev + finalEarning);
         setTransactions(prev => [
           {
             id: `TX-${Math.floor(Math.random()*900)+100}`,
             type: 'earn',
-            title: `Chở khách: ${activeTrip.pickup.split(',')[0]} -> ${activeTrip.dropoff.split(',')[0]}`,
+            title: `Chở khách: ${activeTrip.pickup.split(',')[0]} → ${activeTrip.dropoff.split(',')[0]}`,
             amount: finalEarning,
             time: 'Vừa xong',
             category: 'passenger'
@@ -345,6 +557,10 @@ export default function DriverDashboard() {
                       <Ionicons name={matchingOrder.type === 'passenger' ? 'car' : (matchingOrder.type === 'delivery' ? 'cube' : 'restaurant')} size={16} color="#000" />
                       <Text style={styles.dispBadgeText}>{matchingOrder.title}</Text>
                     </View>
+                    <View style={styles.countdownBadge}>
+                      <Ionicons name="timer-outline" size={15} color="#DC2626" />
+                      <Text style={styles.countdownText}>{orderCountdown}s</Text>
+                    </View>
                     <View style={styles.profitBadge}>
                       <Text style={styles.profitScoreText}>AI Profit: {matchingOrder.profitScore}đ</Text>
                       <View style={{ flexDirection: 'row', marginLeft: 4 }}>
@@ -353,6 +569,24 @@ export default function DriverDashboard() {
                         ))}
                       </View>
                     </View>
+                  </View>
+
+                  {/* Payment Type Badge */}
+                  <View style={[
+                    styles.payTypeBanner,
+                    matchingOrder.paymentMethod === 'ONLINE' ? styles.payTypeBannerOnline : styles.payTypeBannerCash
+                  ]}>
+                    <Ionicons
+                      name={matchingOrder.paymentMethod === 'ONLINE' ? 'card-outline' : 'cash-outline'}
+                      size={16}
+                      color={matchingOrder.paymentMethod === 'ONLINE' ? '#10B981' : '#EF4444'}
+                    />
+                    <Text style={[
+                      styles.payTypeBannerText,
+                      { color: matchingOrder.paymentMethod === 'ONLINE' ? '#10B981' : '#EF4444' }
+                    ]}>
+                      {matchingOrder.paymentMethod === 'ONLINE' ? 'ĐÃ THANH TOÁN VÍ ONLINE (KHÔNG THU TIỀN)' : 'THU TIỀN MẶT KHI TRẢ KHÁCH (COD)'}
+                    </Text>
                   </View>
 
                   <Text style={styles.dispRouteTitle}>Tuyến đường đề xuất:</Text>
@@ -382,7 +616,7 @@ export default function DriverDashboard() {
                       <Text style={styles.rejectBtnText}>Từ chối</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.acceptBtn} onPress={handleAcceptOrder}>
-                      <Text style={styles.acceptBtnText}>NHẬN ĐƠN</Text>
+                      <Text style={styles.acceptBtnText}>NHẬN ĐƠN ({orderCountdown}s)</Text>
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
@@ -393,9 +627,9 @@ export default function DriverDashboard() {
                 <Animated.View entering={SlideInDown} style={styles.activeTripCard}>
                   <View style={styles.tripHeader}>
                     <Text style={styles.tripTitle}>
-                      {tripStep === 1 && 'Đang đi đến điểm đón'}
-                      {tripStep === 2 && 'Đã tới nơi - Chờ khách / Nhận hàng'}
-                      {tripStep === 3 && 'Đang di chuyển giao nhận'}
+                      {tripStep === 1 && '1. Đang đi đến điểm đón'}
+                      {tripStep === 2 && '2. Đã tới nơi - Chờ khách / Nhận hàng'}
+                      {tripStep === 3 && '3. Đang di chuyển giao nhận'}
                     </Text>
                     <Text style={styles.tripPrice}>{(activeTrip.price + activeTrip.deal + activeTrip.tip).toLocaleString()}đ</Text>
                   </View>
@@ -404,14 +638,48 @@ export default function DriverDashboard() {
                     {tripStep <= 2 ? `Điểm đón/lấy: ${activeTrip.pickup}` : `Điểm giao/đến: ${activeTrip.dropoff || activeTrip.pickup}`}
                   </Text>
 
+                  {/* High Contrast Payment Warning Banner */}
+                  <View style={[
+                    styles.payStatusBanner,
+                    activeTrip.paymentMethod === 'ONLINE' ? styles.payStatusOnline : styles.payStatusCash
+                  ]}>
+                    <Ionicons
+                      name={activeTrip.paymentMethod === 'ONLINE' ? 'shield-checkmark' : 'cash'}
+                      size={20}
+                      color={activeTrip.paymentMethod === 'ONLINE' ? '#10B981' : '#EF4444'}
+                    />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={[
+                        styles.payStatusTitle,
+                        { color: activeTrip.paymentMethod === 'ONLINE' ? '#10B981' : '#EF4444' }
+                      ]}>
+                        {activeTrip.paymentMethod === 'ONLINE'
+                          ? 'KHÁCH ĐÃ TRẢ QUA VÍ (0Đ) - KHÔNG THU TIỀN MẶT'
+                          : `THU TIỀN MẶT: ${(activeTrip.price + activeTrip.deal + activeTrip.tip).toLocaleString()}đ`}
+                      </Text>
+                      <Text style={styles.payStatusDesc}>
+                        {activeTrip.paymentMethod === 'ONLINE'
+                          ? 'Tiền cước đã tự động cộng vào ví tài xế'
+                          : 'Tài xế thu đủ tiền mặt từ khách khi kết thúc chuyến'}
+                      </Text>
+                    </View>
+                  </View>
+
                   <View style={styles.tripActionButtonsRow}>
-                    <TouchableOpacity style={styles.navBtn} onPress={() => { if (Platform.OS === 'web') window.alert('Đang mở ứng dụng Google Maps điều hướng...'); }}>
+                    <TouchableOpacity
+                      style={styles.navBtn}
+                      onPress={() => openGoogleMaps(tripStep <= 2 ? activeTrip.pickup : activeTrip.dropoff)}
+                    >
                       <Ionicons name="navigate-circle" size={20} color="#FFF" style={{ marginRight: 6 }} />
-                      <Text style={styles.navBtnText}>Dẫn đường</Text>
+                      <Text style={styles.navBtnText}>Google Maps Chỉ đường</Text>
                     </TouchableOpacity>
                     
-                    <TouchableOpacity style={styles.chatCallBtn} onPress={() => { if (Platform.OS === 'web') window.alert('Đang kết nối cuộc gọi với khách...'); }}>
-                      <Ionicons name="call" size={18} color="#FFF" />
+                    <TouchableOpacity
+                      style={styles.chatCallBtn}
+                      onPress={() => callPassenger(activeTrip.customerPhone)}
+                    >
+                      <Ionicons name="call" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.chatCallBtnText}>Gọi khách</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -440,6 +708,14 @@ export default function DriverDashboard() {
                 <Text style={styles.walletSub}>Tiền chờ đối soát: 150.000đ</Text>
                 
                 <View style={styles.walletActions}>
+                  <TouchableOpacity
+                    style={[styles.walletActionBtn, { backgroundColor: '#10B981' }]}
+                    onPress={() => setShowTopupModal(true)}
+                  >
+                    <Ionicons name="qr-code-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                    <Text style={[styles.walletActionText, { color: '#FFF' }]}>Nạp ví VietQR</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity style={styles.walletActionBtn} onPress={() => {
                     if (walletBalance >= 100000) {
                       setWalletBalance(prev => prev - 100000);
@@ -776,6 +1052,76 @@ export default function DriverDashboard() {
           </View>
         </Modal>
 
+        {/* MODAL: TOPUP WALLET VIETQR */}
+        <Modal visible={showTopupModal} transparent animationType="slide" onRequestClose={() => setShowTopupModal(false)}>
+          <View style={styles.modalBgCenter}>
+            <View style={[styles.centerCard, { maxWidth: 380, padding: 20 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Nạp Tiền Ví Ký Quỹ Tài Xế</Text>
+                <TouchableOpacity onPress={() => setShowTopupModal(false)}>
+                  <Ionicons name="close-circle" size={24} color="#CBD5E1" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 12, textAlign: 'center', lineHeight: 18 }}>
+                Quét mã VietQR bên dưới bằng app ngân hàng bất kỳ để nạp tiền ví nhận cuốc. Hệ thống tự động duyệt trong 30 giây.
+              </Text>
+
+              {/* VietQR Dynamic Image */}
+              <View style={{ backgroundColor: '#FFF', padding: 12, borderRadius: 16, marginBottom: 12, alignItems: 'center' }}>
+                <Image
+                  source={{ uri: `https://api.vietqr.io/image/970422-0988123456-compact2.png?amount=${topupAmount}&addInfo=NAP%20VI%20TAI%20XE%20V-LIFE` }}
+                  style={{ width: 200, height: 200 }}
+                />
+                <Text style={{ fontSize: 11, color: '#64748B', marginTop: 6, fontWeight: 'bold' }}>
+                  MB BANK • STK: 0988123456 • NGUYEN VAN HUNG
+                </Text>
+              </View>
+
+              {/* Quick Select Amounts */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, width: '100%' }}>
+                {['100000', '200000', '500000'].map((amt) => (
+                  <TouchableOpacity
+                    key={amt}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 8,
+                      borderRadius: 10,
+                      backgroundColor: topupAmount === amt ? '#10B981' : 'rgba(255,255,255,0.05)',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: topupAmount === amt ? '#10B981' : 'rgba(255,255,255,0.1)',
+                    }}
+                    onPress={() => setTopupAmount(amt)}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: topupAmount === amt ? '#FFF' : '#CBD5E1' }}>
+                      {(parseInt(amt) / 1000).toLocaleString()}k
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={{ width: '100%', backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}
+                onPress={() => {
+                  const added = parseInt(topupAmount) || 200000;
+                  setWalletBalance((prev) => prev + added);
+                  setTransactions((prev) => [
+                    { id: `TX-${Date.now()}`, type: 'earn', title: `Nạp ví ký quỹ VietQR 24/7`, amount: added, time: 'Vừa xong', category: 'topup' },
+                    ...prev,
+                  ]);
+                  setShowTopupModal(false);
+                  if (Platform.OS === 'web') {
+                    window.alert(`Nạp thành công +${added.toLocaleString()}đ vào Ví ký quỹ tài xế!`);
+                  }
+                }}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>XÁC NHẬN ĐÃ CHUYỂN KHOẢN XONG</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </View>
   );
@@ -970,4 +1316,24 @@ const styles = StyleSheet.create({
   actionBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   actionBtnText: { color: '#000', fontWeight: 'bold', fontSize: 13 },
   descText: { fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18 },
+
+  // Countdown badge in dispatch card
+  countdownBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  countdownText: { fontSize: 12, fontWeight: 'bold', color: '#DC2626', marginLeft: 4 },
+
+  // Payment type badge
+  payTypeBanner: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 8, marginTop: 8, marginBottom: 4 },
+  payTypeBannerOnline: { backgroundColor: 'rgba(16,185,129,0.1)' },
+  payTypeBannerCash: { backgroundColor: 'rgba(239,68,68,0.1)' },
+  payTypeBannerText: { fontSize: 11, fontWeight: 'bold', marginLeft: 6 },
+
+  // Active Trip Payment High Contrast Banner
+  payStatusBanner: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, marginVertical: 10, borderWidth: 1.5 },
+  payStatusOnline: { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: '#10B981' },
+  payStatusCash: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: '#EF4444' },
+  payStatusTitle: { fontSize: 13, fontWeight: '900', letterSpacing: 0.2 },
+  payStatusDesc: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+
+  chatCallBtnText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
 });
+
