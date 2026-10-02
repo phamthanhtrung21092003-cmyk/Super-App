@@ -11,6 +11,8 @@ import {
 import { AuthService } from './auth.service';
 import { UserRegisterDto } from './dto/user-register.dto';
 import { UserLoginDto } from './dto/user-login.dto';
+import { DriverRegisterDto } from './dto/driver-register.dto';
+import { DriverLoginDto } from './dto/driver-login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import {
   ApiTags,
@@ -56,6 +58,38 @@ export class AuthController {
   })
   async login(@Body() dto: UserLoginDto, @Ip() ip: string) {
     return this.authService.loginUser(dto, ip);
+  }
+
+  @Post('driver/register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Đăng ký tài khoản tài xế (Driver)' })
+  @ApiBody({ type: DriverRegisterDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Đăng ký tài xế thành công',
+    schema: { example: { message: 'Driver registered successfully' } },
+  })
+  @ApiResponse({ status: 400, description: 'Dữ liệu đầu vào DTO không hợp lệ' })
+  @ApiResponse({ status: 409, description: 'Số điện thoại tài xế đã tồn tại' })
+  async registerDriver(@Body() dto: DriverRegisterDto) {
+    await this.authService.registerDriver(dto);
+    return { message: 'Driver registered successfully' };
+  }
+
+  @Post('driver/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Đăng nhập tài khoản tài xế (Driver)' })
+  @ApiBody({ type: DriverLoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Đăng nhập tài xế thành công, trả về access/refresh token',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Số điện thoại hoặc mật khẩu không chính xác',
+  })
+  async loginDriver(@Body() dto: DriverLoginDto, @Ip() ip: string) {
+    return this.authService.loginDriver(dto, ip);
   }
 
   @Post('refresh')

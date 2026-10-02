@@ -1,218 +1,206 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  SafeAreaView,
-  ScrollView,
-  Platform,
-  TouchableOpacity,
-  Image,
-  Switch,
-  Alert,
-  StatusBar,
+  StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity,
+  Image, Alert, StatusBar, Platform, Modal, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function DriverProfileScreen() {
   const router = useRouter();
 
-  // Settings states
-  const [autoAccept, setAutoAccept] = useState(false);
-  const [backToBack, setBackToBack] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-
-  // Play test chime
-  const playTestSound = () => {
-    try {
-      if (typeof window !== 'undefined' && (window.AudioContext || (window as any).webkitAudioContext)) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.5, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.35);
-      } else {
-        if (Platform.OS === 'web') alert('Đã phát âm thanh thử nghiệm nổ cuốc!');
-        else Alert.alert('Âm thanh nổ cuốc', 'Đã kiểm tra chuông báo!');
-      }
-    } catch (e) {}
-  };
+  // Modals
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [showHonorModal, setShowHonorModal] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Header */}
+      {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Hồ Sơ & Cài Đặt Đối Tác</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>Hồ Sơ Đối Tác</Text>
+          <TouchableOpacity
+            style={styles.settingsShortcutBtn}
+            activeOpacity={0.8}
+            onPress={() => router.push('/(tabs)/settings')}
+          >
+            <Ionicons name="settings-outline" size={16} color="#0088FF" />
+            <Text style={styles.settingsShortcutText}>Cài đặt ⚙️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Info Card */}
+        {/* 1. THẺ HỒ SƠ ĐỐI TÁC KIM CƯƠNG */}
         <View style={styles.profileCard}>
           <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
+            source={require('../../../assets/images/icon.png')}
             style={styles.avatar}
           />
-          <View style={styles.info}>
+          <View style={styles.profileInfo}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.name}>Trần Văn Bình</Text>
-              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              <Text style={styles.driverName}>Trần Văn Bình</Text>
+              <Ionicons name="checkmark-circle" size={19} color="#10B981" />
             </View>
-            <Text style={styles.driverId}>Mã đối tác: #TX-8889 • V-Bike Elite</Text>
+            <Text style={styles.driverIdText}>Mã đối tác: #TX-8889 • Đội xe Thủ Đô</Text>
 
             <View style={styles.badgeRow}>
               <View style={styles.badgeGold}>
-                <Ionicons name="star" size={14} color="#D97706" />
-                <Text style={styles.badgeGoldText}>4.96 (520 cuốc)</Text>
+                <Ionicons name="star" size={13} color="#D97706" />
+                <Text style={styles.badgeGoldText}>4.96 ⭐ (520 cuốc)</Text>
               </View>
               <View style={styles.badgePurple}>
-                <Ionicons name="diamond" size={14} color="#7E22CE" />
+                <Ionicons name="diamond" size={13} color="#7E22CE" />
                 <Text style={styles.badgePurpleText}>Tài Xế Kim Cương</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Performance Metrics */}
+        {/* 2. BỘ CHỈ SỐ HIỆU SUẤT HOẠT ĐỘNG VÀNG */}
         <View style={styles.metricsCard}>
-          <Text style={styles.sectionHeaderTitle}>CHỈ SỐ HIỆU SUẤT HOẠT ĐỘNG</Text>
+          <View style={styles.metricsHeader}>
+            <Text style={styles.sectionHeaderTitle}>CHỈ SỐ HIỆU SUẤT VẬN HÀNH THÁNG 10</Text>
+            <View style={styles.reputationBadge}>
+              <Ionicons name="shield-checkmark" size={12} color="#059669" />
+              <Text style={styles.reputationText}>Uy tín 100/100</Text>
+            </View>
+          </View>
           <View style={styles.metricsGrid}>
             <View style={styles.metricBox}>
-              <Text style={styles.metricVal}>98%</Text>
-              <Text style={styles.metricLabel}>Tỷ lệ nhận cuốc</Text>
+              <Text style={styles.metricValGreen}>98.0%</Text>
+              <Text style={styles.metricLabel}>Tỷ lệ nhận</Text>
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.metricBox}>
-              <Text style={styles.metricVal}>99.2%</Text>
+              <Text style={styles.metricValGreen}>99.2%</Text>
               <Text style={styles.metricLabel}>Tỷ lệ hoàn thành</Text>
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.metricBox}>
-              <Text style={styles.metricVal}>0.5%</Text>
+              <Text style={styles.metricValRed}>0.5%</Text>
               <Text style={styles.metricLabel}>Tỷ lệ hủy</Text>
             </View>
           </View>
         </View>
 
-        {/* Vehicle Information */}
+        {/* 3. PHƯƠNG TIỆN ĐĂNG KÝ & GIẤY TỜ PHÁP LÝ */}
         <View style={styles.menuGroup}>
           <View style={styles.groupHeader}>
-            <Text style={styles.groupHeaderText}>PHƯƠNG TIỆN & HỒ SƠ GIẤY TỜ</Text>
+            <Ionicons name="shield-checkmark-outline" size={16} color="#0088FF" />
+            <Text style={styles.groupHeaderText}>PHƯƠNG TIỆN & HỒ SƠ PHÁP LÝ ĐỐI TÁC</Text>
           </View>
 
-          <TouchableOpacity style={styles.menuItem}>
+          {/* Phương tiện đăng ký */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.8}
+            onPress={() => setShowVehicleModal(true)}
+          >
             <View style={[styles.menuIconWrap, { backgroundColor: '#EFF6FF' }]}>
               <Ionicons name="bicycle" size={20} color="#0088FF" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.menuTitle}>Phương tiện đăng ký</Text>
-              <Text style={styles.menuSub}>Honda Wave RSX • 29D1-888.88</Text>
+              <Text style={styles.menuTitle}>Phương tiện đăng ký hoạt động</Text>
+              <Text style={styles.menuSub}>Honda Wave RSX 110cc • Biển số: 29D1-888.88</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.menuItem}>
+          {/* Giấy tờ pháp lý */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.8}
+            onPress={() => setShowVehicleModal(true)}
+          >
             <View style={[styles.menuIconWrap, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+              <Ionicons name="document-text" size={20} color="#059669" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.menuTitle}>Bảo hiểm & Giấy tờ xe</Text>
-              <Text style={styles.menuSubGreen}>Đã xác minh đầy đủ (Hiệu lực 2027)</Text>
+              <Text style={styles.menuTitle}>Giấy tờ pháp lý số hóa</Text>
+              <Text style={styles.menuSubGreen}>GPLX, CCCD, Cà vẹt, Bảo hiểm TNDS (Đã duyệt 100%)</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
         </View>
 
-        {/* Dispatch Settings */}
+        {/* 4. TÀI KHOẢN NGÂN HÀNG & THÀNH TÍCH */}
         <View style={styles.menuGroup}>
           <View style={styles.groupHeader}>
-            <Text style={styles.groupHeaderText}>CÀI ĐẶT NHẬN CUỐC & ĐIỀU HƯỚNG</Text>
+            <Ionicons name="card-outline" size={16} color="#0088FF" />
+            <Text style={styles.groupHeaderText}>TÀI KHOẢN THỤ HƯỞNG & THÀNH TÍCH</Text>
           </View>
 
-          {/* Auto Accept Switch */}
-          <View style={styles.menuItem}>
-            <View style={[styles.menuIconWrap, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="flash" size={20} color="#D97706" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.menuTitle}>Tự động nhận cuốc (Auto-Accept)</Text>
-              <Text style={styles.menuSub}>Tự động chốt khi có cuốc gần nhất</Text>
-            </View>
-            <Switch value={autoAccept} onValueChange={setAutoAccept} />
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Back to back switch */}
-          <View style={styles.menuItem}>
-            <View style={[styles.menuIconWrap, { backgroundColor: '#EEF2FF' }]}>
-              <Ionicons name="git-merge" size={20} color="#6366F1" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.menuTitle}>Nhận cuốc nối tiếp (Back-to-back)</Text>
-              <Text style={styles.menuSub}>Nhận cuốc mới khi sắp trả khách cũ</Text>
-            </View>
-            <Switch value={backToBack} onValueChange={setBackToBack} />
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Test Sound Button */}
-          <TouchableOpacity style={styles.menuItem} onPress={playTestSound}>
-            <View style={[styles.menuIconWrap, { backgroundColor: '#FDF4FF' }]}>
-              <Ionicons name="volume-high" size={20} color="#C026D3" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.menuTitle}>Kiểm tra loa chuông nổ cuốc</Text>
-              <Text style={styles.menuSub}>Phát thử âm báo chuông nổ chuyến</Text>
-            </View>
-            <Ionicons name="play-circle" size={22} color="#C026D3" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Support & Logout */}
-        <View style={styles.menuGroup}>
+          {/* Tài khoản ngân hàng nhận tiền */}
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => {
-              if (Platform.OS === 'web') alert('Đang kết nối tổng đài đối tác 1900-8888');
-              else Alert.alert('Hỗ trợ', 'Tổng đài đối tác 24/7: 1900-8888');
-            }}
+            activeOpacity={0.8}
+            onPress={() => setShowBankModal(true)}
           >
-            <View style={[styles.menuIconWrap, { backgroundColor: '#F1F5F9' }]}>
-              <Ionicons name="headset" size={20} color="#475569" />
+            <View style={[styles.menuIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="card" size={20} color="#2563EB" />
             </View>
-            <Text style={[styles.menuTitle, { flex: 1 }]}>Tổng đài hỗ trợ đối tác 24/7</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuTitle}>Tài khoản ngân hàng thụ hưởng</Text>
+              <Text style={styles.menuSub}>MB Bank • STK: 999988886666 (TRAN VAN BINH)</Text>
+            </View>
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
 
           <View style={styles.divider} />
 
+          {/* Vinh danh thành tích */}
           <TouchableOpacity
             style={styles.menuItem}
+            activeOpacity={0.8}
+            onPress={() => setShowHonorModal(true)}
+          >
+            <View style={[styles.menuIconWrap, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="trophy" size={20} color="#D97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuTitle}>Bảng vàng thành tích & Vinh danh</Text>
+              <Text style={styles.menuSub}>Top 5 tài xế xuất sắc nhất khu vực Hà Nội</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+
+        {/* 5. PHÍM TẮT ĐI TỚI CÀI ĐẶT & ĐĂNG XUẤT */}
+        <View style={styles.menuGroup}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.8}
+            onPress={() => router.push('/(tabs)/settings')}
+          >
+            <View style={[styles.menuIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="settings" size={20} color="#0088FF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuTitle}>Mở Trung Tâm Cài Đặt Hệ Thống</Text>
+              <Text style={styles.menuSub}>Bán kính, Auto-Accept, Chuông to, Giữ sáng màn hình, Bản đồ</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#0088FF" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          {/* Đăng xuất */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.8}
             onPress={() => {
-              if (Platform.OS === 'web') {
-                if (confirm('Bạn có chắc muốn đăng xuất khỏi ứng dụng tài xế?')) {
-                  router.push('/(tabs)');
-                }
-              } else {
-                Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất khỏi tài khoản?', [
-                  { text: 'Hủy', style: 'cancel' },
-                  { text: 'Đăng xuất', style: 'destructive', onPress: () => router.push('/(tabs)') },
-                ]);
-              }
+              Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng Sunstar Driver?', [
+                { text: 'Hủy', style: 'cancel' },
+                { text: 'Đăng xuất', style: 'destructive', onPress: () => router.push('/(tabs)') },
+              ]);
             }}
           >
             <View style={[styles.menuIconWrap, { backgroundColor: '#FEF2F2' }]}>
@@ -222,24 +210,188 @@ export default function DriverProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.versionText}>Phiên bản 2.5.0 (Build 20261002) • V-Life Driver Enterprise</Text>
+        <Text style={styles.versionText}>
+          Sunstar Driver v2.6.0 (Build 20261002) • Profile Verified
+        </Text>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ─────────────────────────────────────────
+          MODAL: PHƯƠNG TIỆN & GIẤY TỜ PHÁP LÝ
+         ───────────────────────────────────────── */}
+      <Modal visible={showVehicleModal} transparent animationType="slide" onRequestClose={() => setShowVehicleModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="shield-checkmark" size={22} color="#10B981" />
+                <Text style={styles.modalTitle}>Phương Tiện & Giấy Tờ Số Hóa</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowVehicleModal(false)}>
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.vehicleCardBox}>
+                <View style={styles.vehicleIconCircle}>
+                  <Ionicons name="bicycle" size={26} color="#0088FF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.vehicleName}>Honda Wave RSX 110cc</Text>
+                  <Text style={styles.vehiclePlate}>Biển số: 29D1-888.88 (Hà Nội)</Text>
+                  <Text style={styles.vehicleColor}>Màu sắc: Đỏ Đen • Đăng ký chính chủ</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.sectionHeaderTitle, { marginTop: 14, marginBottom: 8 }]}>
+                DANH MỤC GIẤY TỜ ĐÃ XÁC MINH SỐ HÓA
+              </Text>
+
+              {[
+                { title: 'Giấy phép lái xe (GPLX A1)', number: '010192837465', status: 'Hợp lệ', exp: 'Vô thời hạn', icon: 'card-outline' },
+                { title: 'Căn cước công dân gắn chip', number: '001092837465', status: 'Hợp lệ', exp: 'Đến 2038', icon: 'person-outline' },
+                { title: 'Giấy đăng ký xe (Cà vẹt)', number: 'Số khung: 8892182', status: 'Hợp lệ', exp: 'Chính chủ', icon: 'document-text-outline' },
+                { title: 'Bảo hiểm TNDS bắt buộc', number: 'Bảo Việt số BV-9921', status: 'Hiệu lực', exp: 'Đến 15/08/2027', icon: 'shield-outline' },
+                { title: 'Phù hiệu xe hợp đồng điện tử', number: 'Sở GTVT Hà Nội cấp', status: 'Đang hoạt động', exp: 'Đến 2028', icon: 'checkmark-done-circle-outline' },
+              ].map((doc, idx) => (
+                <View key={idx} style={styles.docItemRow}>
+                  <Ionicons name={doc.icon as any} size={20} color="#0088FF" style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.docTitle}>{doc.title}</Text>
+                    <Text style={styles.docNumber}>{doc.number}</Text>
+                    <Text style={styles.docExp}>Hạn dùng: {doc.exp}</Text>
+                  </View>
+                  <View style={styles.docStatusBadge}>
+                    <Text style={styles.docStatusBadgeText}>{doc.status}</Text>
+                  </View>
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.primaryModalBtn} onPress={() => setShowVehicleModal(false)}>
+                <Text style={styles.primaryModalBtnText}>Đóng</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─────────────────────────────────────────
+          MODAL: TÀI KHOẢN NGÂN HÀNG THỤ HƯỞNG
+         ───────────────────────────────────────── */}
+      <Modal visible={showBankModal} transparent animationType="fade" onRequestClose={() => setShowBankModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="card" size={22} color="#0088FF" />
+                <Text style={styles.modalTitle}>Tài Khoản Ngân Hàng Thụ Hưởng</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowBankModal(false)}>
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.bankCardBox}>
+              <View style={styles.bankHeaderRow}>
+                <Text style={styles.bankName}>NGÂN HÀNG QUÂN ĐỘI (MB BANK)</Text>
+                <View style={styles.bankActivePill}><Text style={styles.bankActiveText}>Mặc định</Text></View>
+              </View>
+              <Text style={styles.bankNumber}>9999 8888 6666</Text>
+              <Text style={styles.bankOwner}>CHỦ TK: TRAN VAN BINH</Text>
+              <Text style={styles.bankBranch}>Chi nhánh: MB Bank Cầu Giấy, Hà Nội</Text>
+            </View>
+
+            <Text style={styles.bankDesc}>
+              Đây là tài khoản nhận tiền rút siêu tốc 24/7 từ Ví Thu Nhập của tài xế. Tiền sẽ về tài khoản trong 30 giây với phí 0đ.
+            </Text>
+
+            <TouchableOpacity style={styles.primaryModalBtn} onPress={() => setShowBankModal(false)}>
+              <Text style={styles.primaryModalBtnText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─────────────────────────────────────────
+          MODAL: BẢNG VÀNG THÀNH TÍCH
+         ───────────────────────────────────────── */}
+      <Modal visible={showHonorModal} transparent animationType="fade" onRequestClose={() => setShowHonorModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="trophy" size={22} color="#D97706" />
+                <Text style={styles.modalTitle}>Bảng Vàng Thành Tích</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowHonorModal(false)}>
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.honorBadgeBox}>
+              <Ionicons name="medal" size={48} color="#D97706" />
+              <Text style={styles.honorTitle}>CHIẾN BINH KIM CƯƠNG XUẤT SẮC</Text>
+              <Text style={styles.honorSub}>Vinh danh tháng 10/2026 • Khu vực Hà Nội</Text>
+            </View>
+
+            <View style={styles.honorMetricsRow}>
+              <View style={styles.honorMetricCol}>
+                <Text style={styles.honorNum}>520</Text>
+                <Text style={styles.honorLabel}>Cuốc hoàn thành</Text>
+              </View>
+              <View style={styles.honorDivider} />
+              <View style={styles.honorMetricCol}>
+                <Text style={styles.honorNumGreen}>4.96 ⭐</Text>
+                <Text style={styles.honorLabel}>Điểm sao hài lòng</Text>
+              </View>
+              <View style={styles.honorDivider} />
+              <View style={styles.honorMetricCol}>
+                <Text style={styles.honorNumBlue}>Top 5</Text>
+                <Text style={styles.honorLabel}>Toàn thành phố</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.primaryModalBtn} onPress={() => setShowHonorModal(false)}>
+              <Text style={styles.primaryModalBtnText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
+
   header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 40 : 16,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 36 : 14,
+    paddingBottom: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: { fontSize: 21, fontWeight: '900', color: '#0F172A', letterSpacing: -0.3 },
+  settingsShortcutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  settingsShortcutText: { fontSize: 12, fontWeight: '700', color: '#0088FF' },
+
   content: { padding: 16 },
 
   profileCard: {
@@ -250,12 +402,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  avatar: { width: 68, height: 68, borderRadius: 34, marginRight: 14 },
-  info: { flex: 1 },
-  name: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-  driverId: { fontSize: 12, color: '#64748B', marginTop: 2, marginBottom: 8 },
+  avatar: { width: 64, height: 64, borderRadius: 32, marginRight: 14, backgroundColor: '#EFF6FF' },
+  profileInfo: { flex: 1 },
+  driverName: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
+  driverIdText: { fontSize: 12, color: '#64748B', marginTop: 2, marginBottom: 8 },
   badgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   badgeGold: {
     flexDirection: 'row',
@@ -266,7 +423,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 4,
   },
-  badgeGoldText: { fontSize: 11, fontWeight: '700', color: '#D97706' },
+  badgeGoldText: { fontSize: 11, fontWeight: '800', color: '#D97706' },
   badgePurple: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -276,7 +433,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 4,
   },
-  badgePurpleText: { fontSize: 11, fontWeight: '700', color: '#7E22CE' },
+  badgePurpleText: { fontSize: 11, fontWeight: '800', color: '#7E22CE' },
 
   metricsCard: {
     backgroundColor: '#FFFFFF',
@@ -284,36 +441,67 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  sectionHeaderTitle: { fontSize: 12, fontWeight: '800', color: '#64748B', marginBottom: 12 },
+  metricsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionHeaderTitle: { fontSize: 11, fontWeight: '800', color: '#64748B', letterSpacing: 0.5 },
+  reputationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  reputationText: { fontSize: 10.5, fontWeight: '800', color: '#059669' },
   metricsGrid: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   metricBox: { flex: 1, alignItems: 'center' },
-  metricDivider: { width: 1, height: 32, backgroundColor: '#F1F5F9' },
-  metricVal: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
-  metricLabel: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  metricDivider: { width: 1, height: 30, backgroundColor: '#F1F5F9' },
+  metricValGreen: { fontSize: 18, fontWeight: '900', color: '#059669' },
+  metricValRed: { fontSize: 18, fontWeight: '900', color: '#EF4444' },
+  metricLabel: { fontSize: 11, color: '#94A3B8', marginTop: 3 },
 
   menuGroup: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 16,
+    marginBottom: 14,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: '#F8FAFC',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  groupHeaderText: { fontSize: 11, fontWeight: '800', color: '#64748B' },
+  groupHeaderText: { fontSize: 11, fontWeight: '800', color: '#475569', letterSpacing: 0.4 },
+
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   menuIconWrap: {
     width: 36,
@@ -323,10 +511,129 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  menuTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  menuSub: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  menuSubGreen: { fontSize: 12, color: '#059669', fontWeight: '600', marginTop: 2 },
+  menuTitle: { fontSize: 13.5, fontWeight: '700', color: '#0F172A' },
+  menuSub: { fontSize: 11.5, color: '#64748B', marginTop: 2, lineHeight: 16 },
+  menuSubGreen: { fontSize: 11.5, color: '#059669', fontWeight: '600', marginTop: 2 },
   divider: { height: 1, backgroundColor: '#F1F5F9', marginLeft: 64 },
 
-  versionText: { fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 8 },
+  versionText: { fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 10, marginBottom: 10 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '88%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 14,
+    marginBottom: 14,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
+
+  vehicleCardBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    gap: 12,
+  },
+  vehicleIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehicleName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  vehiclePlate: { fontSize: 13, fontWeight: '700', color: '#0088FF', marginTop: 2 },
+  vehicleColor: { fontSize: 11, color: '#64748B', marginTop: 2 },
+
+  docItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+  },
+  docTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+  docNumber: { fontSize: 12, color: '#475569', marginTop: 2 },
+  docExp: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  docStatusBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  docStatusBadgeText: { fontSize: 11, fontWeight: '800', color: '#15803D' },
+
+  primaryModalBtn: {
+    backgroundColor: '#0088FF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  primaryModalBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+
+  // Bank Modal
+  bankCardBox: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+  },
+  bankHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  bankName: { color: '#94A3B8', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  bankActivePill: { backgroundColor: '#10B981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  bankActiveText: { color: '#FFFFFF', fontSize: 9, fontWeight: '800' },
+  bankNumber: { color: '#FFFFFF', fontSize: 20, fontWeight: '900', letterSpacing: 2, marginBottom: 10 },
+  bankOwner: { color: '#E2E8F0', fontSize: 13, fontWeight: '700' },
+  bankBranch: { color: '#64748B', fontSize: 11, marginTop: 2 },
+  bankDesc: { fontSize: 12, color: '#64748B', lineHeight: 18, marginTop: 4 },
+
+  // Honor Modal
+  honorBadgeBox: {
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginBottom: 14,
+  },
+  honorTitle: { fontSize: 15, fontWeight: '900', color: '#B45309', marginTop: 8 },
+  honorSub: { fontSize: 12, color: '#92400E', marginTop: 2 },
+  honorMetricsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  honorMetricCol: { flex: 1, alignItems: 'center' },
+  honorDivider: { width: 1, height: 32, backgroundColor: '#E2E8F0' },
+  honorNum: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
+  honorNumGreen: { fontSize: 16, fontWeight: '900', color: '#059669' },
+  honorNumBlue: { fontSize: 16, fontWeight: '900', color: '#0088FF' },
+  honorLabel: { fontSize: 10.5, color: '#64748B', marginTop: 2 },
 });

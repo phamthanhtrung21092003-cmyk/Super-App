@@ -6,6 +6,8 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRegisterDto } from './dto/user-register.dto';
 import { UserLoginDto } from './dto/user-login.dto';
+import { DriverRegisterDto } from './dto/driver-register.dto';
+import { DriverLoginDto } from './dto/driver-login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -66,6 +68,40 @@ export class AuthService {
     });
 
     this.logger.log(`User registered and wallet created: ${phone}`);
+  }
+
+  async registerDriver(dto: DriverRegisterDto): Promise<void> {
+    const { phone, password, fullName, licensePlate, vehicleType } = dto;
+
+    const existingDriver = await this.prisma.driver.findUnique({
+      where: { phone },
+      select: { id: true },
+    });
+
+    if (existingDriver) {
+      throw new ConflictException('Số điện thoại tài xế đã tồn tại');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    await this.prisma.driver.create({
+      data: {
+        phone,
+        password: hashedPassword,
+        fullName,
+        licensePlate,
+        vehicleType,
+        role: 'DRIVER',
+        avatarUrl: null,
+        hashedRefreshToken: null,
+        isOnline: false,
+        walletBalance: 0,
+        rating: 5.0,
+        totalTrips: 0,
+      },
+    });
+
+    this.logger.log(`Driver registered: ${phone} (${licensePlate})`);
   }
 
   // Helper: Chuyển đổi định dạng thời gian sang giây (VD: 15m -> 900s)
@@ -286,6 +322,60 @@ export class AuthService {
         role: user.role,
       },
       deviceId,
+      accessToken,
+      refreshToken,
+      expiresIn,
+    };
+  }
+
+  // Driver Login business logic
+  async loginDriver(dto: DriverLoginDto, ipAddress?: string) {
+    const { phone, password } = dto;
+
+    const driver = await this.prisma.driver.findUnique({
+      where: { phone },
+    });
+
+    if (!driver || !driver.password) {
+      this.logger.warn(`Driver login failed - invalid phone: ${phone}`);
+      throw new UnauthorizedException('Số điện thoại hoặc mật khẩu không chính xác');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, driver.password);
+    if (!isPasswordValid) {
+      this.logger.warn(`Driver login failed - invalid password: ${phone}`);
+      throw new UnauthorizedException('Số điện thoại hoặc mật khẩu không chính xác');
+    }
+
+    // Generate tokens with DRIVER role
+    const { accessToken, refreshToken } = await this.generateTokens(
+      driver.id,
+      driver.phone,
+      'DRIVER',
+    );
+
+    // Save hashed refresh token
+    await this.updateRefreshToken(driver.id, refreshToken, 'DRIVER');
+
+    this.logger.log(`Driver login success: ${phone} (${driver.fullName})`);
+
+    const accessTokenExpires =
+      this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
+    const expiresIn = this.parseTimeToSeconds(accessTokenExpires);
+
+    return {
+      driver: {
+        id: driver.id,
+        phone: driver.phone,
+        fullName: driver.fullName,
+        licensePlate: driver.licensePlate,
+        vehicleType: driver.vehicleType,
+        avatarUrl: driver.avatarUrl,
+        rating: driver.rating,
+        role: driver.role,
+        isOnline: driver.isOnline,
+        walletBalance: driver.walletBalance,
+      },
       accessToken,
       refreshToken,
       expiresIn,

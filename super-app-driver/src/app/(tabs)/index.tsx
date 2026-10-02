@@ -2,11 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, SafeAreaView,
   Platform, Switch, ScrollView, Modal, TextInput, Image,
-  Vibration, Linking, Alert
+  Vibration, Linking, Alert, Dimensions, PanResponder, Animated as RNAnimated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import WebMap, { MapPoint } from '../../components/WebMap';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, SlideInDown, SlideInUp } from 'react-native-reanimated';
+import rideSocketService, { IncomingOrderPayload } from '../../services/rideSocketService';
+import realRideService from '../../services/realRideService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface ChatMessage {
   id: string;
@@ -16,7 +21,18 @@ interface ChatMessage {
 }
 
 export default function DriverHome() {
+  // ─────────────────────────────────────────
+  // 1. TRẠNG THÁI TRỰC TUYẾN & ĐIỀU PHỐI (driver-home-cockpit)
+  // ─────────────────────────────────────────
   const [isOnline, setIsOnline] = useState(false);
+  const [onlineDurationSec, setOnlineDurationSec] = useState(0);
+  const [hideEarnings, setHideEarnings] = useState(false);
+  const [autoAccept, setAutoAccept] = useState(false);
+  const [homeTripActive, setHomeTripActive] = useState(false);
+  const [showSosModal, setShowSosModal] = useState(false);
+  const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false);
+
+  // Bộ lọc dịch vụ nhận cuốc
   const [services, setServices] = useState({
     ride: true,
     delivery: true,
@@ -27,25 +43,50 @@ export default function DriverHome() {
     setServices(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Dispatch Matching State
+  // Đồng hồ đếm thời gian ca chạy
+  useEffect(() => {
+    let timer: any;
+    if (isOnline) {
+      timer = setInterval(() => {
+        setOnlineDurationSec(prev => prev + 1);
+      }, 1000);
+    } else {
+      setOnlineDurationSec(0);
+    }
+    return () => clearInterval(timer);
+  }, [isOnline]);
+
+  const formatDuration = (totalSec: number) => {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m ${s < 10 ? '0' : ''}${s}s`;
+  };
+
+  // ─────────────────────────────────────────
+  // 2. DISPATCH & CUỐC XE THẬT (driver-trip-lifecycle & offline-resilient-sync)
+  // ─────────────────────────────────────────
   const [matchingOrder, setMatchingOrder] = useState<any>(null);
   const [orderCountdown, setOrderCountdown] = useState<number>(20);
   const [activeTrip, setActiveTrip] = useState<any>(null);
-  const [tripStep, setTripStep] = useState<number>(0); // 1 = Arriving, 2 = Arrived, 3 = In Trip, 4 = Payment & Rating
+  const [tripStep, setTripStep] = useState<number>(0); // 1 = Arriving, 2 = Arrived, 3 = In Trip, 4 = Settlement
+  const [waitingPassengerSec, setWaitingPassengerSec] = useState<number>(0);
 
-  // Passenger Rating Modal State
+  // Đánh giá hành khách
   const [passengerRating, setPassengerRating] = useState(5);
   const [passengerReview, setPassengerReview] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>(['Đúng giờ', 'Lịch sự']);
 
-  // Chat with Passenger Modal
+  // Chat với khách
   const [showChatModal, setShowChatModal] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'user', text: 'Chào anh tài xế, em đang đứng ở sảnh A nhé!', time: 'Vừa xong' },
+    { id: '1', sender: 'user', text: 'Chào bác tài, em đang đứng ở sảnh chính tòa nhà nhé!', time: 'Vừa xong' },
   ]);
   const [chatInput, setChatInput] = useState('');
 
-  // Audio Chime Synthesizer
+  // ─────────────────────────────────────────
+  // 3. ÂM THANH CHUÔNG BÁO TO (driver-hardware-ux)
+  // ─────────────────────────────────────────
   const playIncomingOrderSound = () => {
     try {
       if (typeof window !== 'undefined' && (window.AudioContext || (window as any).webkitAudioContext)) {
@@ -53,20 +94,21 @@ export default function DriverHome() {
         const ctx = new AudioCtx();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.6, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(784, ctx.currentTime); // G5
+        osc.frequency.exponentialRampToValueAtTime(1046, ctx.currentTime + 0.12); // C6
+        osc.frequency.exponentialRampToValueAtTime(1318, ctx.currentTime + 0.24); // E6
+        gain.gain.setValueAtTime(0.8, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start();
-        osc.stop(ctx.currentTime + 0.35);
+        osc.stop(ctx.currentTime + 0.4);
       }
     } catch (e) {}
   };
 
-  // Google Maps Deep-link Navigation
+  // Google Maps Deep-link Chỉ đường ngoài 1 chạm
   const openGoogleMaps = (destinationAddress: string, lat?: number, lng?: number) => {
     const query = lat && lng ? `${lat},${lng}` : encodeURIComponent(destinationAddress);
     const url = `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
@@ -75,100 +117,211 @@ export default function DriverHome() {
     });
   };
 
-  // Call Passenger
+  // Gọi điện thoại cho khách
   const callPassenger = (phone: string = '0988123456') => {
     Linking.openURL(`tel:${phone}`).catch(() => {
       Alert.alert('Gọi khách hàng', `Số điện thoại: ${phone}`);
     });
   };
 
-  // Auto dispatch order when Online
+  // ─────────────────────────────────────────
+  // 4. KẾT NỐI REAL-TIME VỚI SERVER BACKEND
+  // ─────────────────────────────────────────
+  const [socketConnected, setSocketConnected] = useState(false);
+  const driverIdRef = useRef('driver-demo-1');
+  const processedTripIdsRef = useRef<Set<string>>(new Set());
+
+  // Lưu và khôi phục cuốc xe đang chạy vào AsyncStorage (offline-resilient-sync)
   useEffect(() => {
-    let timer: any;
-    if (isOnline && !matchingOrder && !activeTrip) {
-      timer = setTimeout(() => {
-        const orderTypes = ['passenger', 'delivery', 'food'];
-        const randomType = orderTypes[Math.floor(Math.random() * orderTypes.length)];
-
-        if (randomType === 'passenger') {
-          setMatchingOrder({
-            id: 'ORD-8899',
-            bookingCode: '#VR-8899',
-            type: 'passenger',
-            title: 'Chở khách V-Ride',
-            pickup: 'Vincom Mega Mall Royal City, Thanh Xuân',
-            dropoff: 'Keangnam Landmark 72, Mễ Trì',
-            pickupLat: 21.0028,
-            pickupLng: 105.8155,
-            dropoffLat: 21.0168,
-            dropoffLng: 105.7838,
-            distance: '4.8 km',
-            eta: '12 phút',
-            price: 65000,
-            tip: 10000,
-            deal: 0,
-            paymentMethod: 'CASH', // THU TIỀN MẶT
-            customerName: 'Hoàng Minh Tuấn',
-            customerPhone: '0988123456',
-            customerRating: 4.9,
-          });
-        } else if (randomType === 'delivery') {
-          setMatchingOrder({
-            id: 'ORD-9901',
-            bookingCode: '#DL-9901',
-            type: 'delivery',
-            title: 'Giao hàng Siêu Tốc V-Express',
-            pickup: '18 Duy Tân, Cầu Giấy',
-            dropoff: 'Tòa nhà Landmark 81 Trung Hòa',
-            pickupLat: 21.0322,
-            pickupLng: 105.7801,
-            dropoffLat: 21.0090,
-            dropoffLng: 105.8010,
-            distance: '3.6 km',
-            eta: '10 phút',
-            price: 45000,
-            tip: 5000,
-            deal: 0,
-            paymentMethod: 'ONLINE', // ĐÃ THANH TOÁN VÍ
-            customerName: 'Chị Mai Linh',
-            customerPhone: '0912345678',
-            customerRating: 5.0,
-          });
-        } else {
-          setMatchingOrder({
-            id: 'ORD-7711',
-            bookingCode: '#FD-7711',
-            type: 'food',
-            title: 'Giao đồ ăn (Cơm tấm sườn)',
-            pickup: 'Cơm tấm Sài Gòn, 45 Nguyễn Trãi',
-            dropoff: 'Chung cư Golden Land, 275 Nguyễn Trãi',
-            pickupLat: 21.0023,
-            pickupLng: 105.8152,
-            dropoffLat: 20.9995,
-            dropoffLng: 105.8105,
-            distance: '1.5 km',
-            eta: '6 phút',
-            price: 25000,
-            tip: 5000,
-            deal: 0,
-            paymentMethod: 'CASH',
-            customerName: 'Anh Quang',
-            customerPhone: '0977889900',
-            customerRating: 4.8,
-          });
+    const restorePersistedTrip = async () => {
+      try {
+        const savedTripJson = await AsyncStorage.getItem('@sunstar_driver_active_trip');
+        const savedStep = await AsyncStorage.getItem('@sunstar_driver_trip_step');
+        if (savedTripJson) {
+          const trip = JSON.parse(savedTripJson);
+          if (trip && trip.tripId) {
+            setActiveTrip(trip);
+            setTripStep(savedStep ? parseInt(savedStep, 10) : 1);
+            setIsOnline(true);
+          }
         }
-      }, 3500);
-    }
-    return () => clearTimeout(timer);
-  }, [isOnline, matchingOrder, activeTrip]);
+      } catch (e) {}
+    };
+    restorePersistedTrip();
+  }, []);
 
-  // Countdown timer for incoming order (20s) with Sound & Vibration
+  // Cập nhật lưu trữ cục bộ mỗi khi activeTrip thay đổi
+  useEffect(() => {
+    if (activeTrip) {
+      AsyncStorage.setItem('@sunstar_driver_active_trip', JSON.stringify(activeTrip)).catch(() => {});
+      AsyncStorage.setItem('@sunstar_driver_trip_step', tripStep.toString()).catch(() => {});
+    } else {
+      AsyncStorage.removeItem('@sunstar_driver_active_trip').catch(() => {});
+      AsyncStorage.removeItem('@sunstar_driver_trip_step').catch(() => {});
+    }
+  }, [activeTrip, tripStep]);
+
+  // Bộ đếm thời gian chờ khách ở điểm đón
+  useEffect(() => {
+    let interval: any;
+    if (tripStep === 2) {
+      setWaitingPassengerSec(0);
+      interval = setInterval(() => {
+        setWaitingPassengerSec(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [tripStep]);
+
+  // WebSocket lifecycle
+  useEffect(() => {
+    if (!isOnline) {
+      rideSocketService.disconnect();
+      setSocketConnected(false);
+      setMatchingOrder(null);
+      realRideService.toggleDriverOnline(driverIdRef.current, false).catch(() => {});
+      return;
+    }
+
+    rideSocketService.connect();
+    rideSocketService.joinAsDriver(driverIdRef.current, 21.0285, 105.8048);
+    setSocketConnected(rideSocketService.isConnected);
+    realRideService.toggleDriverOnline(driverIdRef.current, true).catch(() => {});
+
+    // Kiểm tra chuyến đang chạy trên backend
+    realRideService.getDriverActiveTrip(driverIdRef.current).then((trip) => {
+      if (trip && trip.status && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED') {
+        processedTripIdsRef.current.add(trip.id);
+        setActiveTrip({
+          id: trip.id,
+          tripId: trip.id,
+          bookingCode: trip.bookingCode,
+          type: trip.serviceType?.toLowerCase().includes('delivery') ? 'delivery' : 'passenger',
+          title: trip.serviceType === 'DELIVERY' ? 'Giao hàng Siêu Tốc V-Express' : 'Chở khách V-Ride',
+          pickup: trip.pickupAddress,
+          dropoff: trip.dropoffAddress,
+          pickupLat: trip.pickupLat,
+          pickupLng: trip.pickupLng,
+          dropoffLat: trip.dropoffLat,
+          dropoffLng: trip.dropoffLng,
+          distance: `${trip.distanceKm} km`,
+          eta: `${trip.durationMin} phút`,
+          price: trip.fareAmount,
+          finalAmount: trip.finalAmount,
+          tip: trip.tipAmount || 0,
+          deal: 0,
+          paymentMethod: trip.paymentMethod,
+          customerName: trip.customerName,
+          customerPhone: trip.customerPhone,
+          customerRating: 5.0,
+        });
+        if (trip.status === 'ACCEPTED') setTripStep(1);
+        else if (trip.status === 'ARRIVED_PICKUP') setTripStep(2);
+        else if (trip.status === 'IN_TRIP') setTripStep(3);
+      }
+    }).catch(() => {});
+
+    // Lắng nghe cuốc xe THẬT từ WebSocket server
+    const unsubOrder = rideSocketService.onIncomingOrder((order: IncomingOrderPayload) => {
+      if (!order || !order.tripId || processedTripIdsRef.current.has(order.tripId)) return;
+      if (!activeTrip && isOnline) {
+        const incomingData = {
+          id: order.tripId,
+          tripId: order.tripId,
+          bookingCode: order.bookingCode || `#VR-${order.tripId.slice(-4)}`,
+          type: order.serviceType?.toLowerCase().includes('delivery') ? 'delivery' : 'passenger',
+          title: order.serviceType === 'DELIVERY' ? 'Giao hàng Siêu Tốc V-Express' : 'Chở khách V-Ride',
+          pickup: order.pickup,
+          dropoff: order.dropoff,
+          pickupLat: order.pickupLat,
+          pickupLng: order.pickupLng,
+          dropoffLat: order.dropoffLat,
+          dropoffLng: order.dropoffLng,
+          distance: `${order.distanceKm} km`,
+          eta: `${order.durationMin} phút`,
+          price: order.fareAmount,
+          finalAmount: order.finalAmount,
+          tip: 0,
+          deal: 0,
+          paymentMethod: order.paymentMethod,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          customerRating: 5.0,
+        };
+
+        if (autoAccept) {
+          // Tự động nhận cuốc nếu tài xế bật tính năng Auto-Accept
+          processedTripIdsRef.current.add(order.tripId);
+          setActiveTrip(incomingData);
+          setTripStep(1);
+          realRideService.acceptRide(order.tripId, {
+            driverId: driverIdRef.current,
+            driverName: 'Trần Bình',
+            vehicleName: 'VinFast VF 8 Xanh SM',
+            licensePlate: '29A-888.99',
+            avatarUrl: 'https://i.pravatar.cc/150?img=11',
+            rating: 4.95,
+          }).catch(() => {});
+        } else {
+          setMatchingOrder(incomingData);
+        }
+      }
+    });
+
+    const unsubCancel = rideSocketService.onTripCancelledByCustomer(({ tripId, reason }) => {
+      if (activeTrip && (activeTrip.tripId === tripId || activeTrip.id === tripId)) {
+        setActiveTrip(null);
+        setTripStep(0);
+        Alert.alert('Khách đã hủy chuyến', reason || 'Khách hàng đã hủy chuyến đi.');
+      }
+    });
+
+    const unsubConn = rideSocketService.onConnectionChange((connected) => {
+      setSocketConnected(connected);
+      if (connected) {
+        rideSocketService.joinAsDriver(driverIdRef.current, 21.0285, 105.8048);
+      }
+    });
+
+    return () => {
+      unsubOrder();
+      unsubCancel();
+      unsubConn();
+      rideSocketService.disconnect();
+      realRideService.toggleDriverOnline(driverIdRef.current, false).catch(() => {});
+    };
+  }, [isOnline, activeTrip, autoAccept]);
+
+  // GPS Broadcast định kỳ khi đang có chuyến
+  useEffect(() => {
+    let interval: any;
+    if (activeTrip?.tripId && isOnline) {
+      interval = setInterval(() => {
+        const baseLat = activeTrip.pickupLat || 21.0285;
+        const baseLng = activeTrip.pickupLng || 105.8048;
+        const jitter = () => (Math.random() - 0.5) * 0.001;
+        rideSocketService.sendDriverLocation(
+          driverIdRef.current,
+          baseLat + jitter(),
+          baseLng + jitter(),
+          90,
+          35,
+          activeTrip.tripId
+        );
+      }, 4000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTrip?.tripId, isOnline]);
+
+  // Bộ đếm đếm ngược 20s nhận cuốc kèm âm thanh chuông to
   useEffect(() => {
     let interval: any;
     if (matchingOrder) {
       setOrderCountdown(20);
       playIncomingOrderSound();
-      try { Vibration.vibrate([0, 400, 200, 400]); } catch (e) {}
+      try { Vibration.vibrate([0, 500, 200, 500]); } catch (e) {}
 
       interval = setInterval(() => {
         setOrderCountdown((prev) => {
@@ -176,9 +329,9 @@ export default function DriverHome() {
             setMatchingOrder(null);
             return 20;
           }
-          if (prev % 3 === 0) {
+          if (prev % 2 === 0) {
             playIncomingOrderSound();
-            try { Vibration.vibrate([0, 250, 100, 250]); } catch (e) {}
+            try { Vibration.vibrate([0, 300, 150, 300]); } catch (e) {}
           }
           return prev - 1;
         });
@@ -187,28 +340,58 @@ export default function DriverHome() {
     return () => clearInterval(interval);
   }, [matchingOrder]);
 
-  const handleAcceptOrder = () => {
-    setActiveTrip(matchingOrder);
+  const handleAcceptOrder = async () => {
+    if (!matchingOrder || !matchingOrder.tripId) return;
+    const order = matchingOrder;
+    processedTripIdsRef.current.add(order.tripId);
+    setActiveTrip(order);
     setMatchingOrder(null);
-    setTripStep(1); // 1 = Go to pickup
-  };
+    setTripStep(1);
 
-  const handleRejectOrder = () => {
-    setMatchingOrder(null);
-  };
-
-  const handleAdvanceTrip = () => {
-    if (!activeTrip) return;
-    if (tripStep === 1) {
-      setTripStep(2); // Arrived at pickup
-    } else if (tripStep === 2) {
-      setTripStep(3); // Start ride -> In Trip
-    } else if (tripStep === 3) {
-      setTripStep(4); // Trip ended -> Show Payment Settlement & Rating
+    try {
+      await realRideService.acceptRide(order.tripId, {
+        driverId: driverIdRef.current,
+        driverName: 'Trần Bình',
+        vehicleName: 'VinFast VF 8 Xanh SM',
+        licensePlate: '29A-888.99',
+        avatarUrl: 'https://i.pravatar.cc/150?img=11',
+        rating: 4.95,
+      });
+    } catch (e: any) {
+      console.log('[Driver] Accept ride error:', e?.message || e);
     }
   };
 
-  const handleFinishTrip = () => {
+  const handleRejectOrder = () => {
+    if (matchingOrder?.tripId) {
+      processedTripIdsRef.current.add(matchingOrder.tripId);
+    }
+    setMatchingOrder(null);
+  };
+
+  const handleAdvanceTrip = async () => {
+    if (!activeTrip || !activeTrip.tripId) return;
+    if (tripStep === 1) {
+      setTripStep(2);
+      realRideService.updateTripStatus(activeTrip.tripId, 'ARRIVED_PICKUP').catch(() => {});
+    } else if (tripStep === 2) {
+      setTripStep(3);
+      realRideService.updateTripStatus(activeTrip.tripId, 'IN_TRIP').catch(() => {});
+    } else if (tripStep === 3) {
+      setTripStep(4);
+      realRideService.updateTripStatus(activeTrip.tripId, 'COMPLETED').catch(() => {});
+    }
+  };
+
+  const handleFinishTrip = async () => {
+    if (activeTrip?.tripId) {
+      try {
+        await realRideService.updateTripStatus(activeTrip.tripId, 'COMPLETED', {
+          driverRating: passengerRating,
+          driverReview: passengerReview,
+        });
+      } catch (e) {}
+    }
     Alert.alert('Thành công', 'Cuốc xe đã kết thúc hoàn hảo. Doanh thu đã được đối soát vào ví!');
     setActiveTrip(null);
     setTripStep(0);
@@ -226,6 +409,7 @@ export default function DriverHome() {
     setChatInput('');
   };
 
+  // Các điểm trên bản đồ: Vị trí xe + Vùng nhiệt nhu cầu cao (Heatmap)
   const mapPoints: MapPoint[] = activeTrip
     ? [
         { lat: activeTrip.pickupLat || 21.0285, lng: activeTrip.pickupLng || 105.8048, label: activeTrip.pickup, color: '#3B82F6', icon: 'pin' },
@@ -233,7 +417,9 @@ export default function DriverHome() {
       ]
     : [
         { lat: 21.028511, lng: 105.804817, label: 'Vị trí xe của bạn', color: '#10B981', icon: 'car' },
-        { lat: 21.038511, lng: 105.814817, label: 'Khu vực nóng: Cầu Giấy 🔥', color: '#EF4444' },
+        { lat: 21.037511, lng: 105.783817, label: 'Bến xe Mỹ Đình 🔥 x1.4', color: '#EF4444' },
+        { lat: 21.024511, lng: 105.851817, label: 'Hồ Gươm 📍 x1.3', color: '#F59E0B' },
+        { lat: 21.016511, lng: 105.784817, label: 'Keangnam ⚡ +20k', color: '#8B5CF6' },
       ];
 
   const totalFare = activeTrip ? (activeTrip.price + activeTrip.deal + activeTrip.tip) : 0;
@@ -242,72 +428,155 @@ export default function DriverHome() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Background Vector Map */}
+      {/* ─────────────────────────────────────────
+          BẢN ĐỒ VECTOR (WebMap)
+          ───────────────────────────────────────── */}
       <View style={styles.mapContainer}>
         <WebMap
           points={mapPoints}
           showRoute={activeTrip ? true : false}
           routeColor="#10B981"
-          height={650}
+          height={SCREEN_HEIGHT}
           zoom={14}
         />
       </View>
 
-      {/* Top Overlay: Header & Metrics */}
+      {/* ─────────────────────────────────────────
+          TOP OVERLAY: COCKPIT DASHBOARD (driver-home-cockpit)
+          ───────────────────────────────────────── */}
       <View style={styles.topOverlay} pointerEvents="box-none">
-        <View style={styles.headerRow}>
-          <View style={styles.driverInfoCard}>
-            <Image source={{ uri: 'https://i.pravatar.cc/150?img=11' }} style={styles.avatarMini} />
-            <View style={{ marginLeft: 8 }}>
-              <Text style={styles.driverName}>Trần Bình</Text>
-              <Text style={styles.driverRating}>⭐ 4.95 • Kim Cương</Text>
+        
+        {/* 1. THANH DOANH THU NHANH TRONG NGÀY (Today Earnings Bar) */}
+        <View style={styles.earningsBarContainer}>
+          <View style={styles.earningsTopRow}>
+            <View style={styles.driverInfoBlock}>
+              <View style={styles.driverAvatarBadge}>
+                <Ionicons name="person" size={16} color="#ffffff" />
+              </View>
+              <View style={{ marginLeft: 8 }}>
+                <Text style={styles.driverGreeting}>Trần Bình</Text>
+                <View style={styles.diamondBadge}>
+                  <Text style={styles.diamondText}>⭐ 4.95 • Kim Cương</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Thu nhập với nút ẩn/hiện mắt bảo mật */}
+            <View style={styles.earningsAmountBlock}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <Text style={styles.earningsLabel}>Thu nhập hôm nay</Text>
+                <TouchableOpacity onPress={() => setHideEarnings(!hideEarnings)} style={{ marginLeft: 4 }}>
+                  <Ionicons name={hideEarnings ? 'eye-off-outline' : 'eye-outline'} size={15} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.earningsValue}>
+                {hideEarnings ? '•••••••• đ' : '485.000 đ'}
+              </Text>
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.statusPill, isOnline ? styles.statusOnline : styles.statusOffline]}
-            onPress={() => setIsOnline(!isOnline)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
-            <Text style={[styles.statusText, isOnline ? { color: '#059669' } : { color: '#475569' }]}>
-              {isOnline ? 'Trực tuyến' : 'Ngoại tuyến'}
-            </Text>
-            <Switch
-              value={isOnline}
-              onValueChange={setIsOnline}
-              pointerEvents="none"
-              trackColor={{ false: '#CBD5E1', true: '#34D399' }}
-              thumbColor={isOnline ? '#ffffff' : '#f4f3f4'}
-              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }], marginLeft: 6 }}
-            />
-          </TouchableOpacity>
+          {/* Thanh Tiến độ Thưởng ngày (Quest / Target Progress) */}
+          <View style={styles.questProgressContainer}>
+            <View style={styles.questTextRow}>
+              <Text style={styles.questTitle}>🎯 Thưởng ngày: 8 / 10 cuốc (80%)</Text>
+              <Text style={styles.questRewardText}>Thưởng +60.000đ</Text>
+            </View>
+            <View style={styles.progressBarTrack}>
+              <View style={[styles.progressBarFill, { width: '80%' }]} />
+            </View>
+          </View>
+
+          {/* Vạch chỉ số: Số chuyến, Số dư ví, Thời gian ca chạy */}
+          <View style={styles.quickStatsRow}>
+            <View style={styles.quickStatItem}>
+              <Ionicons name="car-outline" size={14} color="#3B82F6" />
+              <Text style={styles.quickStatText}>8 chuyến</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.quickStatItem}>
+              <Ionicons name="wallet-outline" size={14} color="#10B981" />
+              <Text style={styles.quickStatText}>Ví: 250.000đ</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.quickStatItem}>
+              <Ionicons name="time-outline" size={14} color="#F59E0B" />
+              <Text style={styles.quickStatText}>
+                {isOnline ? formatDuration(onlineDurationSec) : 'Ngoại tuyến'}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {isOnline && !activeTrip && (
-          <Animated.View entering={FadeIn} style={styles.dashboardCard}>
-            <View style={styles.dashStat}>
-              <Text style={styles.dashLabel}>Thu nhập (VNĐ)</Text>
-              <Text style={styles.dashValue}>850.000</Text>
-            </View>
-            <View style={styles.dashDivider} />
-            <View style={styles.dashStat}>
-              <Text style={styles.dashLabel}>Chuyến hôm nay</Text>
-              <Text style={styles.dashValue}>12</Text>
-            </View>
-            <View style={styles.dashDivider} />
-            <View style={styles.dashStat}>
-              <Text style={styles.dashLabel}>Tỷ lệ nhận</Text>
-              <Text style={[styles.dashValue, { color: '#10B981' }]}>98%</Text>
-            </View>
-          </Animated.View>
-        )}
+        {/* 2. ĐÈN BÁO TRẠNG THÁI MẠNG & GPS */}
+        <View style={styles.statusPillBar}>
+          <View style={styles.signalBadge}>
+            <View style={[styles.signalDot, { backgroundColor: isOnline ? (socketConnected ? '#10B981' : '#EF4444') : '#94A3B8' }]} />
+            <Text style={styles.signalText}>
+              {!isOnline
+                ? 'Đang nghỉ ngơi • Ngoại tuyến'
+                : socketConnected
+                ? '🟢 GPS Chuẩn • Sẵn sàng nổ cuốc'
+                : '🔴 Đang kết nối lại máy chủ...'}
+            </Text>
+          </View>
+
+          {/* Nút bật/tắt nhanh cuốc về nhà */}
+          {isOnline && (
+            <TouchableOpacity
+              style={[styles.homeTripPill, homeTripActive && styles.homeTripPillActive]}
+              onPress={() => {
+                setHomeTripActive(!homeTripActive);
+                Alert.alert('Cuốc về nhà', !homeTripActive ? 'Đã kích hoạt ưu tiên cuốc về nhà (Ngõ 68 Cầu Giấy)' : 'Đã tắt chế độ cuốc về nhà');
+              }}
+            >
+              <Ionicons name="home" size={13} color={homeTripActive ? '#FFFFFF' : '#475569'} style={{ marginRight: 4 }} />
+              <Text style={[styles.homeTripText, homeTripActive && { color: '#FFFFFF' }]}>
+                {homeTripActive ? 'Về nhà (BẬT)' : 'Về nhà'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {/* Bottom Overlay: Incoming Order OR Active Trip OR Services */}
+      {/* ─────────────────────────────────────────
+          NÚT NỔI TÁC VỤ NHANH (SOS, Recenter, Hotline)
+          ───────────────────────────────────────── */}
+      <View style={styles.floatingButtonsContainer} pointerEvents="box-none">
+        {/* Nút SOS Khẩn cấp hình khiên đỏ */}
+        <TouchableOpacity
+          style={styles.sosFloatingBtn}
+          activeOpacity={0.8}
+          onPress={() => setShowSosModal(true)}
+        >
+          <Ionicons name="shield" size={24} color="#FFFFFF" />
+          <Text style={styles.sosBtnText}>SOS</Text>
+        </TouchableOpacity>
+
+        {/* Nút định vị xe tâm bản đồ */}
+        <TouchableOpacity
+          style={styles.recenterFloatingBtn}
+          activeOpacity={0.8}
+          onPress={() => Alert.alert('Định vị', 'Đã căn tâm bản đồ vào vị trí xe của bạn.')}
+        >
+          <Ionicons name="locate" size={22} color="#0F172A" />
+        </TouchableOpacity>
+
+        {/* Nút hỗ trợ Hotline 24/7 */}
+        <TouchableOpacity
+          style={styles.helpFloatingBtn}
+          activeOpacity={0.8}
+          onPress={() => Linking.openURL('tel:19001234')}
+        >
+          <Ionicons name="headset" size={20} color="#3B82F6" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ─────────────────────────────────────────
+          BOTTOM OVERLAY: SLIDING BOTTOM SHEET
+          ───────────────────────────────────────── */}
       <View style={styles.bottomOverlay} pointerEvents="box-none">
         
-        {/* 1. POPUP NHẬN CUỐC XE (Incoming Order) */}
+        {/* 1. POPUP NHẬN CUỐC ĐẾM NGƯỢC 20S (Incoming Order) */}
         {matchingOrder && (
           <Animated.View entering={SlideInDown} style={styles.dispatchCard}>
             <View style={styles.dispHeader}>
@@ -321,14 +590,14 @@ export default function DriverHome() {
               </View>
             </View>
 
-            {/* Payment Method Badge */}
+            {/* Zero-Dispute Payment Badge */}
             <View style={[
               styles.payTypeBanner,
               matchingOrder.paymentMethod === 'ONLINE' ? styles.payTypeBannerOnline : styles.payTypeBannerCash
             ]}>
               <Ionicons
                 name={matchingOrder.paymentMethod === 'ONLINE' ? 'shield-checkmark' : 'cash'}
-                size={16}
+                size={18}
                 color={matchingOrder.paymentMethod === 'ONLINE' ? '#10B981' : '#EF4444'}
               />
               <Text style={[
@@ -336,7 +605,7 @@ export default function DriverHome() {
                 { color: matchingOrder.paymentMethod === 'ONLINE' ? '#10B981' : '#EF4444' }
               ]}>
                 {matchingOrder.paymentMethod === 'ONLINE'
-                  ? 'ĐÃ THANH TOÁN VÍ ONLINE (KHÔNG THU TIỀN KHÁCH)'
+                  ? 'KHÁCH ĐÃ TRẢ VÍ ONLINE (0Đ) - KHÔNG THU TIỀN MẶT'
                   : 'THU TIỀN MẶT KHI TRẢ KHÁCH (COD)'}
               </Text>
             </View>
@@ -359,7 +628,7 @@ export default function DriverHome() {
                 <Text style={[styles.metricVal, { color: '#10B981' }]}>
                   {(matchingOrder.price + matchingOrder.tip).toLocaleString()}đ
                 </Text>
-                <Text style={styles.metricLbl}>Cước nhận</Text>
+                <Text style={styles.metricLbl}>Thực nhận</Text>
               </View>
             </View>
 
@@ -374,14 +643,14 @@ export default function DriverHome() {
           </Animated.View>
         )}
 
-        {/* 2. MÀN HÌNH HÀNH TRÌNH CUỐC XE (Active Trip) */}
+        {/* 2. MÀN HÌNH HÀNH TRÌNH CUỐC XE ĐANG CHỞ (Active Trip) */}
         {activeTrip && tripStep < 4 && (
           <Animated.View entering={SlideInDown} style={styles.activeTripCard}>
             <View style={styles.activeHeader}>
               <View>
                 <Text style={styles.tripStepTitle}>
                   {tripStep === 1 && '1. Đang đến điểm đón khách'}
-                  {tripStep === 2 && '2. Đã tới điểm đón (Chờ khách)'}
+                  {tripStep === 2 && `2. Đã tới điểm đón (Chờ ${formatDuration(waitingPassengerSec)})`}
                   {tripStep === 3 && '3. Đang trên chuyến đi'}
                 </Text>
                 <Text style={styles.passengerSubtitle}>
@@ -422,14 +691,14 @@ export default function DriverHome() {
               </View>
             </View>
 
-            {/* Action Tools: Google Maps, Phone, Chat */}
+            {/* Phím công cụ: Google Maps chỉ đường, Gọi điện, Chat */}
             <View style={styles.tripToolsRow}>
               <TouchableOpacity
                 style={styles.googleMapsBtn}
                 onPress={() => openGoogleMaps(tripStep <= 2 ? activeTrip.pickup : activeTrip.dropoff)}
               >
                 <Ionicons name="navigate-circle" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.googleMapsText}>Google Maps Chỉ đường</Text>
+                <Text style={styles.googleMapsText}>Google Maps Dẫn đường</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -447,7 +716,7 @@ export default function DriverHome() {
               </TouchableOpacity>
             </View>
 
-            {/* Main Stage Advance Button */}
+            {/* Nút chuyển trạng thái hành trình */}
             <TouchableOpacity style={styles.advanceStageBtn} onPress={handleAdvanceTrip}>
               <Text style={styles.advanceStageText}>
                 {tripStep === 1 && 'TÔI ĐÃ ĐẾN NƠI ĐÓN 📍'}
@@ -462,12 +731,11 @@ export default function DriverHome() {
         {activeTrip && tripStep === 4 && (
           <Animated.View entering={SlideInDown} style={styles.settlementCard}>
             <View style={styles.successCheck}>
-              <Ionicons name="checkmark-circle" size={52} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={48} color="#10B981" />
               <Text style={styles.settlementTitle}>Chuyến đi hoàn thành!</Text>
               <Text style={styles.settlementSub}>Mã cuốc: {activeTrip.bookingCode}</Text>
             </View>
 
-            {/* Large Payment Badge */}
             <View style={[
               styles.settlementBanner,
               activeTrip.paymentMethod === 'ONLINE' ? styles.payOnlineBanner : styles.payCashBanner
@@ -482,7 +750,7 @@ export default function DriverHome() {
               </Text>
             </View>
 
-            {/* Fare Breakdown */}
+            {/* Bảng phân tích cước */}
             <View style={styles.breakdownCard}>
               <View style={styles.breakRow}>
                 <Text style={styles.breakLbl}>Cước cuốc xe</Text>
@@ -505,7 +773,6 @@ export default function DriverHome() {
               </View>
             </View>
 
-            {/* Passenger Rating */}
             <Text style={styles.ratePassengerLbl}>Đánh giá hành khách:</Text>
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((s) => (
@@ -526,40 +793,154 @@ export default function DriverHome() {
           </Animated.View>
         )}
 
-        {/* 4. DEFAULT SERVICES PANEL (When idle) */}
+        {/* 4. SLIDING CONTROL SHEET (Khi đang rảnh) */}
         {!matchingOrder && !activeTrip && (
-          <View style={styles.servicesPanel}>
-            <Text style={styles.panelTitle}>Dịch vụ đang nhận</Text>
-            
-            <TouchableOpacity style={styles.serviceRow} onPress={() => toggleService('ride')} activeOpacity={0.8}>
-              <View style={[styles.serviceIcon, { backgroundColor: '#DBEAFE' }]}>
-                <Ionicons name="car" size={24} color="#3B82F6" />
-              </View>
-              <Text style={styles.serviceName}>Chở khách (V-Ride)</Text>
-              <Switch value={services.ride} pointerEvents="none" onValueChange={() => toggleService('ride')} trackColor={{ true: '#3B82F6' }} />
+          <View style={styles.cockpitSheet}>
+            {/* Thanh kéo vuốt Bottom Sheet */}
+            <TouchableOpacity
+              style={styles.sheetHandleArea}
+              activeOpacity={0.7}
+              onPress={() => setBottomSheetExpanded(!bottomSheetExpanded)}
+            >
+              <View style={styles.sheetDragBar} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.serviceRow} onPress={() => toggleService('delivery')} activeOpacity={0.8}>
-              <View style={[styles.serviceIcon, { backgroundColor: '#FFEDD5' }]}>
-                <Ionicons name="cube" size={24} color="#F97316" />
+            {/* Nút trượt Trực tuyến / Ngoại tuyến thông minh */}
+            <TouchableOpacity
+              style={[styles.bigOnlineSlider, isOnline ? styles.sliderOnlineBg : styles.sliderOfflineBg]}
+              activeOpacity={0.85}
+              onPress={() => setIsOnline(!isOnline)}
+            >
+              <View style={[styles.sliderKnob, isOnline ? styles.sliderKnobOnline : styles.sliderKnobOffline]}>
+                <Ionicons
+                  name={isOnline ? 'power' : 'power-outline'}
+                  size={24}
+                  color={isOnline ? '#059669' : '#475569'}
+                />
               </View>
-              <Text style={styles.serviceName}>Giao hàng Siêu Tốc</Text>
-              <Switch value={services.delivery} pointerEvents="none" onValueChange={() => toggleService('delivery')} trackColor={{ true: '#F97316' }} />
+              <Text style={[styles.sliderLabel, isOnline ? styles.sliderLabelOnline : styles.sliderLabelOffline]}>
+                {isOnline ? 'ĐANG TRỰC TUYẾN • CHẠM ĐỂ NGHỈ' : 'TRƯỢT HOẶC CHẠM ĐỂ BẬT TRỰC TUYẾN'}
+              </Text>
+              <Ionicons
+                name={isOnline ? 'checkmark-circle' : 'chevron-forward'}
+                size={22}
+                color={isOnline ? '#34D399' : '#94A3B8'}
+                style={{ marginRight: 14 }}
+              />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.serviceRow} onPress={() => toggleService('food')} activeOpacity={0.8}>
-              <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="fast-food" size={24} color="#EF4444" />
+            {/* Các tùy chọn nhanh: Tự động nhận cuốc & Điểm về nhà */}
+            <View style={styles.quickTogglesRow}>
+              <TouchableOpacity
+                style={[styles.quickToggleCard, autoAccept && styles.quickToggleCardActive]}
+                onPress={() => setAutoAccept(!autoAccept)}
+              >
+                <Ionicons name="flash" size={18} color={autoAccept ? '#10B981' : '#64748B'} />
+                <View style={{ marginLeft: 6 }}>
+                  <Text style={[styles.quickToggleTitle, autoAccept && { color: '#059669' }]}>Tự động nhận</Text>
+                  <Text style={styles.quickToggleSub}>{autoAccept ? 'Đang bật' : 'Tắt'}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickToggleCard, homeTripActive && styles.quickToggleCardActive]}
+                onPress={() => setHomeTripActive(!homeTripActive)}
+              >
+                <Ionicons name="home" size={18} color={homeTripActive ? '#3B82F6' : '#64748B'} />
+                <View style={{ marginLeft: 6 }}>
+                  <Text style={[styles.quickToggleTitle, homeTripActive && { color: '#2563EB' }]}>Cuốc về nhà</Text>
+                  <Text style={styles.quickToggleSub}>{homeTripActive ? 'Đang ưu tiên' : 'Cầu Giấy'}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Danh sách Dịch vụ đang nhận (Kéo mở rộng để xem hoặc cấu hình) */}
+            <View style={styles.servicesContainer}>
+              <View style={styles.servicesHeaderRow}>
+                <Text style={styles.servicesTitle}>Dịch vụ đang nhận</Text>
+                <Text style={styles.servicesSub}>Bật/tắt dịch vụ phù hợp</Text>
               </View>
-              <Text style={styles.serviceName}>Giao đồ ăn (V-Food)</Text>
-              <Switch value={services.food} pointerEvents="none" onValueChange={() => toggleService('food')} trackColor={{ true: '#EF4444' }} />
-            </TouchableOpacity>
+
+              <View style={styles.servicesListRow}>
+                <TouchableOpacity
+                  style={[styles.serviceChip, services.ride && styles.serviceChipActive]}
+                  onPress={() => toggleService('ride')}
+                >
+                  <Ionicons name="car" size={18} color={services.ride ? '#3B82F6' : '#94A3B8'} />
+                  <Text style={[styles.serviceChipText, services.ride && styles.serviceChipTextActive]}>
+                    Chở khách
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.serviceChip, services.delivery && styles.serviceChipActive]}
+                  onPress={() => toggleService('delivery')}
+                >
+                  <Ionicons name="cube" size={18} color={services.delivery ? '#F97316' : '#94A3B8'} />
+                  <Text style={[styles.serviceChipText, services.delivery && styles.serviceChipTextActive]}>
+                    Giao hàng
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.serviceChip, services.food && styles.serviceChipActive]}
+                  onPress={() => toggleService('food')}
+                >
+                  <Ionicons name="fast-food" size={18} color={services.food ? '#EF4444' : '#94A3B8'} />
+                  <Text style={[styles.serviceChipText, services.food && styles.serviceChipTextActive]}>
+                    Đồ ăn
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         )}
-
       </View>
 
-      {/* CHAT MODAL WITH PASSENGER */}
+      {/* ─────────────────────────────────────────
+          MODAL SOS KHẨN CẤP (driver-hardware-ux)
+          ───────────────────────────────────────── */}
+      <Modal visible={showSosModal} transparent animationType="fade" onRequestClose={() => setShowSosModal(false)}>
+        <View style={styles.sosModalOverlay}>
+          <View style={styles.sosModalContent}>
+            <Ionicons name="warning" size={56} color="#DC2626" />
+            <Text style={styles.sosModalTitle}>TRUNG TÂM AN TOÀN SOS</Text>
+            <Text style={styles.sosModalDesc}>
+              Bạn đang gặp tình huống khẩn cấp hoặc sự cố trên đường? Hệ thống sẽ lập tức gửi tọa độ GPS hiện tại cho người thân và tổng đài Sunstar.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.sosCallPoliceBtn}
+              onPress={() => {
+                Linking.openURL('tel:113');
+                setShowSosModal(false);
+              }}
+            >
+              <Ionicons name="call" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.sosCallText}>GỌI CẢNH SÁT 113</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sosCallSupportBtn}
+              onPress={() => {
+                Linking.openURL('tel:19001234');
+                setShowSosModal(false);
+              }}
+            >
+              <Ionicons name="headset" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.sosCallText}>GỌI TỔNG ĐÀI CỨU HỘ 24/7</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sosCancelBtn} onPress={() => setShowSosModal(false)}>
+              <Text style={styles.sosCancelText}>Đóng lại</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─────────────────────────────────────────
+          MODAL CHAT VỚI KHÁCH HÀNG
+          ───────────────────────────────────────── */}
       <Modal visible={showChatModal} animationType="slide" onRequestClose={() => setShowChatModal(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
           <View style={styles.modalHeaderBar}>
@@ -599,13 +980,13 @@ export default function DriverHome() {
           <View style={styles.chatInputRow}>
             <TextInput
               style={styles.chatTextInput}
-              placeholder="Nhập tin nhắn..."
+              placeholder="Nhập tin nhắn cho khách..."
+              placeholderTextColor="#94A3B8"
               value={chatInput}
               onChangeText={setChatInput}
-              onSubmitEditing={handleSendMessage}
             />
             <TouchableOpacity style={styles.chatSendBtn} onPress={handleSendMessage}>
-              <Ionicons name="send" size={20} color="#FFF" />
+              <Ionicons name="send" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -615,117 +996,885 @@ export default function DriverHome() {
   );
 }
 
+// ─────────────────────────────────────────
+// BỘ STYLES GIAO DIỆN CHUẨN BUỒNG LÁI SỐ
+// ─────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  mapContainer: { ...StyleSheet.absoluteFillObject },
-  
-  topOverlay: { position: 'absolute', top: Platform.OS === 'android' ? 40 : 20, left: 16, right: 16 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  driverInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
-  avatarMini: { width: 36, height: 36, borderRadius: 18 },
-  driverName: { fontSize: 13, fontWeight: 'bold', color: '#0F172A' },
-  driverRating: { fontSize: 11, color: '#D97706', fontWeight: '600' },
-  
-  statusPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
-  statusOnline: { borderWidth: 2, borderColor: '#10B981' },
-  statusOffline: { borderWidth: 2, borderColor: '#CBD5E1' },
-  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  statusText: { fontSize: 14, fontWeight: 'bold' },
-  
-  dashboardCard: { backgroundColor: '#0F172A', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', padding: 14, borderRadius: 16, marginTop: 12, elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8 },
-  dashStat: { alignItems: 'center' },
-  dashLabel: { color: '#94A3B8', fontSize: 11, fontWeight: '600', marginBottom: 2 },
-  dashValue: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
-  dashDivider: { width: 1, height: 26, backgroundColor: '#334155' },
-  
-  bottomOverlay: { position: 'absolute', bottom: 16, left: 16, right: 16 },
-  
-  // Dispatch Incoming Card
-  dispatchCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, elevation: 12, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-  dispHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  dispBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  dispBadgeText: { fontSize: 13, fontWeight: 'bold', color: '#B45309', marginLeft: 6 },
-  countdownBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  countdownText: { fontSize: 13, fontWeight: 'bold', color: '#DC2626', marginLeft: 4 },
-  
-  payTypeBanner: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 8, marginVertical: 6 },
-  payTypeBannerOnline: { backgroundColor: '#D1FAE5' },
-  payTypeBannerCash: { backgroundColor: '#FEE2E2' },
-  payTypeBannerText: { fontSize: 11, fontWeight: 'bold', marginLeft: 6 },
+  container: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  mapContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  topOverlay: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 44 : 10,
+    left: 12,
+    right: 12,
+    zIndex: 100,
+  },
 
-  routeBox: { backgroundColor: '#F8FAFC', padding: 10, borderRadius: 12, marginVertical: 8 },
-  pointText: { fontSize: 13, color: '#1E293B', fontWeight: '500', marginVertical: 2 },
-  
-  metricsRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F1F5F9', paddingVertical: 8 },
-  metricItem: { alignItems: 'center' },
-  metricVal: { fontSize: 15, fontWeight: 'bold', color: '#0F172A' },
-  metricLbl: { fontSize: 11, color: '#64748B', marginTop: 2 },
+  // 1. THANH DOANH THU NHANH
+  earningsBarContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  earningsTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  driverInfoBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  driverAvatarBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0C68EF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  driverGreeting: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  diamondBadge: {
+    marginTop: 2,
+  },
+  diamondText: {
+    fontSize: 11,
+    color: '#F59E0B',
+    fontWeight: '700',
+  },
+  earningsAmountBlock: {
+    alignItems: 'flex-end',
+  },
+  earningsLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  earningsValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#059669',
+    marginTop: 2,
+  },
 
-  actionButtonsRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  rejectBtn: { flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  rejectBtnText: { fontSize: 14, fontWeight: 'bold', color: '#64748B' },
-  acceptBtn: { flex: 2, backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center', elevation: 4 },
-  acceptBtnText: { fontSize: 15, fontWeight: 'bold', color: '#FFFFFF' },
+  // Quest Tracker
+  questProgressContainer: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  questTextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  questTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  questRewardText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  progressBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#F59E0B',
+    borderRadius: 3,
+  },
 
-  // Active Trip Card
-  activeTripCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, elevation: 12, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16 },
-  activeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  tripStepTitle: { fontSize: 15, fontWeight: 'bold', color: '#0F172A' },
-  passengerSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  tripFareText: { fontSize: 18, fontWeight: 'bold', color: '#10B981' },
-  currentDestination: { fontSize: 13, color: '#334155', fontWeight: '600', marginVertical: 10 },
+  // Quick stats
+  quickStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginTop: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingVertical: 6,
+  },
+  quickStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quickStatText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginLeft: 5,
+  },
+  statDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#CBD5E1',
+  },
 
-  paymentEnforcementBanner: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 12, marginBottom: 12, borderWidth: 1.5 },
-  payOnlineBanner: { backgroundColor: '#F0FDF4', borderColor: '#10B981' },
-  payCashBanner: { backgroundColor: '#FEF2F2', borderColor: '#EF4444' },
-  paymentBannerTitle: { fontSize: 12, fontWeight: 'bold', letterSpacing: 0.2 },
-  paymentBannerDesc: { fontSize: 11, color: '#64748B', marginTop: 2 },
+  // Signal Bar
+  statusPillBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  signalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  signalDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  signalText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  homeTripPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  homeTripPillActive: {
+    backgroundColor: '#2563EB',
+  },
+  homeTripText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
 
-  tripToolsRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  googleMapsBtn: { flex: 1, backgroundColor: '#1E293B', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 12, borderRadius: 12 },
-  googleMapsText: { color: '#FFF', fontSize: 13, fontWeight: 'bold' },
-  circleToolBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+  // Floating Buttons (SOS, Recenter, Help)
+  floatingButtonsContainer: {
+    position: 'absolute',
+    right: 14,
+    top: '40%',
+    zIndex: 90,
+    alignItems: 'center',
+  },
+  sosFloatingBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
+    marginBottom: 12,
+  },
+  sosBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    marginTop: -2,
+  },
+  recenterFloatingBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 4,
+    marginBottom: 12,
+  },
+  helpFloatingBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 4,
+  },
 
-  advanceStageBtn: { width: '100%', backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center', elevation: 4 },
-  advanceStageText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
+  // Bottom Overlay & Cockpit Sheet
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
+  cockpitSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  sheetHandleArea: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  sheetDragBar: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#CBD5E1',
+  },
 
-  // Settlement Card
-  settlementCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, elevation: 16, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20 },
-  successCheck: { alignItems: 'center', marginBottom: 12 },
-  settlementTitle: { fontSize: 18, fontWeight: 'bold', color: '#0F172A', marginTop: 6 },
-  settlementSub: { fontSize: 12, color: '#64748B' },
-  settlementBanner: { padding: 10, borderRadius: 12, alignItems: 'center', marginVertical: 10, borderWidth: 1 },
-  settlementBannerText: { fontSize: 13, fontWeight: 'bold' },
-  breakdownCard: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 14, marginVertical: 10 },
-  breakRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
-  breakLbl: { fontSize: 12, color: '#64748B' },
-  breakVal: { fontSize: 13, color: '#0F172A', fontWeight: '600' },
-  breakDivider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 6 },
-  breakTotalLbl: { fontSize: 14, fontWeight: 'bold', color: '#0F172A' },
-  breakTotalVal: { fontSize: 16, fontWeight: 'bold', color: '#10B981' },
-  ratePassengerLbl: { fontSize: 13, fontWeight: 'bold', color: '#0F172A', textAlign: 'center', marginTop: 6 },
-  starsContainer: { flexDirection: 'row', justifyContent: 'center', marginVertical: 10 },
-  completeAllBtn: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 6 },
-  completeAllText: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
+  // Nút trượt lớn bật/tắt trực tuyến
+  bigOnlineSlider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 30,
+    padding: 6,
+    marginTop: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sliderOnlineBg: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#34D399',
+    borderWidth: 1.5,
+  },
+  sliderOfflineBg: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+  },
+  sliderKnob: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sliderKnobOnline: {
+    backgroundColor: '#FFFFFF',
+  },
+  sliderKnobOffline: {
+    backgroundColor: '#FFFFFF',
+  },
+  sliderLabel: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  sliderLabelOnline: {
+    color: '#065F46',
+  },
+  sliderLabelOffline: {
+    color: '#475569',
+  },
 
-  // Idle Services Panel
-  servicesPanel: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 12 },
-  panelTitle: { fontSize: 15, fontWeight: 'bold', color: '#0F172A', marginBottom: 14 },
-  serviceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  serviceIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
-  serviceName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#0F172A' },
+  // Quick Toggles (Tự động nhận & Cuốc về nhà)
+  quickTogglesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  quickToggleCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quickToggleCardActive: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#86EFAC',
+  },
+  quickToggleTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  quickToggleSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
 
-  // Chat Modal
-  modalHeaderBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  modalHeaderTitle: { fontSize: 16, fontWeight: 'bold', color: '#0F172A' },
-  chatBubble: { padding: 10, borderRadius: 14, maxWidth: '80%', marginVertical: 4 },
-  chatBubbleDriver: { backgroundColor: '#10B981', alignSelf: 'flex-end' },
-  chatBubbleUser: { backgroundColor: '#E2E8F0', alignSelf: 'flex-start' },
-  chatText: { fontSize: 13, color: '#0F172A' },
-  chatTime: { fontSize: 10, color: '#94A3B8', marginTop: 4, alignSelf: 'flex-end' },
-  chatChip: { backgroundColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8 },
-  chatChipText: { fontSize: 12, color: '#334155' },
-  chatInputRow: { flexDirection: 'row', padding: 12, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', alignItems: 'center' },
-  chatTextInput: { flex: 1, height: 40, backgroundColor: '#F1F5F9', borderRadius: 20, paddingHorizontal: 14, fontSize: 13, marginRight: 8 },
-  chatSendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center' },
+  // Services List
+  servicesContainer: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  servicesHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  servicesTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  servicesSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  servicesListRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  serviceChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginHorizontal: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  serviceChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#93C5FD',
+  },
+  serviceChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginLeft: 6,
+  },
+  serviceChipTextActive: {
+    color: '#1E40AF',
+  },
+
+  // DISPATCH CARD (Popup nổ cuốc)
+  dispatchCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  dispHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  dispBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  dispBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginLeft: 6,
+  },
+  countdownBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+  },
+  countdownText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#DC2626',
+    marginLeft: 4,
+  },
+  payTypeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  payTypeBannerOnline: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
+  },
+  payTypeBannerCash: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+  },
+  payTypeBannerText: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 6,
+  },
+  routeBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  pointText: {
+    fontSize: 13,
+    color: '#1E293B',
+    fontWeight: '600',
+    marginVertical: 2,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 14,
+  },
+  metricItem: {
+    alignItems: 'center',
+  },
+  metricVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  metricLbl: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  rejectBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  rejectBtnText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  acceptBtn: {
+    flex: 2,
+    backgroundColor: '#059669',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  acceptBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  // ACTIVE TRIP CARD
+  activeTripCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  activeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  tripStepTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  passengerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  tripFareText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#059669',
+  },
+  currentDestination: {
+    fontSize: 13,
+    color: '#1E293B',
+    fontWeight: '700',
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  paymentEnforcementBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  payOnlineBanner: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#6EE7B7',
+  },
+  payCashBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  paymentBannerTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  paymentBannerDesc: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 1,
+  },
+  tripToolsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  googleMapsBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563EB',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  googleMapsText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  circleToolBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
+  advanceStageBtn: {
+    backgroundColor: '#059669',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  advanceStageText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+
+  // SETTLEMENT CARD (Hoàn thành & Đánh giá)
+  settlementCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 18,
+    alignItems: 'center',
+  },
+  successCheck: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  settlementTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 4,
+  },
+  settlementSub: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  settlementBanner: {
+    width: '100%',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginVertical: 10,
+    alignItems: 'center',
+  },
+  settlementBannerText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  breakdownCard: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  breakRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 3,
+  },
+  breakLbl: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  breakVal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  breakDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 6,
+  },
+  breakTotalLbl: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  breakTotalVal: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#059669',
+  },
+  ratePassengerLbl: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 6,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  completeAllBtn: {
+    width: '100%',
+    backgroundColor: '#0F172A',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  completeAllText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  // SOS MODAL
+  sosModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  sosModalContent: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    alignItems: 'center',
+  },
+  sosModalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#DC2626',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  sosModalDesc: {
+    fontSize: 13,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  sosCallPoliceBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    backgroundColor: '#DC2626',
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sosCallSupportBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    backgroundColor: '#2563EB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sosCallText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  sosCancelBtn: {
+    paddingVertical: 8,
+  },
+  sosCancelText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // CHAT MODAL
+  modalHeaderBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  modalHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  chatBubble: {
+    maxWidth: '80%',
+    borderRadius: 14,
+    padding: 12,
+    marginVertical: 4,
+  },
+  chatBubbleDriver: {
+    backgroundColor: '#0C68EF',
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 2,
+  },
+  chatBubbleUser: {
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 2,
+  },
+  chatText: {
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  chatTime: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  chatChip: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 6,
+  },
+  chatChipText: {
+    fontSize: 12,
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+  chatInputRow: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    alignItems: 'center',
+  },
+  chatTextInput: {
+    flex: 1,
+    height: 42,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 21,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  chatSendBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#0C68EF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
 });

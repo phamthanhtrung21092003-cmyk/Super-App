@@ -1,149 +1,261 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity,
-  Modal, TextInput, StatusBar, Platform, Image, Alert
+  Modal, TextInput, StatusBar, Platform, Image, Alert, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface TransactionItem {
+  id: string;
+  title: string;
+  tripCode?: string;
+  amount: number;
+  balanceAfter: number;
+  time: string;
+  type: 'EARN' | 'FEE' | 'TOPUP' | 'WITHDRAW' | 'TRANSFER';
+  walletType: 'CREDIT' | 'CASH'; // Ví Ký Quỹ hay Ví Thu Nhập
+  note: string;
+  customerName?: string;
+  pickup?: string;
+  dropoff?: string;
+  distanceKm?: number;
+  paymentMethod?: 'CASH' | 'ONLINE';
+}
 
 export default function DriverWalletScreen() {
-  const router = useRouter();
+  // ─────────────────────────────────────────
+  // 1. HỆ THỐNG 2 VÍ RIÊNG BIỆT (driver-wallet-reconciliation)
+  // ─────────────────────────────────────────
+  // Ví Ký Quỹ (Tài khoản Tín dụng / Credit Wallet): dùng để trừ hoa hồng khi nhận cuốc tiền mặt COD
+  const [creditWallet, setCreditWallet] = useState(250000);
+  // Ví Thu Nhập (Tài khoản Khả dụng / Cash Wallet): nhận cước online, thưởng, tip -> rút về ngân hàng
+  const [cashWallet, setCashWallet] = useState(1485000);
 
-  // Wallet balances
-  const [walletBalance, setWalletBalance] = useState(650000); // Ví ký quỹ
-  const [cashInHand, setCashInHand] = useState(420000); // Tiền mặt cầm tay hôm nay
-  const [todayNetEarnings, setTodayNetEarnings] = useState(380000); // Thu nhập ròng hôm nay
+  // Thống kê doanh thu theo chu kỳ: TODAY | WEEK | MONTH
+  const [periodTab, setPeriodTab] = useState<'TODAY' | 'WEEK' | 'MONTH'>('TODAY');
 
   // Modals
   const [showTopupModal, setShowTopupModal] = useState(false);
   const [topupAmount, setTopupAmount] = useState('200000');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [selectedReceipt, setSelectedReceipt] = useState<TransactionItem | null>(null);
 
-  // Active filter for transactions
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'EARN' | 'FEE' | 'TOPUP'>('ALL');
+  // Bộ lọc giao dịch
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'CREDIT' | 'CASH' | 'TOPUP' | 'WITHDRAW'>('ALL');
 
-  // Transactions ledger
-  const [transactions, setTransactions] = useState([
+  // Danh sách giao dịch sổ cái đối soát
+  const [transactions, setTransactions] = useState<TransactionItem[]>([
     {
       id: 'TX-901',
-      title: 'Trừ chiết khấu cuốc #VR-8899 (Tiền mặt)',
+      title: 'Khấu trừ phí sàn cuốc #VR-8899',
       tripCode: 'VR-8899',
-      amount: -15000,
-      balanceAfter: 650000,
+      amount: -12000,
+      balanceAfter: 250000,
       time: '14:25 Hôm nay',
       type: 'FEE',
-      note: 'Khách trả 75.000đ tiền mặt',
+      walletType: 'CREDIT',
+      note: 'Khách trả 120.000đ tiền mặt',
+      customerName: 'Nguyễn Văn Hùng',
+      pickup: 'Bến xe Mỹ Đình, Từ Liêm',
+      dropoff: '68 Cầu Giấy, Hà Nội',
+      distanceKm: 5.2,
+      paymentMethod: 'CASH',
     },
     {
       id: 'TX-902',
       title: 'Cộng cước cuốc #VR-8898 (VNPay)',
       tripCode: 'VR-8898',
-      amount: +96000,
-      balanceAfter: 665000,
+      amount: +108000,
+      balanceAfter: 1485000,
       time: '13:10 Hôm nay',
       type: 'EARN',
-      note: 'Khách thanh toán trực tuyến',
+      walletType: 'CASH',
+      note: 'Khách thanh toán trực tuyến qua thẻ',
+      customerName: 'Trần Thu Thảo',
+      pickup: 'Keangnam Landmark 72',
+      dropoff: 'Vincom Trần Duy Hưng',
+      distanceKm: 3.8,
+      paymentMethod: 'ONLINE',
     },
     {
       id: 'TX-903',
-      title: 'Thưởng mốc 5 cuốc trưa cao điểm',
+      title: 'Thưởng nhiệm vụ 8 cuốc trong ngày',
       tripCode: '',
-      amount: +50000,
-      balanceAfter: 569000,
+      amount: +60000,
+      balanceAfter: 1377000,
       time: '12:30 Hôm nay',
       type: 'EARN',
+      walletType: 'CASH',
       note: 'Chương trình Chiến Binh Giờ Vàng',
     },
     {
       id: 'TX-904',
-      title: 'Nạp tiền ví ký quỹ qua VietQR',
+      title: 'Nạp tiền ví ký quỹ qua VietQR NAPAS 24/7',
       tripCode: '',
-      amount: +300000,
-      balanceAfter: 519000,
-      time: '08:00 Hôm nay',
+      amount: +200000,
+      balanceAfter: 262000,
+      time: '08:15 Hôm nay',
       type: 'TOPUP',
-      note: 'Giao dịch NAPAS 247 MB Bank',
+      walletType: 'CREDIT',
+      note: 'Chuyển khoản liên ngân hàng MB Bank',
     },
     {
       id: 'TX-905',
-      title: 'Trừ chiết khấu cuốc #VR-8872 (Tiền mặt)',
-      tripCode: 'VR-8872',
-      amount: -18000,
-      balanceAfter: 219000,
+      title: 'Rút tiền về MB Bank (...8899)',
+      tripCode: '',
+      amount: -500000,
+      balanceAfter: 1317000,
       time: '19:40 Hôm qua',
-      type: 'FEE',
-      note: 'Khách trả 90.000đ tiền mặt',
+      type: 'WITHDRAW',
+      walletType: 'CASH',
+      note: 'Lệnh rút tiền siêu tốc 24/7 thành công',
     },
   ]);
 
+  // ─────────────────────────────────────────
+  // 2. LƯU & KHÔI PHỤC DỮ LIỆU CỤC BỘ (offline-resilient-sync)
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    const loadCachedWallets = async () => {
+      try {
+        const cached = await AsyncStorage.getItem('@sunstar_driver_wallets');
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (data.creditWallet !== undefined) setCreditWallet(data.creditWallet);
+          if (data.cashWallet !== undefined) setCashWallet(data.cashWallet);
+        }
+      } catch (e) {}
+    };
+    loadCachedWallets();
+  }, []);
+
+  const saveWallets = (credit: number, cash: number) => {
+    AsyncStorage.setItem('@sunstar_driver_wallets', JSON.stringify({
+      creditWallet: credit,
+      cashWallet: cash,
+    })).catch(() => {});
+  };
+
+  // ─────────────────────────────────────────
+  // 3. THAO TÁC NẠP TIỀN VIETQR 24/7
+  // ─────────────────────────────────────────
   const quickTopups = [50000, 100000, 200000, 500000];
 
   const handleConfirmTopup = () => {
     const val = parseInt(topupAmount, 10);
     if (isNaN(val) || val < 10000) {
-      if (Platform.OS === 'web') alert('Vui lòng nhập số tiền hợp lệ (tối thiểu 10.000đ)');
-      else Alert.alert('Lỗi', 'Vui lòng nhập số tiền hợp lệ (tối thiểu 10.000đ)');
+      Alert.alert('Số tiền không hợp lệ', 'Vui lòng nhập số tiền nạp tối thiểu 10.000đ.');
       return;
     }
-    const newBal = walletBalance + val;
-    setWalletBalance(newBal);
-    setTransactions([
-      {
-        id: `TX-${Date.now().toString().slice(-4)}`,
-        title: 'Nạp tiền ví ký quỹ qua VietQR',
-        tripCode: '',
-        amount: val,
-        balanceAfter: newBal,
-        time: 'Vừa xong',
-        type: 'TOPUP',
-        note: 'Giao dịch NAPAS 247 tự động',
-      },
-      ...transactions,
-    ]);
+    const newCredit = creditWallet + val;
+    setCreditWallet(newCredit);
+    saveWallets(newCredit, cashWallet);
+
+    const newTx: TransactionItem = {
+      id: `TX-${Date.now().toString().slice(-4)}`,
+      title: 'Nạp tiền ví ký quỹ qua VietQR',
+      tripCode: '',
+      amount: val,
+      balanceAfter: newCredit,
+      time: 'Vừa xong',
+      type: 'TOPUP',
+      walletType: 'CREDIT',
+      note: 'Giao dịch NAPAS 24/7 tự động xác thực',
+    };
+    setTransactions([newTx, ...transactions]);
     setShowTopupModal(false);
-    if (Platform.OS === 'web') alert(`Đã nạp thành công ${val.toLocaleString('vi-VN')}đ vào ví ký quỹ!`);
-    else Alert.alert('Thành công', `Đã nạp thành công ${val.toLocaleString('vi-VN')}đ vào ví ký quỹ!`);
+    Alert.alert('Nạp tiền thành công', `Đã nạp ${val.toLocaleString('vi-VN')}đ vào Ví Ký Quỹ. Bạn đã sẵn sàng nhận các cuốc tiền mặt!`);
   };
 
+  // ─────────────────────────────────────────
+  // 4. THAO TÁC RÚT TIỀN VỀ NGÂN HÀNG
+  // ─────────────────────────────────────────
   const handleConfirmWithdraw = () => {
     const val = parseInt(withdrawAmount, 10);
-    if (isNaN(val) || val <= 0) {
-      if (Platform.OS === 'web') alert('Vui lòng nhập số tiền muốn rút');
-      else Alert.alert('Lỗi', 'Vui lòng nhập số tiền muốn rút');
+    if (isNaN(val) || val < 50000) {
+      Alert.alert('Lỗi', 'Số tiền rút tối thiểu là 50.000đ.');
       return;
     }
-    if (val > walletBalance - 50000) {
-      if (Platform.OS === 'web') alert('Số dư ký quỹ sau khi rút phải giữ tối thiểu 50.000đ');
-      else Alert.alert('Số dư không đủ', 'Số dư ký quỹ sau khi rút phải giữ tối thiểu 50.000đ để tiếp tục nhận cuốc.');
+    if (val > cashWallet) {
+      Alert.alert('Số dư không đủ', 'Số dư Ví Thu Nhập không đủ để thực hiện lệnh rút này.');
       return;
     }
-    const newBal = walletBalance - val;
-    setWalletBalance(newBal);
-    setTransactions([
-      {
-        id: `TX-${Date.now().toString().slice(-4)}`,
-        title: 'Rút tiền về MB Bank (...6789)',
-        tripCode: '',
-        amount: -val,
-        balanceAfter: newBal,
-        time: 'Vừa xong',
-        type: 'FEE',
-        note: 'Lệnh rút tiền 24/7',
-      },
-      ...transactions,
-    ]);
+    const newCash = cashWallet - val;
+    setCashWallet(newCash);
+    saveWallets(creditWallet, newCash);
+
+    const newTx: TransactionItem = {
+      id: `TX-${Date.now().toString().slice(-4)}`,
+      title: 'Rút tiền về MB Bank (...8899)',
+      tripCode: '',
+      amount: -val,
+      balanceAfter: newCash,
+      time: 'Vừa xong',
+      type: 'WITHDRAW',
+      walletType: 'CASH',
+      note: 'Lệnh rút tiền 24/7 không mất phí',
+    };
+    setTransactions([newTx, ...transactions]);
     setShowWithdrawModal(false);
     setWithdrawAmount('');
-    if (Platform.OS === 'web') alert(`Lệnh rút ${val.toLocaleString('vi-VN')}đ đã được chuyển về tài khoản ngân hàng!`);
-    else Alert.alert('Thành công', `Lệnh rút ${val.toLocaleString('vi-VN')}đ đã được chuyển về tài khoản ngân hàng!`);
+    Alert.alert('Rút tiền thành công', `Đã chuyển ${val.toLocaleString('vi-VN')}đ về tài khoản ngân hàng MB Bank của bạn. Tiền sẽ về trong 30 giây!`);
   };
 
+  // ─────────────────────────────────────────
+  // 5. CHUYỂN TIỀN TỪ VÍ THU NHẬP SANG VÍ KÝ QUỸ
+  // ─────────────────────────────────────────
+  const handleTransferToCredit = () => {
+    const val = parseInt(transferAmount, 10);
+    if (isNaN(val) || val <= 0) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số tiền muốn chuyển.');
+      return;
+    }
+    if (val > cashWallet) {
+      Alert.alert('Số dư không đủ', 'Số dư Ví Thu Nhập không đủ để chuyển.');
+      return;
+    }
+    const newCash = cashWallet - val;
+    const newCredit = creditWallet + val;
+    setCashWallet(newCash);
+    setCreditWallet(newCredit);
+    saveWallets(newCredit, newCash);
+
+    const newTx: TransactionItem = {
+      id: `TX-${Date.now().toString().slice(-4)}`,
+      title: 'Chuyển tiền sang Ví Ký Quỹ',
+      amount: val,
+      balanceAfter: newCredit,
+      time: 'Vừa xong',
+      type: 'TRANSFER',
+      walletType: 'CREDIT',
+      note: 'Chuyển nội bộ từ Ví Thu Nhập để chạy tiếp',
+    };
+    setTransactions([newTx, ...transactions]);
+    setShowTransferModal(false);
+    setTransferAmount('');
+    Alert.alert('Chuyển tiền thành công', `Đã chuyển ${val.toLocaleString('vi-VN')}đ sang Ví Ký Quỹ!`);
+  };
+
+  // Dữ liệu bóc tách tài chính theo tab chu kỳ
+  const periodStats = {
+    TODAY: { gross: '650.000đ', fee: '-65.000đ', cash: '420.000đ', online: '170.000đ', bonus: '+60.000đ', net: '585.000đ', trips: 8 },
+    WEEK: { gross: '4.850.000đ', fee: '-485.000đ', cash: '3.100.000đ', online: '1.265.000đ', bonus: '+350.000đ', net: '4.365.000đ', trips: 56 },
+    MONTH: { gross: '21.500.000đ', fee: '-2.150.000đ', cash: '14.200.000đ', online: '5.150.000đ', bonus: '+1.500.000đ', net: '19.350.000đ', trips: 245 },
+  }[periodTab];
+
+  // Lọc giao dịch
   const filteredTransactions = transactions.filter((t) => {
     if (activeFilter === 'ALL') return true;
-    if (activeFilter === 'EARN') return t.type === 'EARN';
-    if (activeFilter === 'FEE') return t.type === 'FEE';
+    if (activeFilter === 'CREDIT') return t.walletType === 'CREDIT';
+    if (activeFilter === 'CASH') return t.walletType === 'CASH';
     if (activeFilter === 'TOPUP') return t.type === 'TOPUP';
+    if (activeFilter === 'WITHDRAW') return t.type === 'WITHDRAW';
     return true;
   });
 
@@ -153,107 +265,209 @@ export default function DriverWalletScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Ví & Thu Nhập Tài Xế</Text>
-        <TouchableOpacity style={styles.helpBtn} onPress={() => {
-          if (Platform.OS === 'web') alert('Tổng đài hỗ trợ đối tác 24/7: 1900-8888');
-          else Alert.alert('Hỗ trợ', 'Tổng đài đối tác: 1900-8888');
-        }}>
+        <View>
+          <Text style={styles.headerTitle}>Ví & Quản Lý Doanh Thu</Text>
+          <Text style={styles.headerSubtitle}>Đối tác: Trần Bình • 29A-888.99</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.helpBtn}
+          onPress={() => Alert.alert('Hỗ trợ đối soát 24/7', 'Tổng đài tài chính Sunstar: 1900-1234 (Nhánh 2).')}
+        >
           <Ionicons name="help-circle-outline" size={24} color="#0F172A" />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Main Wallet Card */}
-        <View style={styles.walletCard}>
-          <View style={styles.walletHeaderRow}>
-            <View>
-              <Text style={styles.walletLabel}>Số dư Ví Ký Quỹ (Escrow Balance)</Text>
-              <Text style={styles.walletAmount}>{walletBalance.toLocaleString('vi-VN')}đ</Text>
+        
+        {/* ─────────────────────────────────────────
+            KHỐI 1: HỆ THỐNG 2 VÍ SONG SONG (DUAL-WALLET)
+            ───────────────────────────────────────── */}
+        <View style={styles.walletsContainer}>
+          {/* VÍ 1: VÍ KÝ QUỸ (CREDIT WALLET) */}
+          <View style={styles.creditWalletCard}>
+            <View style={styles.walletHeaderRow}>
+              <View style={styles.walletTagBadge}>
+                <Ionicons name="shield-checkmark" size={14} color="#0284C7" />
+                <Text style={styles.walletTagText}>VÍ KÝ QUỸ (KHẤU TRỪ SÀN)</Text>
+              </View>
+              <Text style={styles.escrowNotice}>Hạn mức: ≥ 50.000đ</Text>
             </View>
-            <View style={styles.walletBadge}>
-              <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-              <Text style={styles.walletBadgeText}>Sẵn sàng</Text>
+
+            <Text style={styles.walletBigAmount}>{creditWallet.toLocaleString('vi-VN')} đ</Text>
+            <Text style={styles.walletExplain}>
+              Dùng để tự động trừ 10% phí hoa hồng khi nhận các cuốc trả TIỀN MẶT (COD).
+            </Text>
+
+            {creditWallet < 50000 && (
+              <View style={styles.creditWarningBar}>
+                <Ionicons name="warning" size={14} color="#DC2626" />
+                <Text style={styles.creditWarningText}>Số dư ký quỹ thấp. Hãy nạp thêm để không bị khóa nhận cuốc COD.</Text>
+              </View>
+            )}
+
+            <View style={styles.walletActionRow}>
+              <TouchableOpacity
+                style={styles.topupVietQrBtn}
+                onPress={() => setShowTopupModal(true)}
+              >
+                <Ionicons name="qr-code" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.topupVietQrText}>Nạp VietQR 24/7</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.transferBtn}
+                onPress={() => setShowTransferModal(true)}
+              >
+                <Ionicons name="swap-horizontal" size={16} color="#0284C7" style={{ marginRight: 4 }} />
+                <Text style={styles.transferBtnText}>Chuyển từ Ví Thu Nhập</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          {walletBalance < 100000 && (
-            <View style={styles.alertNotice}>
-              <Ionicons name="warning" size={16} color="#D97706" />
-              <Text style={styles.alertNoticeText}>Số dư sắp hết hạn mức khấu trừ. Hãy nạp thêm để tránh gián đoạn nhận cuốc.</Text>
+          {/* VÍ 2: VÍ THU NHẬP (CASH WALLET) */}
+          <View style={styles.cashWalletCard}>
+            <View style={styles.walletHeaderRow}>
+              <View style={[styles.walletTagBadge, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="wallet" size={14} color="#059669" />
+                <Text style={[styles.walletTagText, { color: '#059669' }]}>VÍ THU NHẬP (RÚT TIỀN 24/7)</Text>
+              </View>
+              <Text style={[styles.escrowNotice, { color: '#059669', fontWeight: '800' }]}>Rút 0đ phí</Text>
             </View>
-          )}
 
-          {/* Action Buttons */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.topupBtn} onPress={() => setShowTopupModal(true)}>
-              <Ionicons name="qr-code-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.topupBtnText}>Nạp ví VietQR</Text>
-            </TouchableOpacity>
+            <Text style={[styles.walletBigAmount, { color: '#059669' }]}>{cashWallet.toLocaleString('vi-VN')} đ</Text>
+            <Text style={styles.walletExplain}>
+              Tiền cước khách trả Online, tiền thưởng ngày/tuần và tiền tip của khách.
+            </Text>
 
-            <TouchableOpacity style={styles.withdrawBtn} onPress={() => setShowWithdrawModal(true)}>
-              <Ionicons name="card-outline" size={20} color="#0F172A" />
-              <Text style={styles.withdrawBtnText}>Rút về Bank</Text>
-            </TouchableOpacity>
+            <View style={styles.walletActionRow}>
+              <TouchableOpacity
+                style={styles.withdrawBankBtn}
+                onPress={() => setShowWithdrawModal(true)}
+              >
+                <Ionicons name="card" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.withdrawBankText}>Rút về Ngân hàng (30s)</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
-        {/* Daily Performance Metrics */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="cash" size={20} color="#D97706" />
-            </View>
-            <Text style={styles.statLabel}>Tiền mặt trong tay</Text>
-            <Text style={styles.statValGold}>{cashInHand.toLocaleString('vi-VN')}đ</Text>
-            <Text style={styles.statSub}>Đã thu từ khách</Text>
-          </View>
-
-          <View style={styles.statBox}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#D1FAE5' }]}>
-              <Ionicons name="trending-up" size={20} color="#059669" />
-            </View>
-            <Text style={styles.statLabel}>Thu nhập ròng hôm nay</Text>
-            <Text style={styles.statValGreen}>{todayNetEarnings.toLocaleString('vi-VN')}đ</Text>
-            <Text style={styles.statSub}>Sau trừ 15% phí</Text>
-          </View>
-        </View>
-
-        {/* Bank Account Info Card */}
-        <View style={styles.bankCard}>
-          <View style={styles.bankCardHeader}>
+        {/* ─────────────────────────────────────────
+            KHỐI 2: THẺ NGÂN HÀNG LIÊN KẾT NHẬN TIỀN
+            ───────────────────────────────────────── */}
+        <View style={styles.bankLinkedCard}>
+          <View style={styles.bankLinkedHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="business" size={18} color="#0284C7" />
-              <Text style={styles.bankCardTitle}>Tài khoản liên kết nhận tiền</Text>
+              <View style={styles.bankIconWrap}>
+                <Ionicons name="business" size={18} color="#0052CC" />
+              </View>
+              <View style={{ marginLeft: 10 }}>
+                <Text style={styles.bankName}>MB Bank (Ngân hàng Quân Đội)</Text>
+                <Text style={styles.bankAccountNo}>0988 *** 8899 • TRẦN BÌNH</Text>
+              </View>
             </View>
-            <Text style={styles.verifiedTag}>ĐÃ XÁC THỰC</Text>
-          </View>
-          <View style={styles.bankRow}>
-            <Text style={styles.bankField}>Ngân hàng:</Text>
-            <Text style={styles.bankValue}>MB Bank (Quân Đội)</Text>
-          </View>
-          <View style={styles.bankRow}>
-            <Text style={styles.bankField}>Số tài khoản:</Text>
-            <Text style={styles.bankValueBold}>0988 *** 6789</Text>
-          </View>
-          <View style={styles.bankRow}>
-            <Text style={styles.bankField}>Chủ tài khoản:</Text>
-            <Text style={styles.bankValue}>NGUYEN VAN TAI XE</Text>
+            <View style={styles.verifiedBadge}>
+              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+              <Text style={styles.verifiedText}>ĐÃ LIÊN KẾT</Text>
+            </View>
           </View>
         </View>
 
-        {/* Transactions Section */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Biến động số dư & Lịch sử cước</Text>
-          <Text style={styles.txCount}>{filteredTransactions.length} giao dịch</Text>
+        {/* ─────────────────────────────────────────
+            KHỐI 3: BÁO CÁO DOANH THU ĐA CHU KỲ (PERIODS)
+            ───────────────────────────────────────── */}
+        <View style={styles.reportContainer}>
+          <View style={styles.reportHeaderRow}>
+            <Text style={styles.reportTitle}>Báo cáo hạch toán tài chính</Text>
+            <View style={styles.periodTabsWrapper}>
+              {(['TODAY', 'WEEK', 'MONTH'] as const).map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.periodTabBtn, periodTab === tab && styles.periodTabBtnActive]}
+                  onPress={() => setPeriodTab(tab)}
+                >
+                  <Text style={[styles.periodTabText, periodTab === tab && styles.periodTabTextActive]}>
+                    {tab === 'TODAY' && 'Hôm nay'}
+                    {tab === 'WEEK' && 'Tuần này'}
+                    {tab === 'MONTH' && 'Tháng này'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Biểu đồ cột 7 ngày mini (Weekly Trend) */}
+          <View style={styles.chartWrapper}>
+            <Text style={styles.chartTitle}>Xu hướng thu nhập 7 ngày gần nhất (nghìn đồng)</Text>
+            <View style={styles.barsRow}>
+              {[
+                { day: 'T2', val: 320, pct: '45%' },
+                { day: 'T3', val: 450, pct: '60%' },
+                { day: 'T4', val: 510, pct: '70%' },
+                { day: 'T5', val: 390, pct: '50%' },
+                { day: 'T6', val: 620, pct: '85%' },
+                { day: 'T7', val: 750, pct: '100%', highlight: true },
+                { day: 'CN', val: 485, pct: '65%' },
+              ].map((item, idx) => (
+                <View key={idx} style={styles.barCol}>
+                  <Text style={styles.barValText}>{item.val}k</Text>
+                  <View style={styles.barTrack}>
+                    <View style={[styles.barFill, { height: item.pct, backgroundColor: item.highlight ? '#059669' : '#3B82F6' }]} />
+                  </View>
+                  <Text style={[styles.barDayText, item.highlight && { fontWeight: '800', color: '#059669' }]}>{item.day}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Bảng bóc tách tài chính minh bạch */}
+          <View style={styles.breakdownTable}>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLbl}>Tổng tiền cước khách trả ({periodStats.trips} chuyến)</Text>
+              <Text style={styles.tableVal}>{periodStats.gross}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLbl}>Phí nền tảng Sunstar (-10%)</Text>
+              <Text style={[styles.tableVal, { color: '#EF4444' }]}>{periodStats.fee}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLbl}>💵 Tiền mặt COD tài xế đã cầm tay</Text>
+              <Text style={[styles.tableVal, { color: '#D97706' }]}>{periodStats.cash}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLbl}>💳 Tiền cước thanh toán qua ví Online</Text>
+              <Text style={[styles.tableVal, { color: '#0284C7' }]}>{periodStats.online}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLbl}>🎁 Tiền thưởng nhiệm vụ & Tiền Tip</Text>
+              <Text style={[styles.tableVal, { color: '#059669' }]}>{periodStats.bonus}</Text>
+            </View>
+            <View style={styles.tableDivider} />
+            <View style={styles.tableTotalRow}>
+              <View>
+                <Text style={styles.totalNetLbl}>THU NHẬP RÒNG THỰC NHẬN</Text>
+                <Text style={styles.totalNetSub}>Số tiền thực tế tài xế bỏ túi</Text>
+              </View>
+              <Text style={styles.totalNetVal}>{periodStats.net}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Filters */}
+        {/* ─────────────────────────────────────────
+            KHỐI 4: LỊCH SỬ GIAO DỊCH & HÓA ĐƠN ĐIỆN TỬ
+            ───────────────────────────────────────── */}
+        <View style={styles.txHeaderRow}>
+          <Text style={styles.txHeaderTitle}>Lịch sử dòng tiền & Cuốc xe</Text>
+          <Text style={styles.txSubHint}>Chạm vào cuốc để xem Hóa đơn</Text>
+        </View>
+
+        {/* Bộ lọc chip */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           {[
             { id: 'ALL', label: 'Tất cả' },
-            { id: 'EARN', label: 'Cộng cước / Thưởng' },
-            { id: 'FEE', label: 'Trừ chiết khấu' },
-            { id: 'TOPUP', label: 'Nạp ví VietQR' },
+            { id: 'CREDIT', label: 'Ví Ký Quỹ' },
+            { id: 'CASH', label: 'Ví Thu Nhập' },
+            { id: 'TOPUP', label: 'Nạp VietQR' },
+            { id: 'WITHDRAW', label: 'Rút Bank' },
           ].map((item) => (
             <TouchableOpacity
               key={item.id}
@@ -267,212 +481,458 @@ export default function DriverWalletScreen() {
           ))}
         </ScrollView>
 
-        {/* Transactions List */}
+        {/* Danh sách giao dịch */}
         {filteredTransactions.map((tx) => (
-          <View key={tx.id} style={styles.txCard}>
-            <View style={styles.txLeft}>
+          <TouchableOpacity
+            key={tx.id}
+            style={styles.txItemCard}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (tx.tripCode) setSelectedReceipt(tx);
+            }}
+          >
+            <View style={styles.txItemLeft}>
               <View
                 style={[
-                  styles.txIconWrap,
+                  styles.txItemIconWrap,
                   tx.amount > 0 ? { backgroundColor: '#ECFDF5' } : { backgroundColor: '#FEF2F2' },
                 ]}
               >
                 <Ionicons
                   name={tx.amount > 0 ? (tx.type === 'TOPUP' ? 'arrow-down-circle' : 'add-circle') : 'remove-circle'}
-                  size={24}
+                  size={22}
                   color={tx.amount > 0 ? '#10B981' : '#EF4444'}
                 />
               </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.txTitle}>{tx.title}</Text>
-                <Text style={styles.txNote}>{tx.note}</Text>
-                <Text style={styles.txTime}>{tx.time}</Text>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.txItemTitle} numberOfLines={1}>{tx.title}</Text>
+                <Text style={styles.txItemNote}>{tx.note}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                  <Text style={styles.txItemTime}>{tx.time}</Text>
+                  <View style={[styles.txWalletTag, tx.walletType === 'CREDIT' ? styles.tagCredit : styles.tagCash]}>
+                    <Text style={styles.txWalletTagText}>
+                      {tx.walletType === 'CREDIT' ? 'Ví Ký Quỹ' : 'Ví Thu Nhập'}
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
 
-            <View style={styles.txRight}>
-              <Text style={[styles.txAmount, tx.amount > 0 ? styles.txGreen : styles.txRed]}>
+            <View style={styles.txItemRight}>
+              <Text style={[styles.txItemAmount, tx.amount > 0 ? styles.txGreen : styles.txRed]}>
                 {tx.amount > 0 ? `+${tx.amount.toLocaleString('vi-VN')}đ` : `${tx.amount.toLocaleString('vi-VN')}đ`}
               </Text>
-              <Text style={styles.txBalAfter}>Số dư: {tx.balanceAfter.toLocaleString('vi-VN')}đ</Text>
+              {tx.tripCode ? (
+                <View style={styles.receiptArrow}>
+                  <Text style={styles.receiptArrowText}>Xem biên lai</Text>
+                  <Ionicons name="chevron-forward" size={12} color="#3B82F6" />
+                </View>
+              ) : null}
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* VietQR Topup Modal */}
-      <Modal visible={showTopupModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+      {/* ─────────────────────────────────────────
+          MODAL 1: NẠP TIỀN VÍ KÝ QUỸ QUA VIETQR ĐỘNG 24/7
+          ───────────────────────────────────────── */}
+      <Modal visible={showTopupModal} animationType="slide" transparent onRequestClose={() => setShowTopupModal(false)}>
+        <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nạp Ví Ký Quỹ Qua VietQR</Text>
+            <View style={styles.modalTopBar}>
+              <Text style={styles.modalSheetTitle}>Nạp tiền Ví Ký Quỹ (VietQR 24/7)</Text>
               <TouchableOpacity onPress={() => setShowTopupModal(false)}>
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-              {/* QR Image */}
-              <View style={styles.qrContainer}>
-                <Image
-                  source={{
-                    uri: `https://img.vietqr.io/image/MB-0988888888-compact2.png?amount=${topupAmount || '100000'}&addInfo=VDRIVE%20TX8889&accountName=CONG%20TY%20V-LIFE`,
-                  }}
-                  style={styles.qrImage}
-                  resizeMode="contain"
-                />
-                <Text style={styles.qrNote}>Quét mã bằng app ngân hàng bất kỳ để cộng tiền tức thì 24/7</Text>
-              </View>
-
-              {/* Quick Select Amounts */}
-              <Text style={styles.inputSectionLabel}>Chọn nhanh số tiền nạp:</Text>
-              <View style={styles.quickGrid}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Chọn nhanh số tiền */}
+              <Text style={styles.inputLabel}>Chọn số tiền nạp:</Text>
+              <View style={styles.quickAmountsRow}>
                 {quickTopups.map((amt) => (
                   <TouchableOpacity
                     key={amt}
-                    style={[styles.quickBtn, topupAmount === amt.toString() && styles.quickBtnActive]}
+                    style={[styles.quickAmountChip, topupAmount === amt.toString() && styles.quickAmountChipActive]}
                     onPress={() => setTopupAmount(amt.toString())}
                   >
-                    <Text style={[styles.quickBtnText, topupAmount === amt.toString() && styles.quickBtnTextActive]}>
+                    <Text style={[styles.quickAmountText, topupAmount === amt.toString() && styles.quickAmountTextActive]}>
                       {amt.toLocaleString('vi-VN')}đ
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Custom Input */}
-              <Text style={styles.inputSectionLabel}>Hoặc nhập số tiền khác:</Text>
-              <View style={styles.inputWrap}>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="numeric"
-                  value={topupAmount}
-                  onChangeText={setTopupAmount}
-                  placeholder="Nhập số tiền..."
+              <TextInput
+                style={styles.amountInput}
+                keyboardType="numeric"
+                value={topupAmount}
+                onChangeText={setTopupAmount}
+                placeholder="Hoặc tự gõ số tiền (tối thiểu 10.000đ)"
+              />
+
+              {/* Khung VietQR động */}
+              <View style={styles.qrDisplayCard}>
+                <Image
+                  source={{
+                    uri: `https://img.vietqr.io/image/MB-0988888899-compact2.png?amount=${topupAmount || '100000'}&addInfo=SUNSTAR%20TX%20TRAN%20BINH&accountName=SUNSTAR%20LOGISTICS%20JSC`,
+                  }}
+                  style={styles.qrImage}
+                  resizeMode="contain"
                 />
-                <Text style={styles.inputUnit}>VNĐ</Text>
+                <Text style={styles.qrScanHint}>
+                  Quét mã bằng bất kỳ ứng dụng ngân hàng nào (MB, VCB, Techcombank, VPBank,...)
+                </Text>
+
+                <View style={styles.transferInfoBox}>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLbl}>Ngân hàng:</Text>
+                    <Text style={styles.infoVal}>MB Bank (Ngân hàng Quân Đội)</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLbl}>Số tài khoản:</Text>
+                    <Text style={styles.infoValBold}>0988 8888 99</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLbl}>Chủ tài khoản:</Text>
+                    <Text style={styles.infoVal}>CONG TY CP SUNSTAR LOGISTICS</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLbl}>Nội dung CK:</Text>
+                    <Text style={[styles.infoValBold, { color: '#0C68EF' }]}>SUNSTAR TX TRAN BINH</Text>
+                  </View>
+                </View>
               </View>
 
-              {/* Submit Button */}
-              <TouchableOpacity style={styles.confirmTopupBtn} onPress={handleConfirmTopup}>
-                <Text style={styles.confirmTopupBtnText}>
-                  Xác nhận nạp {parseInt(topupAmount || '0', 10).toLocaleString('vi-VN')}đ
-                </Text>
+              <TouchableOpacity style={styles.confirmActionBtn} onPress={handleConfirmTopup}>
+                <Text style={styles.confirmActionText}>TÔI ĐÃ CHUYỂN KHOẢN XONG</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* Withdraw Modal */}
-      <Modal visible={showWithdrawModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+      {/* ─────────────────────────────────────────
+          MODAL 2: RÚT TIỀN VỀ NGÂN HÀNG
+          ───────────────────────────────────────── */}
+      <Modal visible={showWithdrawModal} animationType="slide" transparent onRequestClose={() => setShowWithdrawModal(false)}>
+        <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Rút Tiền Về Ngân Hàng</Text>
+            <View style={styles.modalTopBar}>
+              <Text style={styles.modalSheetTitle}>Rút tiền về Tài khoản Ngân hàng</Text>
               <TouchableOpacity onPress={() => setShowWithdrawModal(false)}>
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.withdrawTargetBox}>
-              <Ionicons name="business" size={24} color="#0088FF" />
-              <View style={{ marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#0F172A' }}>MB Bank (Quân Đội)</Text>
-                <Text style={{ fontSize: 13, color: '#64748B' }}>0988 *** 6789 - NGUYEN VAN TAI XE</Text>
+            <View style={styles.withdrawSourceBox}>
+              <Text style={styles.withdrawSourceLbl}>Nguồn rút: Ví Thu Nhập</Text>
+              <Text style={styles.withdrawSourceBal}>{cashWallet.toLocaleString('vi-VN')} đ</Text>
+            </View>
+
+            <View style={styles.bankDestCard}>
+              <Ionicons name="card" size={22} color="#0052CC" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.bankDestTitle}>MB Bank • 0988 *** 8899</Text>
+                <Text style={styles.bankDestSub}>Chủ TK: TRẦN BÌNH • Nhận tiền trong 30 giây</Text>
               </View>
             </View>
 
-            <Text style={styles.inputSectionLabel}>Số tiền muốn rút:</Text>
-            <View style={styles.inputWrap}>
-              <TextInput
-                style={styles.textInput}
-                keyboardType="numeric"
-                value={withdrawAmount}
-                onChangeText={setWithdrawAmount}
-                placeholder={`Tối đa ${(walletBalance - 50000).toLocaleString('vi-VN')}đ`}
-              />
-              <Text style={styles.inputUnit}>VNĐ</Text>
-            </View>
-            <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 6, marginBottom: 20 }}>
-              * Số dư tối thiểu cần duy trì trong ví ký quỹ là 50.000đ.
-            </Text>
+            <Text style={styles.inputLabel}>Nhập số tiền muốn rút:</Text>
+            <TextInput
+              style={styles.amountInput}
+              keyboardType="numeric"
+              value={withdrawAmount}
+              onChangeText={setWithdrawAmount}
+              placeholder="Tối thiểu 50.000đ"
+            />
 
-            <TouchableOpacity style={styles.confirmTopupBtn} onPress={handleConfirmWithdraw}>
-              <Text style={styles.confirmTopupBtnText}>Xác nhận rút tiền</Text>
+            <View style={styles.quickWithdrawRow}>
+              {[100000, 200000, 500000, cashWallet].map((amt, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.quickWithdrawChip}
+                  onPress={() => setWithdrawAmount(amt.toString())}
+                >
+                  <Text style={styles.quickWithdrawText}>
+                    {idx === 3 ? 'Rút tất cả' : `${(amt / 1000).toLocaleString()}k`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.freeFeeNotice}>
+              <Ionicons name="shield-checkmark" size={16} color="#059669" />
+              <Text style={styles.freeFeeText}>Miễn phí rút tiền 100% qua NAPAS 24/7.</Text>
+            </View>
+
+            <TouchableOpacity style={styles.confirmActionBtn} onPress={handleConfirmWithdraw}>
+              <Text style={styles.confirmActionText}>XÁC NHẬN RÚT TIỀN</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* ─────────────────────────────────────────
+          MODAL 3: CHUYỂN TIỀN SANG VÍ KÝ QUỸ
+          ───────────────────────────────────────── */}
+      <Modal visible={showTransferModal} animationType="slide" transparent onRequestClose={() => setShowTransferModal(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalTopBar}>
+              <Text style={styles.modalSheetTitle}>Chuyển sang Ví Ký Quỹ</Text>
+              <TouchableOpacity onPress={() => setShowTransferModal(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubDesc}>
+              Chuyển bớt tiền từ Ví Thu Nhập sang Ví Ký Quỹ để tiếp tục nhận cuốc tiền mặt COD mà không cần nạp ngân hàng.
+            </Text>
+
+            <View style={styles.transferFlowBox}>
+              <View style={styles.transferCol}>
+                <Text style={styles.transferColLbl}>Ví Thu Nhập</Text>
+                <Text style={styles.transferColVal}>{cashWallet.toLocaleString('vi-VN')}đ</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={24} color="#0C68EF" />
+              <View style={styles.transferCol}>
+                <Text style={styles.transferColLbl}>Ví Ký Quỹ</Text>
+                <Text style={styles.transferColVal}>{creditWallet.toLocaleString('vi-VN')}đ</Text>
+              </View>
+            </View>
+
+            <TextInput
+              style={styles.amountInput}
+              keyboardType="numeric"
+              value={transferAmount}
+              onChangeText={setTransferAmount}
+              placeholder="Nhập số tiền muốn chuyển..."
+            />
+
+            <TouchableOpacity style={styles.confirmActionBtn} onPress={handleTransferToCredit}>
+              <Text style={styles.confirmActionText}>XÁC NHẬN CHUYỂN NGAY</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─────────────────────────────────────────
+          MODAL 4: HÓA ĐƠN ĐIỆN TỬ CHI TIẾT CUỐC XE (TRIP RECEIPT)
+          ───────────────────────────────────────── */}
+      <Modal visible={!!selectedReceipt} animationType="fade" transparent onRequestClose={() => setSelectedReceipt(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.receiptModalSheet}>
+            <View style={styles.receiptHeader}>
+              <Ionicons name="receipt" size={28} color="#0C68EF" />
+              <Text style={styles.receiptTitle}>Hóa Đơn Cuốc Xe #{selectedReceipt?.tripCode}</Text>
+              <Text style={styles.receiptTime}>{selectedReceipt?.time}</Text>
+            </View>
+
+            {/* Chi tiết lộ trình */}
+            <View style={styles.receiptRouteBox}>
+              <Text style={styles.receiptPoint}>🟢 Điểm đón: {selectedReceipt?.pickup}</Text>
+              <Text style={styles.receiptPoint}>🔴 Điểm trả: {selectedReceipt?.dropoff}</Text>
+              <Text style={styles.receiptDistance}>Cự ly thực tế: {selectedReceipt?.distanceKm} km • Khách: {selectedReceipt?.customerName}</Text>
+            </View>
+
+            {/* Banner hình thức thanh toán */}
+            <View style={[styles.receiptPayBanner, selectedReceipt?.paymentMethod === 'ONLINE' ? styles.payOnlineBanner : styles.payCashBanner]}>
+              <Ionicons
+                name={selectedReceipt?.paymentMethod === 'ONLINE' ? 'shield-checkmark' : 'cash'}
+                size={18}
+                color={selectedReceipt?.paymentMethod === 'ONLINE' ? '#059669' : '#DC2626'}
+              />
+              <Text style={[styles.receiptPayText, { color: selectedReceipt?.paymentMethod === 'ONLINE' ? '#059669' : '#DC2626' }]}>
+                {selectedReceipt?.paymentMethod === 'ONLINE'
+                  ? 'THANH TOÁN ONLINE (Cước đã cộng vào Ví Thu Nhập)'
+                  : 'TIỀN MẶT COD (Tài xế đã thu trực tiếp từ khách)'}
+              </Text>
+            </View>
+
+            {/* Công thức tính toán chi tiết */}
+            <View style={styles.calcBox}>
+              <View style={styles.calcRow}>
+                <Text style={styles.calcLbl}>Cước phí gốc chuyến đi</Text>
+                <Text style={styles.calcVal}>120.000đ</Text>
+              </View>
+              <View style={styles.calcRow}>
+                <Text style={styles.calcLbl}>Phí chiết khấu nền tảng (10%)</Text>
+                <Text style={[styles.calcVal, { color: '#EF4444' }]}>-12.000đ</Text>
+              </View>
+              <View style={styles.calcRow}>
+                <Text style={styles.calcLbl}>Tiền tip thưởng của khách</Text>
+                <Text style={[styles.calcVal, { color: '#059669' }]}>+0đ</Text>
+              </View>
+              <View style={styles.calcDivider} />
+              <View style={styles.calcRow}>
+                <Text style={styles.calcTotalLbl}>TÀI XẾ THỰC NHẬN</Text>
+                <Text style={styles.calcTotalVal}>108.000đ</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.closeReceiptBtn} onPress={() => setSelectedReceipt(null)}>
+              <Text style={styles.closeReceiptText}>Đóng Hóa Đơn</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
 
+// ─────────────────────────────────────────
+// BỘ STYLES GIAO DIỆN VÍ TIỀN CHUẨN MỰC
+// ─────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 40 : 16,
-    paddingBottom: 16,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E2E8F0',
   },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
-  helpBtn: { padding: 4 },
-  content: { padding: 16 },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  helpBtn: {
+    padding: 6,
+  },
+  content: {
+    padding: 16,
+  },
 
-  walletCard: {
-    backgroundColor: '#0F172A',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+  // 1. Hệ thống 2 ví
+  walletsContainer: {
+    marginBottom: 14,
+  },
+  creditWalletCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cashWalletCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   walletHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  walletLabel: { fontSize: 13, color: '#94A3B8', fontWeight: '500', marginBottom: 6 },
-  walletAmount: { fontSize: 32, fontWeight: '900', color: '#F8FAFC' },
-  walletBadge: {
+  walletTagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: '#E0F2FE',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    gap: 4,
   },
-  walletBadgeText: { fontSize: 12, fontWeight: '700', color: '#10B981' },
-
-  alertNotice: {
+  walletTagText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0284C7',
+    marginLeft: 5,
+  },
+  escrowNotice: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  walletBigAmount: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#0284C7',
+    marginTop: 10,
+  },
+  walletExplain: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  creditWarningBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(217, 119, 6, 0.15)',
-    padding: 10,
-    borderRadius: 10,
-    marginTop: 12,
-    gap: 8,
+    backgroundColor: '#FEF2F2',
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 10,
   },
-  alertNoticeText: { flex: 1, fontSize: 12, color: '#FCD34D', lineHeight: 16 },
-
-  actionRow: {
+  creditWarningText: {
+    fontSize: 11,
+    color: '#DC2626',
+    fontWeight: '600',
+    marginLeft: 6,
+    flex: 1,
+  },
+  walletActionRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
+    marginTop: 14,
   },
-  topupBtn: {
+  topupVietQrBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0C68EF',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  topupVietQrText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  transferBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  transferBtnText: {
+    color: '#0284C7',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  withdrawBankBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -480,132 +940,323 @@ const styles = StyleSheet.create({
     backgroundColor: '#059669',
     paddingVertical: 12,
     borderRadius: 12,
-    gap: 8,
   },
-  topupBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-  withdrawBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  withdrawBtnText: { color: '#0F172A', fontWeight: '700', fontSize: 14 },
-
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  statIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  statLabel: { fontSize: 12, color: '#64748B', fontWeight: '600' },
-  statValGold: { fontSize: 18, fontWeight: '800', color: '#D97706', marginTop: 4 },
-  statValGreen: { fontSize: 18, fontWeight: '800', color: '#059669', marginTop: 4 },
-  statSub: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-
-  bankCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 20,
-  },
-  bankCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: 10,
-    marginBottom: 10,
-  },
-  bankCardTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginLeft: 8 },
-  verifiedTag: {
-    fontSize: 10,
+  withdrawBankText: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '800',
-    color: '#059669',
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
   },
-  bankRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  bankField: { fontSize: 13, color: '#64748B' },
-  bankValue: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
-  bankValueBold: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
 
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
-  txCount: { fontSize: 12, color: '#94A3B8' },
-
-  filterScroll: { flexDirection: 'row', marginBottom: 16 },
-  filterChip: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  filterChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-  filterChipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-  filterChipTextActive: { color: '#FFFFFF' },
-
-  txCard: {
+  // 2. Thẻ ngân hàng liên kết
+  bankLinkedCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 14,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  bankLinkedHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  bankIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bankName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  bankAccountNo: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  verifiedText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#059669',
+    marginLeft: 4,
+  },
+
+  // 3. Báo cáo tài chính
+  reportContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  reportHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  reportTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  periodTabsWrapper: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 3,
+  },
+  periodTabBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  periodTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  periodTabText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  periodTabTextActive: {
+    color: '#0F172A',
+    fontWeight: '800',
+  },
+
+  // Biểu đồ mini 7 ngày
+  chartWrapper: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  chartTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
     marginBottom: 10,
   },
-  txLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  txIconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  txTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  txNote: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  txTime: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  txRight: { alignItems: 'flex-end', marginLeft: 8 },
-  txAmount: { fontSize: 15, fontWeight: '800' },
-  txGreen: { color: '#10B981' },
-  txRed: { color: '#EF4444' },
-  txBalAfter: { fontSize: 11, color: '#94A3B8', marginTop: 4 },
+  barsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 100,
+    paddingHorizontal: 4,
+  },
+  barCol: {
+    alignItems: 'center',
+    width: 32,
+  },
+  barValText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  barTrack: {
+    width: 14,
+    height: 60,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 7,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: {
+    width: '100%',
+    borderRadius: 7,
+  },
+  barDayText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 4,
+  },
 
-  // Modal styles
-  modalOverlay: {
+  // Bảng bóc tách
+  breakdownTable: {
+    paddingTop: 6,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+  },
+  tableLbl: {
+    fontSize: 12,
+    color: '#475569',
+  },
+  tableVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  tableDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 10,
+  },
+  tableTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalNetLbl: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#059669',
+  },
+  totalNetSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  totalNetVal: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#059669',
+  },
+
+  // 4. Lịch sử giao dịch & Hóa đơn
+  txHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  txHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  txSubHint: {
+    fontSize: 11,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  filterScroll: {
+    marginBottom: 12,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#E2E8F0',
+    marginRight: 8,
+  },
+  filterChipActive: {
+    backgroundColor: '#0F172A',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  txItemCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  txItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  txItemIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  txItemTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  txItemNote: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  txItemTime: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
+  txWalletTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+    marginLeft: 6,
+  },
+  tagCredit: {
+    backgroundColor: '#E0F2FE',
+  },
+  tagCash: {
+    backgroundColor: '#ECFDF5',
+  },
+  txWalletTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#0369A1',
+  },
+  txItemRight: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+  txItemAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  txGreen: {
+    color: '#10B981',
+  },
+  txRed: {
+    color: '#EF4444',
+  },
+  receiptArrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+  receiptArrowText: {
+    fontSize: 10,
+    color: '#3B82F6',
+    fontWeight: '700',
+  },
+
+  // Modals Styling
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
@@ -615,63 +1266,324 @@ const styles = StyleSheet.create({
     padding: 20,
     maxHeight: '90%',
   },
-  modalHeader: {
+  modalTopBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: 16,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-  qrContainer: {
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
+  modalSheetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  qrImage: { width: 220, height: 220, borderRadius: 12 },
-  qrNote: { fontSize: 12, color: '#64748B', textAlign: 'center', marginTop: 10 },
-  inputSectionLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  quickBtn: {
-    paddingHorizontal: 16,
+  modalSubDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  quickAmountsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  quickAmountChip: {
+    flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
     backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    marginHorizontal: 3,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  quickBtnActive: { backgroundColor: '#059669', borderColor: '#059669' },
-  quickBtnText: { fontSize: 13, fontWeight: '700', color: '#475569' },
-  quickBtnTextActive: { color: '#FFFFFF' },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  quickAmountChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  quickAmountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  quickAmountTextActive: {
+    color: '#1D4ED8',
+  },
+  amountInput: {
     backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
     borderRadius: 12,
-    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 14,
   },
-  textInput: { flex: 1, height: 48, fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  inputUnit: { fontSize: 14, fontWeight: '700', color: '#64748B' },
-  confirmTopupBtn: {
-    backgroundColor: '#059669',
-    borderRadius: 14,
-    paddingVertical: 14,
+  qrDisplayCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
     alignItems: 'center',
-    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
   },
-  confirmTopupBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
-  withdrawTargetBox: {
+  qrImage: {
+    width: 220,
+    height: 220,
+    marginBottom: 10,
+  },
+  qrScanHint: {
+    fontSize: 11,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  transferInfoBox: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 3,
+  },
+  infoLbl: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  infoVal: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  infoValBold: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  confirmActionBtn: {
+    backgroundColor: '#0C68EF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  confirmActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+
+  // Withdraw specifics
+  withdrawSourceBox: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  withdrawSourceLbl: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  withdrawSourceBal: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#059669',
+  },
+  bankDestCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EFF6FF',
-    padding: 14,
     borderRadius: 12,
-    marginBottom: 16,
+    padding: 12,
+    marginBottom: 14,
+  },
+  bankDestTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E3A8A',
+  },
+  bankDestSub: {
+    fontSize: 11,
+    color: '#3B82F6',
+    marginTop: 1,
+  },
+  quickWithdrawRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  quickWithdrawChip: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 9,
+    borderRadius: 8,
+    marginHorizontal: 3,
+    alignItems: 'center',
+  },
+  quickWithdrawText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  freeFeeNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  freeFeeText: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+
+  // Transfer specifics
+  transferFlowBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+  },
+  transferCol: {
+    alignItems: 'center',
+  },
+  transferColLbl: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  transferColVal: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+
+  // Receipt Modal specifics
+  receiptModalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+  },
+  receiptHeader: {
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  receiptTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 4,
+  },
+  receiptTime: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  receiptRouteBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  receiptPoint: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginVertical: 2,
+  },
+  receiptDistance: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 4,
+  },
+  receiptPayBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  payOnlineBanner: {
+    backgroundColor: '#ECFDF5',
+  },
+  payCashBanner: {
+    backgroundColor: '#FEF2F2',
+  },
+  receiptPayText: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginLeft: 6,
+    flex: 1,
+  },
+  calcBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  calcRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 3,
+  },
+  calcLbl: {
+    fontSize: 12,
+    color: '#475569',
+  },
+  calcVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  calcDivider: {
+    height: 1,
+    backgroundColor: '#CBD5E1',
+    marginVertical: 6,
+  },
+  calcTotalLbl: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#059669',
+  },
+  calcTotalVal: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#059669',
+  },
+  closeReceiptBtn: {
+    backgroundColor: '#0F172A',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  closeReceiptText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

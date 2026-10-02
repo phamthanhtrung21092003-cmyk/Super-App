@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRideDto, UpdateTripStatusDto, DriverLocationDto } from './dto/create-ride.dto';
 
@@ -110,11 +115,23 @@ export class RideService {
   // ─────────────────────────────────────────
 
   async createRide(userId: string, dto: CreateRideDto): Promise<ActiveTrip> {
-    const distanceKm =
-      dto.distanceKm ||
-      this.calculateDistance(dto.pickupLat, dto.pickupLng, dto.dropoffLat, dto.dropoffLng);
-    const fareAmount = dto.fareAmount || this.calculateFare(distanceKm, dto.vehicleType);
-    const tipAmount = dto.tipAmount || 0;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true, phone: true },
+    });
+
+    const customerName = user?.fullName || 'Khách hàng V-Life';
+    const customerPhone = user?.phone || '0988000000';
+
+    // SERVER-AUTHORITATIVE: Tính khoảng cách và giá cước độc quyền từ backend (không tin dữ liệu client gửi)
+    const distanceKm = this.calculateDistance(
+      dto.pickupLat,
+      dto.pickupLng,
+      dto.dropoffLat,
+      dto.dropoffLng,
+    );
+    const fareAmount = this.calculateFare(distanceKm, dto.vehicleType || 'ev');
+    const tipAmount = dto.tipAmount && dto.tipAmount > 0 ? dto.tipAmount : 0;
     const discountAmount = 15000;
     const finalAmount = Math.max(0, fareAmount + tipAmount - discountAmount);
     const bookingCode = `#VR-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -141,8 +158,8 @@ export class RideService {
       finalAmount,
       paymentMethod: dto.paymentMethod || 'CASH',
       paymentStatus: dto.paymentMethod === 'SUPERPAY' ? 'PAID' : 'UNPAID',
-      customerName: dto.customerName || 'Khách hàng V-Life',
-      customerPhone: dto.customerPhone || '0988000000',
+      customerName,
+      customerPhone,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -235,12 +252,26 @@ export class RideService {
     return null;
   }
 
-  async cancelTrip(tripId: string, reason?: string, cancelledBy?: string): Promise<ActiveTrip> {
+  async cancelTrip(
+    tripId: string,
+    reason?: string,
+    cancelledBy?: string,
+    requestingUserId?: string,
+  ): Promise<ActiveTrip> {
     const trip = await this.getTripById(tripId);
+
+    // Kiểm tra quyền hủy chuyến
+    if (
+      requestingUserId &&
+      requestingUserId !== trip.userId &&
+      requestingUserId !== trip.driverId
+    ) {
+      throw new ForbiddenException('Bạn không có quyền hủy chuyến đi này.');
+    }
 
     // Only allow cancel if not already completed/cancelled
     if (['COMPLETED', 'CANCELLED'].includes(trip.status)) {
-      throw new NotFoundException(`Chuyến ${tripId} đã kết thúc, không thể hủy.`);
+      throw new BadRequestException(`Chuyến ${tripId} đã kết thúc, không thể hủy.`);
     }
 
     trip.status = 'CANCELLED';
@@ -258,12 +289,21 @@ export class RideService {
 
   async rateDriver(
     tripId: string,
+    customerId: string,
     rating: number,
     comment?: string,
     tags?: string[],
     tip?: number,
   ): Promise<ActiveTrip> {
     const trip = await this.getTripById(tripId);
+
+    if (trip.userId !== customerId) {
+      throw new ForbiddenException('Bạn chỉ có thể đánh giá chuyến đi của chính mình.');
+    }
+
+    if (trip.status !== 'COMPLETED') {
+      throw new BadRequestException('Chuyến đi chưa hoàn thành, chưa thể đánh giá.');
+    }
 
     trip.updatedAt = new Date().toISOString();
     if (tip && tip > 0) {
@@ -307,41 +347,68 @@ export class RideService {
 
   async acceptRide(
     tripId: string,
-    driverId: string = 'driver-demo-1',
-    driverInfo: {
-      driverName?: string;
-      vehicleName?: string;
-      licensePlate?: string;
-      avatarUrl?: string;
-      rating?: number;
-    } = {},
+    driverId: string,
   ): Promise<ActiveTrip> {
     const trip = await this.getTripById(tripId);
 
     if (trip.status !== 'SEARCHING') {
-      throw new NotFoundException(`Chuyến ${tripId} không còn ở trạng thái chờ tài xế.`);
+      throw new BadRequestException(
+        `Chuyến ${tripId} không còn ở trạng thái chờ tài xế (hiện tại: ${trip.status}).`,
+      );
+    }
+
+    // SERVER-AUTHORITATIVE: Lấy thông tin thật từ DB của Driver, chống Client giả mạo thông số
+    const driver = await this.prisma.driver.findUnique({
+      where: { id: driverId },
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Không tìm thấy thông tin tài xế trong hệ thống.');
     }
 
     trip.status = 'ACCEPTED';
-    trip.driverId = driverId;
-    trip.driverName = driverInfo.driverName || 'Nguyễn Văn Hùng';
-    trip.driverPhone = '0988123456';
-    trip.vehicleName = driverInfo.vehicleName || 'VinFast VF 8 Xanh SM';
-    trip.licensePlate = driverInfo.licensePlate || '29A-999.88';
-    trip.avatarUrl = driverInfo.avatarUrl || 'https://i.pravatar.cc/150?img=60';
-    trip.driverRating = driverInfo.rating || 4.95;
+    trip.driverId = driver.id;
+    trip.driverName = driver.fullName;
+    trip.driverPhone = driver.phone;
+    trip.vehicleName = driver.vehicleType;
+    trip.licensePlate = driver.licensePlate;
+    trip.avatarUrl = driver.avatarUrl || 'https://i.pravatar.cc/150?img=60';
+    trip.driverRating = driver.rating || 5.0;
     trip.updatedAt = new Date().toISOString();
     this.trips.set(tripId, trip);
 
     this.prisma.rideBooking
-      .update({ where: { id: tripId }, data: { status: 'ACCEPTED', driverId } })
+      .update({ where: { id: tripId }, data: { status: 'ACCEPTED', driverId: driver.id } })
       .catch(() => {});
 
     return trip;
   }
 
-  async updateTripStatus(tripId: string, dto: UpdateTripStatusDto): Promise<ActiveTrip> {
+  async updateTripStatus(
+    tripId: string,
+    driverId: string,
+    dto: UpdateTripStatusDto,
+  ): Promise<ActiveTrip> {
     const trip = await this.getTripById(tripId);
+
+    // BẢO MẬT: Chỉ đúng tài xế được nhận chuyến mới được phép cập nhật trạng thái
+    if (trip.driverId !== driverId) {
+      throw new ForbiddenException('Bạn không phải là tài xế được chỉ định cho chuyến đi này.');
+    }
+
+    // STATE MACHINE VALIDATION: Chống nhảy cóc trạng thái hoặc tạo cuốc ảo
+    const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+      ACCEPTED: ['ARRIVED_PICKUP', 'CANCELLED'],
+      ARRIVED_PICKUP: ['IN_TRIP', 'CANCELLED'],
+      IN_TRIP: ['COMPLETED', 'CANCELLED'],
+    };
+
+    const allowed = ALLOWED_TRANSITIONS[trip.status];
+    if (!allowed || !allowed.includes(dto.status)) {
+      throw new BadRequestException(
+        `Không thể chuyển đổi trạng thái chuyến từ ${trip.status} sang ${dto.status}.`,
+      );
+    }
 
     trip.status = dto.status;
     trip.updatedAt = new Date().toISOString();
@@ -436,6 +503,13 @@ export class RideService {
   }
 
   async topupDriverWallet(driverId: string = 'driver-demo-1', amount: number) {
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Số tiền nạp phải lớn hơn 0.');
+    }
+    if (amount > 50000000) {
+      throw new BadRequestException('Số tiền nạp tối đa là 50,000,000 VND một lần.');
+    }
+
     const wallet = this.driverWallets.get(driverId) || {
       balance: 0,
       dailyEarnings: 0,
@@ -494,39 +568,6 @@ export class RideService {
       if (trip.driverId === driverId && trip.status === 'COMPLETED') {
         history.push(trip);
       }
-    }
-    if (history.length === 0) {
-      // Return a sample history
-      history.push({
-        id: 'TRIP-HIST-01',
-        bookingCode: '#VR-7711',
-        userId: 'user-1',
-        driverId,
-        driverName: 'Nguyễn Văn Hùng',
-        vehicleName: 'VinFast VF 8 Xanh SM',
-        licensePlate: '29A-999.88',
-        serviceType: 'RIDE',
-        vehicleType: 'ev',
-        status: 'COMPLETED',
-        pickupAddress: 'Vincom Mega Mall Royal City',
-        pickupLat: 21.0028,
-        pickupLng: 105.8155,
-        dropoffAddress: 'Hồ Hoàn Kiếm, Tràng Tiền',
-        dropoffLat: 21.0285,
-        dropoffLng: 105.8542,
-        distanceKm: 5.6,
-        durationMin: 18,
-        fareAmount: 85000,
-        tipAmount: 15000,
-        discountAmount: 0,
-        finalAmount: 100000,
-        paymentMethod: 'SUPERPAY',
-        paymentStatus: 'PAID',
-        customerName: 'Nguyễn Thu Trang',
-        customerPhone: '0977889900',
-        createdAt: '2026-10-01T15:30:00Z',
-        updatedAt: '2026-10-01T15:48:00Z',
-      });
     }
     return history;
   }

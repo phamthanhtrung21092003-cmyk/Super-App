@@ -276,36 +276,6 @@ export default function DriverDashboard() {
     };
   }, [activeTrip?.tripId, isOnline]);
 
-  // Fallback: Auto trigger simulation nếu không kết nối được socket (offline demo)
-  useEffect(() => {
-    let timer: any;
-    if (isOnline && !matchingOrder && !activeTrip && !socketConnected) {
-      // Chỉ chạy simulation khi KHÔNG có socket (offline/demo mode)
-      timer = setTimeout(() => {
-        setMatchingOrder({
-          id: 'DEMO-ORD-988',
-          tripId: null, // Null = demo order
-          type: 'passenger',
-          title: 'Chở khách V-Ride (Demo)',
-          pickup: '72 Trần Thái Tông, Cầu Giấy',
-          dropoff: 'Keangnam Landmark 72, Mễ Trì',
-          distance: '3.2 km',
-          eta: '8 phút',
-          price: 65000,
-          finalAmount: 50000,
-          deal: 10000,
-          tip: 5000,
-          profitScore: 94,
-          paymentMethod: 'CASH',
-          customerName: 'Khách Demo',
-          customerPhone: '0988123456',
-          desc: 'Demo mode - Server chưa kết nối',
-          isRealOrder: false,
-        });
-      }, 4000);
-    }
-    return () => clearTimeout(timer);
-  }, [isOnline, matchingOrder, activeTrip, socketConnected]);
 
   const handleAcceptOrder = async () => {
     const order = matchingOrder;

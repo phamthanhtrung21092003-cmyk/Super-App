@@ -9,6 +9,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { RideService } from './ride.service';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @WebSocketGateway({
   cors: { origin: '*' },
@@ -23,10 +25,39 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private driverSockets: Map<string, string> = new Map(); // driverId -> socketId
   private userSockets: Map<string, string> = new Map(); // userId -> socketId
 
-  constructor(private readonly rideService: RideService) {}
+  constructor(
+    private readonly rideService: RideService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   handleConnection(client: Socket) {
-    console.log(`[RideGateway] Client connected: ${client.id}`);
+    try {
+      const token =
+        client.handshake.auth?.token ||
+        (client.handshake.headers?.authorization
+          ? String(client.handshake.headers.authorization).replace(/^Bearer\s+/i, '')
+          : null);
+
+      if (token) {
+        const secret =
+          this.configService.get<string>('JWT_ACCESS_SECRET') ||
+          'super-app-secret-jwt-key-2026';
+        const payload: any = this.jwtService.verify(token, { secret });
+        client.data.user = {
+          id: payload.sub,
+          phone: payload.phone,
+          role: payload.role,
+        };
+        console.log(`[RideGateway] Authenticated socket ${client.id} as ${payload.role}:${payload.sub}`);
+      } else {
+        client.data.user = null;
+        console.log(`[RideGateway] Anonymous client connected: ${client.id}`);
+      }
+    } catch (err: any) {
+      client.data.user = null;
+      console.warn(`[RideGateway] Socket auth failed for ${client.id}:`, err.message);
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -48,39 +79,56 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`[RideGateway] Client disconnected: ${client.id}`);
   }
 
+  /** Helper kiểm tra xác thực quyền trên socket */
+  private getAuthenticatedUser(client: Socket, requiredRole?: string) {
+    const user = client.data?.user;
+    if (!user) {
+      client.emit('error', { message: 'Chưa xác thực (Unauthorized)' });
+      return null;
+    }
+    if (requiredRole && user.role !== requiredRole && user.role !== 'ADMIN') {
+      client.emit('error', { message: `Quyền truy cập bị từ chối. Yêu cầu quyền ${requiredRole}` });
+      return null;
+    }
+    return user;
+  }
+
   // ─────────────────────────────────────────
   // DRIVER EVENTS
   // ─────────────────────────────────────────
 
-  /** Tài xế kết nối & tham gia drivers_pool để nhận đơn */
+  /** Tài xế kết nối & tham gia drivers_pool để nhận đơn (BẢO MẬT: Bắt buộc Role DRIVER) */
   @SubscribeMessage('driver:join')
   handleDriverJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { driverId: string; lat?: number; lng?: number },
+    @MessageBody() data: { lat?: number; lng?: number },
   ) {
-    client.join(`driver_${data.driverId}`);
+    const user = this.getAuthenticatedUser(client, 'DRIVER');
+    if (!user) return { error: 'Unauthorized' };
+
+    const driverId = user.id; // STRICT: enforce authenticated driverId, NOT client input
+    client.join(`driver_${driverId}`);
     client.join('drivers_pool');
-    this.driverSockets.set(data.driverId, client.id);
+    this.driverSockets.set(driverId, client.id);
 
     // Cập nhật vị trí nếu có
-    if (data.lat && data.lng) {
+    if (data && data.lat && data.lng) {
       this.rideService
-        .updateDriverLocation({ driverId: data.driverId, lat: data.lat, lng: data.lng })
+        .updateDriverLocation({ driverId, lat: data.lat, lng: data.lng })
         .catch(() => {});
     }
 
-    console.log(`[RideGateway] Driver ${data.driverId} joined pool`);
+    console.log(`[RideGateway] Driver ${driverId} joined pool`);
 
-    return { event: 'driver:joined', data: { status: 'ONLINE', driverId: data.driverId } };
+    return { event: 'driver:joined', data: { status: 'ONLINE', driverId } };
   }
 
-  /** Tài xế gửi cập nhật vị trí GPS liên tục */
+  /** Tài xế gửi cập nhật vị trí GPS liên tục (BẢO MẬT: Chỉ đúng tài xế được gửi vị trí của mình) */
   @SubscribeMessage('driver:location')
   async handleLocationUpdate(
     @ConnectedSocket() client: Socket,
     @MessageBody()
     data: {
-      driverId: string;
       tripId?: string;
       lat: number;
       lng: number;
@@ -88,8 +136,12 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       speed?: number;
     },
   ) {
+    const user = this.getAuthenticatedUser(client, 'DRIVER');
+    if (!user) return;
+
+    const driverId = user.id;
     await this.rideService.updateDriverLocation({
-      driverId: data.driverId,
+      driverId,
       lat: data.lat,
       lng: data.lng,
       heading: data.heading,
@@ -98,13 +150,18 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Nếu đang có active trip → broadcast vị trí tới phòng trip (khách hàng nhận được)
     if (data.tripId) {
-      this.server.to(`trip_${data.tripId}`).emit('trip:driver_location', {
-        lat: data.lat,
-        lng: data.lng,
-        heading: data.heading,
-        speed: data.speed,
-        updatedAt: new Date().toISOString(),
-      });
+      try {
+        const trip = await this.rideService.getTripById(data.tripId);
+        if (trip.driverId === driverId) {
+          this.server.to(`trip_${data.tripId}`).emit('trip:driver_location', {
+            lat: data.lat,
+            lng: data.lng,
+            heading: data.heading,
+            speed: data.speed,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (e) {}
     }
   }
 
@@ -112,30 +169,77 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // USER EVENTS
   // ─────────────────────────────────────────
 
-  /** Khách hàng tham gia phòng theo dõi một trip cụ thể */
+  /** Khách hàng hoặc tài xế tham gia phòng theo dõi một trip cụ thể */
   @SubscribeMessage('trip:join')
-  handleTripJoin(
+  async handleTripJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { tripId: string; userId?: string },
+    @MessageBody() data: { tripId: string },
   ) {
-    client.join(`trip_${data.tripId}`);
+    const user = this.getAuthenticatedUser(client);
+    if (!user) return { error: 'Unauthorized' };
 
-    if (data.userId) {
-      this.userSockets.set(data.userId, client.id);
+    try {
+      const trip = await this.rideService.getTripById(data.tripId);
+      // Chỉ cho phép khách hàng của chuyến, tài xế của chuyến, hoặc ADMIN
+      if (
+        user.role !== 'ADMIN' &&
+        trip.userId !== user.id &&
+        trip.driverId !== user.id &&
+        trip.status !== 'SEARCHING'
+      ) {
+        client.emit('error', { message: 'Không có quyền truy cập vào chuyến xe này' });
+        return { error: 'Forbidden' };
+      }
+
+      client.join(`trip_${data.tripId}`);
+      if (user.role === 'USER') {
+        this.userSockets.set(user.id, client.id);
+      }
+
+      console.log(`[RideGateway] User ${user.id} joined trip room: trip_${data.tripId}`);
+      return { event: 'trip:joined', data: { tripId: data.tripId } };
+    } catch (e) {
+      return { error: 'Trip not found' };
     }
-
-    console.log(`[RideGateway] Client joined trip room: trip_${data.tripId}`);
-
-    return { event: 'trip:joined', data: { tripId: data.tripId } };
   }
 
-  /** Khách hoặc tài xế thay đổi trạng thái trip qua socket (backup nếu không dùng REST) */
+  /** Cập nhật trạng thái trip qua socket (BẢO MẬT: Kiểm tra quyền và State Machine) */
   @SubscribeMessage('trip:status_change')
-  handleStatusChange(
+  async handleStatusChange(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { tripId: string; status: string; extra?: any },
   ) {
-    this.broadcastTripStatus(data.tripId, data.status, data.extra);
+    const user = this.getAuthenticatedUser(client);
+    if (!user) return;
+
+    try {
+      const trip = await this.rideService.getTripById(data.tripId);
+      if (data.status === 'CANCELLED') {
+        if (trip.userId !== user.id && trip.driverId !== user.id && user.role !== 'ADMIN') {
+          client.emit('error', { message: 'Bạn không có quyền hủy chuyến đi này.' });
+          return;
+        }
+        await this.rideService.cancelTrip(
+          data.tripId,
+          data.extra?.cancelReason,
+          user.role === 'DRIVER' ? 'driver' : 'customer',
+          user.id,
+        );
+        this.broadcastTripStatus(data.tripId, 'CANCELLED', data.extra);
+      } else {
+        if (user.role !== 'DRIVER' || trip.driverId !== user.id) {
+          client.emit('error', { message: 'Chỉ tài xế được chỉ định mới có thể cập nhật trạng thái.' });
+          return;
+        }
+        const updatedTrip = await this.rideService.updateTripStatus(data.tripId, user.id, {
+          status: data.status as any,
+          ...data.extra,
+        });
+        this.broadcastTripStatus(data.tripId, updatedTrip.status, data.extra);
+      }
+    } catch (err: any) {
+      client.emit('error', { message: err.message || 'Cập nhật trạng thái thất bại.' });
+    }
   }
 
   // ─────────────────────────────────────────

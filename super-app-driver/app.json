@@ -7,6 +7,12 @@
     "icon": "./assets/images/icon.png",
     "scheme": "superappdriver",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0446CD"
+    },
+
     "ios": {
       "icon": "./assets/expo.icon"
     },

@@ -82,8 +82,6 @@ export default function RideTracking() {
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
 
-  // Auto-play / Simulation toggle (bật khi demo, tắt khi có real socket)
-  const [autoPlay, setAutoPlay] = useState(isDemo);
 
   // Modals
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -155,7 +153,6 @@ export default function RideTracking() {
       switch (data.status) {
         case 'ACCEPTED':
           setTripState('assigned');
-          setAutoPlay(false); // Dừng simulation khi có driver thực
           if (data.driverName) {
             setAssignedDriver({
               name: data.driverName,
@@ -207,36 +204,6 @@ export default function RideTracking() {
   }, [tripId, isDemo]);
 
   // Auto-progression flow (End-to-End Simulation)
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-
-    if (autoPlay) {
-      if (tripState === 'searching') {
-        // Find driver after 3.5s
-        timer = setTimeout(() => {
-          setTripState('assigned');
-        }, 3500);
-      } else if (tripState === 'assigned') {
-        // Driver arrives and trip starts after 6s
-        timer = setTimeout(() => {
-          setTripState('driving');
-        }, 6000);
-      } else if (tripState === 'driving') {
-        // Trip completes after 7s
-        timer = setTimeout(() => {
-          setTripState('completed');
-          // Auto open rating sheet after 800ms
-          setTimeout(() => {
-            setShowRatingModal(true);
-          }, 800);
-        }, 7000);
-      }
-    }
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [tripState, autoPlay]);
 
   // Call timer simulation
   useEffect(() => {

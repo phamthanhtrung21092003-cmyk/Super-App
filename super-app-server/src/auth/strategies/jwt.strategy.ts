@@ -21,8 +21,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    // Real Session Invalidation:
-    // If deviceId is provided in token payload, verify that the device session is ACTIVE in DB
+    if (payload.role === 'DRIVER') {
+      const driver = await this.prisma.driver.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, phone: true, role: true, isOnline: true },
+      });
+
+      if (!driver) {
+        throw new UnauthorizedException('Tài khoản tài xế không tồn tại hoặc đã bị khóa.');
+      }
+
+      return {
+        id: driver.id,
+        phone: driver.phone,
+        role: driver.role,
+        deviceId: payload.deviceId,
+      };
+    }
+
+    // Đối với USER / ADMIN / SELLER
     if (payload.deviceId) {
       const device = await this.prisma.userDevice.findUnique({
         where: {
@@ -39,10 +56,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, phone: true, role: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Tài khoản người dùng không tồn tại.');
+    }
+
     return {
-      id: payload.sub,
-      phone: payload.phone,
-      role: payload.role,
+      id: user.id,
+      phone: user.phone,
+      role: user.role,
       deviceId: payload.deviceId,
     };
   }

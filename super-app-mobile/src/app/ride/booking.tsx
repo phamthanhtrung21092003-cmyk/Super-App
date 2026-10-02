@@ -179,39 +179,14 @@ export default function RideBooking() {
         },
       });
     } catch (error: any) {
-      // Nếu API lỗi (server chưa chạy), vẫn cho phép navigate với mock data
       const isNetworkError = !error.response && error.request;
       if (isNetworkError) {
         Alert.alert(
-          'Không thể kết nối server',
-          'Server đang offline. Chạy ở chế độ demo để trải nghiệm?\n\n(Trong production: kiểm tra server đang chạy và cấu hình IP trong .env)',
-          [
-            { text: 'Hủy', style: 'cancel' },
-            {
-              text: 'Demo mode',
-              onPress: () => {
-                const demoTripId = `DEMO-${Date.now()}`;
-                router.push({
-                  pathname: '/ride/tracking',
-                  params: {
-                    tripId: demoTripId,
-                    bookingCode: '#VR-DEMO',
-                    vehicleName: currentVehicleData.name,
-                    price: currentVehicleData.price.toString(),
-                    destinationName,
-                    destinationAddress,
-                    distanceKm: distance.toString(),
-                    paymentName: selectedPayment.name,
-                    paymentMethod: selectedPayment.id.toUpperCase(),
-                    isDemo: 'true',
-                  },
-                });
-              },
-            },
-          ]
+          'Không thể kết nối máy chủ',
+          'Máy chủ đang ngoại tuyến hoặc không có phản hồi. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.'
         );
       } else {
-        Alert.alert('Đặt chuyến thất bại', error.response?.data?.message || 'Có lỗi xảy ra khi đặt chuyến. Vui lòng thử lại.');
+        Alert.alert('Đặt chuyến thất bại', error.response?.data?.message || 'Có lỗi xảy ra khi tạo chuyến xe trên hệ thống.');
       }
     } finally {
       setIsBooking(false);

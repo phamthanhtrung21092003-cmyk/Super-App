@@ -7,29 +7,50 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { RideService } from './ride.service';
 import { CreateRideDto, UpdateTripStatusDto, DriverLocationDto } from './dto/create-ride.dto';
 import { RideGateway } from './ride.gateway';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Role } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
+@ApiTags('Ride & Transport')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('ride')
 export class RideController {
   constructor(
     private readonly rideService: RideService,
     private readonly rideGateway: RideGateway,
+    private readonly prisma: PrismaService,
   ) {}
 
   // ─────────────────────────────────────────
-  // CUSTOMER ENDPOINTS
+  // CUSTOMER ENDPOINTS (Yêu cầu Role USER)
   // ─────────────────────────────────────────
 
-  /** Khách đặt chuyến mới */
+  /** Khách đặt chuyến mới - Tính giá độc quyền từ Server */
   @Post('book')
+  @Roles(Role.USER)
   @HttpCode(HttpStatus.CREATED)
-  async bookRide(@Body() dto: CreateRideDto, @Query('userId') userId?: string) {
-    const trip = await this.rideService.createRide(userId || 'user-demo', dto);
+  @ApiOperation({ summary: 'Khách hàng đặt chuyến mới (Bảo vệ: Role USER)' })
+  async bookRide(@Body() dto: CreateRideDto, @CurrentUser() user: any) {
+    const trip = await this.rideService.createRide(user.id, dto);
 
-    // 🔥 BROADCAST ngay lập tức tới tất cả tài xế đang online
+    // Broadcast cho các tài xế online
     this.rideGateway.dispatchNewOrder({
       tripId: trip.id,
       bookingCode: trip.bookingCode,
@@ -56,25 +77,40 @@ export class RideController {
 
   /** Khách xem trip đang active của mình */
   @Get('customer/active')
-  async getCustomerActiveTrip(@Query('userId') userId?: string) {
-    return this.rideService.getCustomerActiveTrip(userId || 'user-demo');
+  @Roles(Role.USER)
+  @ApiOperation({ summary: 'Xem chuyến đi đang hoạt động của khách' })
+  async getCustomerActiveTrip(@CurrentUser() user: any) {
+    return this.rideService.getCustomerActiveTrip(user.id);
   }
 
   /** Lấy chi tiết một chuyến theo tripId */
   @Get(':id')
-  async getTripById(@Param('id') id: string) {
-    return this.rideService.getTripById(id);
+  @ApiOperation({ summary: 'Xem chi tiết chuyến xe theo ID' })
+  async getTripById(@Param('id') id: string, @CurrentUser() user: any) {
+    const trip = await this.rideService.getTripById(id);
+    // Chỉ cho phép khách hàng của chuyến, tài xế của chuyến, hoặc tài xế đang tìm cuốc (SEARCHING), hoặc ADMIN
+    if (
+      user.role !== Role.ADMIN &&
+      trip.userId !== user.id &&
+      trip.driverId !== user.id &&
+      trip.status !== 'SEARCHING'
+    ) {
+      throw new ForbiddenException('Bạn không có quyền truy cập thông tin chuyến đi này.');
+    }
+    return trip;
   }
 
-  /** Khách huỷ chuyến */
+  /** Khách huỷ chuyến (hoặc tài xế huỷ chuyến của mình) */
   @Post(':id/cancel')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Hủy chuyến xe (Chỉ chủ cuốc hoặc tài xế nhận cuốc)' })
   async cancelTrip(
     @Param('id') id: string,
     @Body('cancelReason') cancelReason?: string,
-    @Body('cancelledBy') cancelledBy?: string,
+    @CurrentUser() user?: any,
   ) {
-    const trip = await this.rideService.cancelTrip(id, cancelReason, cancelledBy);
+    const cancelledBy = user.role === Role.DRIVER ? 'driver' : 'customer';
+    const trip = await this.rideService.cancelTrip(id, cancelReason, cancelledBy, user.id);
 
     // Thông báo cho tài xế biết khách đã hủy (nếu đang có tài xế)
     if (trip.driverId) {
@@ -89,23 +125,28 @@ export class RideController {
 
   /** Khách đánh giá tài xế sau chuyến */
   @Post(':id/rating')
+  @Roles(Role.USER)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Đánh giá tài xế (Chỉ khách của chuyến đi)' })
   async rateDriver(
     @Param('id') id: string,
     @Body('rating') rating: number,
     @Body('comment') comment?: string,
     @Body('tags') tags?: string[],
     @Body('tip') tip?: number,
+    @CurrentUser() user?: any,
   ) {
-    return this.rideService.rateDriver(id, rating, comment, tags, tip);
+    return this.rideService.rateDriver(id, user.id, rating, comment, tags, tip);
   }
 
   // ─────────────────────────────────────────
-  // DRIVER ENDPOINTS
+  // DRIVER ENDPOINTS (Yêu cầu Role DRIVER)
   // ─────────────────────────────────────────
 
-  /** Tài xế lấy danh sách cuốc đang SEARCHING (để hiển thị trên home screen nếu chưa kết socket) */
+  /** Tài xế lấy danh sách cuốc đang SEARCHING */
   @Get('driver/pending')
+  @Roles(Role.DRIVER)
+  @ApiOperation({ summary: 'Danh sách cuốc xe chờ tài xế (Bảo vệ: Role DRIVER)' })
   async getPendingTrips(@Query('lat') lat?: string, @Query('lng') lng?: string) {
     return this.rideService.getPendingTrips(
       lat ? parseFloat(lat) : undefined,
@@ -115,31 +156,21 @@ export class RideController {
 
   /** Tài xế xem cuốc đang active của mình */
   @Get('driver/active')
-  async getDriverActiveTrip(@Query('driverId') driverId?: string) {
-    return this.rideService.getDriverActiveTrip(driverId || 'driver-demo-1');
+  @Roles(Role.DRIVER)
+  @ApiOperation({ summary: 'Xem chuyến đang chạy của tài xế đăng nhập' })
+  async getDriverActiveTrip(@CurrentUser() user: any) {
+    return this.rideService.getDriverActiveTrip(user.id);
   }
 
-  /** Tài xế nhận cuốc */
+  /** Tài xế nhận cuốc - Định danh lấy từ Token, không nhận từ Client */
   @Post(':id/accept')
+  @Roles(Role.DRIVER)
   @HttpCode(HttpStatus.OK)
-  async acceptRide(
-    @Param('id') id: string,
-    @Body('driverId') driverId?: string,
-    @Body('driverName') driverName?: string,
-    @Body('vehicleName') vehicleName?: string,
-    @Body('licensePlate') licensePlate?: string,
-    @Body('avatarUrl') avatarUrl?: string,
-    @Body('rating') rating?: number,
-  ) {
-    const trip = await this.rideService.acceptRide(id, driverId || 'driver-demo-1', {
-      driverName,
-      vehicleName,
-      licensePlate,
-      avatarUrl,
-      rating,
-    });
+  @ApiOperation({ summary: 'Tài xế nhận chuyến (Thông tin lấy từ Token + DB)' })
+  async acceptRide(@Param('id') id: string, @CurrentUser() user: any) {
+    const trip = await this.rideService.acceptRide(id, user.id);
 
-    // 🔥 Thông báo cho khách hàng biết tài xế đã nhận cuốc (realtime)
+    // Thông báo cho khách hàng biết tài xế đã nhận cuốc
     this.rideGateway.broadcastTripStatus(trip.id, 'ACCEPTED', {
       driverId: trip.driverId,
       driverName: trip.driverName,
@@ -156,11 +187,17 @@ export class RideController {
 
   /** Tài xế cập nhật trạng thái chuyến (ARRIVED_PICKUP, IN_TRIP, COMPLETED...) */
   @Post(':id/status')
+  @Roles(Role.DRIVER)
   @HttpCode(HttpStatus.OK)
-  async updateTripStatus(@Param('id') id: string, @Body() dto: UpdateTripStatusDto) {
-    const trip = await this.rideService.updateTripStatus(id, dto);
+  @ApiOperation({ summary: 'Cập nhật trạng thái chuyến (Bảo vệ: Đúng tài xế & State Machine)' })
+  async updateTripStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateTripStatusDto,
+    @CurrentUser() user: any,
+  ) {
+    const trip = await this.rideService.updateTripStatus(id, user.id, dto);
 
-    // 🔥 Broadcast cập nhật trạng thái tới cả 2 bên
+    // Broadcast cập nhật trạng thái tới cả 2 bên
     this.rideGateway.broadcastTripStatus(trip.id, trip.status, {
       fareAmount: trip.fareAmount,
       finalAmount: trip.finalAmount,
@@ -174,65 +211,87 @@ export class RideController {
 
   /** Toggle tài xế online/offline */
   @Post('driver/toggle-online')
+  @Roles(Role.DRIVER)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Bật/Tắt trạng thái trực tuyến của tài xế' })
   async toggleOnline(
     @Body('isOnline') isOnline: boolean,
-    @Body('driverId') driverId?: string,
+    @CurrentUser() user: any,
   ) {
-    const result = await this.rideService.toggleDriverOnline(driverId || 'driver-demo-1', isOnline);
+    const result = await this.rideService.toggleDriverOnline(user.id, isOnline);
 
-    // Notify gateway về trạng thái online/offline
     if (isOnline) {
-      this.rideGateway.notifyDriverOnline(driverId || 'driver-demo-1');
+      this.rideGateway.notifyDriverOnline(user.id);
     } else {
-      this.rideGateway.notifyDriverOffline(driverId || 'driver-demo-1');
+      this.rideGateway.notifyDriverOffline(user.id);
     }
 
     return result;
   }
 
-  /** Tài xế cập nhật vị trí GPS (REST fallback nếu socket không khả dụng) */
+  /** Tài xế cập nhật vị trí GPS */
   @Post('driver/location')
+  @Roles(Role.DRIVER)
   @HttpCode(HttpStatus.OK)
-  async updateLocation(@Body() dto: DriverLocationDto) {
+  @ApiOperation({ summary: 'Cập nhật vị trí GPS tài xế' })
+  async updateLocation(@Body() dto: DriverLocationDto, @CurrentUser() user: any) {
+    dto.driverId = user.id;
     return this.rideService.updateDriverLocation(dto);
   }
 
-  /** Thông tin tài xế demo */
+  /** Thông tin hồ sơ tài xế hiện tại */
   @Get('driver/me')
-  async getDriverInfo(@Query('driverId') driverId?: string) {
+  @Roles(Role.DRIVER)
+  @ApiOperation({ summary: 'Lấy thông tin tài xế đang đăng nhập' })
+  async getDriverInfo(@CurrentUser() user: any) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { id: user.id },
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Không tìm thấy thông tin tài xế');
+    }
+
     return {
-      id: driverId || 'driver-demo-1',
-      fullName: 'Nguyễn Văn Hùng',
-      phone: '0988123456',
-      avatarUrl: 'https://i.pravatar.cc/150?img=60',
-      licensePlate: '29A-999.88',
-      vehicleName: 'VinFast VF 8 Xanh SM',
-      rating: 4.95,
+      id: driver.id,
+      fullName: driver.fullName,
+      phone: driver.phone,
+      avatarUrl: driver.avatarUrl || 'https://i.pravatar.cc/150?img=60',
+      licensePlate: driver.licensePlate,
+      vehicleName: driver.vehicleType,
+      rating: driver.rating,
       tier: 'KIM CƯƠNG',
-      totalTrips: 1248,
+      totalTrips: driver.totalTrips,
+      isOnline: driver.isOnline,
+      walletBalance: driver.walletBalance,
     };
   }
 
   /** Lịch sử chuyến của tài xế */
   @Get('driver/history')
-  async getDriverHistory(@Query('driverId') driverId?: string) {
-    return this.rideService.getDriverHistory(driverId || 'driver-demo-1');
+  @Roles(Role.DRIVER)
+  @ApiOperation({ summary: 'Xem lịch sử chuyến xe hoàn thành của tài xế' })
+  async getDriverHistory(@CurrentUser() user: any) {
+    return this.rideService.getDriverHistory(user.id);
   }
 
-  /** Ví tài xế */
+  /** Xem ví tài xế */
   @Get('driver/wallet')
-  async getDriverWallet(@Query('driverId') driverId?: string) {
-    return this.rideService.getDriverWallet(driverId || 'driver-demo-1');
+  @Roles(Role.DRIVER)
+  @ApiOperation({ summary: 'Xem số dư ví và giao dịch tài xế' })
+  async getDriverWallet(@CurrentUser() user: any) {
+    return this.rideService.getDriverWallet(user.id);
   }
 
-  /** Nạp ví tài xế */
+  /** Nạp ví tài xế (BẢO MẬT: Chỉ ADMIN mới được cấp quyền nạp số dư trực tiếp) */
   @Post('driver/wallet/topup')
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Nạp ví tài xế (BẢO MẬT: Chỉ ADMIN có quyền điều chỉnh số dư trực tiếp)' })
   async topupWallet(
     @Body('amount') amount: number,
-    @Body('driverId') driverId?: string,
+    @Body('driverId') driverId: string,
   ) {
-    return this.rideService.topupDriverWallet(driverId || 'driver-demo-1', amount || 100000);
+    return this.rideService.topupDriverWallet(driverId, amount);
   }
 }
