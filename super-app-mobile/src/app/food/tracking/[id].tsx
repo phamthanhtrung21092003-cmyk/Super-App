@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, ScrollView, 
   Platform, SafeAreaView, StatusBar, useWindowDimensions, Image,
-  Linking
+  Linking, ActivityIndicator
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useFood, FoodActiveOrder } from '../../../../src/context/FoodContext';
+import { foodService } from '@/services/foodService';
+import { foodSocketService } from '@/services/foodSocketService';
 
-const STAGES: { status: FoodActiveOrder['status']; title: string; desc: string; icon: any }[] = [
+const STAGES: { status: string; title: string; desc: string; icon: any }[] = [
   { status: 'PENDING', title: 'Chờ quán xác nhận', desc: 'Đơn hàng đã được gửi tới quán ăn', icon: 'time-outline' },
   { status: 'PREPARING', title: 'Quán đang làm món', desc: 'Đầu bếp đang chế biến nóng sốt', icon: 'restaurant-outline' },
   { status: 'DRIVER_ACCEPTED', title: 'Tài xế đang đến quán', desc: 'Shipper đang trên đường lấy đồ ăn', icon: 'bicycle-outline' },
@@ -26,30 +28,110 @@ export default function FoodTrackingScreen() {
 
   const { activeOrder, updateOrderStatus } = useFood();
 
-  const [currentStageIdx, setCurrentStageIdx] = useState(1); // Default: Đang làm món
-  const [etaMinutes, setEtaMinutes] = useState(18);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [serverOrder, setServerOrder] = useState<any>(null);
+  const [etaMinutes, setEtaMinutes] = useState(25);
 
-  const orderCode = typeof id === 'string' ? id : (activeOrder?.orderCode || '#FD-8899');
-  const restaurantName = activeOrder?.restaurantName || 'The Pizza Company & Pasta';
-  const deliveryAddress = activeOrder?.deliveryAddress || 'Số 18 Tạ Quang Bửu, Hai Bà Trưng, Hà Nội';
-  const totalAmount = activeOrder?.totalAmount || 225000;
+  const orderTargetId = typeof id === 'string' ? id : (activeOrder?.orderCode || activeOrder?.id || '');
 
-  // Mô phỏng tiến độ đơn hàng tự động để test thực tế
+  // Lấy dữ liệu đơn hàng thật từ Backend & Lắng nghe Realtime Socket.io
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentStageIdx((prev) => {
-        if (prev < STAGES.length - 1) {
-          const next = prev + 1;
-          updateOrderStatus(STAGES[next].status);
-          setEtaMinutes(m => Math.max(2, m - 5));
-          return next;
-        }
-        return prev;
-      });
-    }, 12000); // 12 giây đổi 1 trạng thái để demo mượt mà
+    let isMounted = true;
 
-    return () => clearInterval(timer);
-  }, []);
+    const fetchOrderStatus = async () => {
+      if (!orderTargetId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await foodService.getOrderTracking(orderTargetId);
+        if (!isMounted) return;
+        setServerOrder(data);
+        setErrorMsg(null);
+
+        // Đồng bộ trạng thái vào context nếu có
+        if (data.status) {
+          updateOrderStatus(data.status);
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        if (!serverOrder && !activeOrder) {
+          setErrorMsg(err.response?.data?.message || 'Không thể tải thông tin đơn hàng');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    // 1. Tải trạng thái ban đầu từ REST API (Single Source of Truth)
+    fetchOrderStatus();
+
+    // 2. Kết nối và Tham gia Room theo dõi Realtime Socket.io
+    foodSocketService.connect().then(() => {
+      if (orderTargetId) {
+        foodSocketService.joinOrderRoom(orderTargetId);
+      }
+    });
+
+    // 3. Lắng nghe cập nhật trạng thái đơn tức thì qua Socket.io
+    const unsubStatus = foodSocketService.onOrderStatusChanged((payload) => {
+      if (!isMounted) return;
+      console.log('[TrackingScreen] Realtime status update:', payload.status);
+      setServerOrder((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              status: payload.status,
+              driver: payload.driver || prev.driver,
+              driverId: payload.driverId || prev.driverId,
+              rejectedReason: payload.reason || prev.rejectedReason,
+              cancellationReason: payload.reason || prev.cancellationReason,
+            }
+          : prev,
+      );
+      if (payload.status) {
+        updateOrderStatus(payload.status as any);
+      }
+    });
+
+    // 4. Khi Socket kết nối lại (sau khi mất mạng), tự động fetch lại từ REST API để đồng bộ chuẩn xác
+    const unsubReconnect = foodSocketService.onReconnectSync(() => {
+      if (isMounted) {
+        console.log('[TrackingScreen] Socket reconnected, syncing with REST API...');
+        fetchOrderStatus();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubStatus();
+      unsubReconnect();
+      if (orderTargetId) {
+        foodSocketService.leaveOrderRoom(orderTargetId);
+      }
+    };
+  }, [orderTargetId]);
+
+  // Xác định vị trí trạng thái hiện tại trên thanh tiến trình
+  const currentStatus = serverOrder?.status || activeOrder?.status || 'PENDING';
+  let currentStageIdx = 0;
+  if (currentStatus === 'CONFIRMED' || currentStatus === 'PREPARING') {
+    currentStageIdx = 1;
+  } else if (currentStatus === 'DRIVER_ACCEPTED' || currentStatus === 'DRIVER_ARRIVING') {
+    currentStageIdx = 2;
+  } else if (currentStatus === 'PICKED_UP' || currentStatus === 'DELIVERING') {
+    currentStageIdx = 3;
+  } else if (currentStatus === 'COMPLETED') {
+    currentStageIdx = 4;
+  }
+
+  const orderCode = serverOrder?.orderCode || activeOrder?.orderCode || (typeof id === 'string' ? id : '#FD-FOOD');
+  const restaurantName = serverOrder?.restaurant?.name || activeOrder?.restaurantName || 'Quán ăn V-Life';
+  const deliveryAddress = serverOrder?.deliveryAddress || activeOrder?.deliveryAddress || 'Địa chỉ giao hàng';
+  const totalAmount = serverOrder?.totalAmount || activeOrder?.totalAmount || 0;
+  const items = serverOrder?.items || activeOrder?.items || [];
 
   const currentStage = STAGES[currentStageIdx];
 
@@ -150,26 +232,41 @@ export default function FoodTrackingScreen() {
             </Animated.View>
 
             {/* Driver Profile Card */}
-            {currentStageIdx >= 2 && (
+            {(currentStageIdx >= 2 || Boolean(serverOrder?.driver)) && (
               <Animated.View entering={FadeInUp.duration(300)} style={styles.driverCard}>
                 <Image 
-                  source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80' }} 
+                  source={{ uri: serverOrder?.driver?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80' }} 
                   style={styles.driverAvatar} 
                 />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.driverName}>Nguyễn Văn Tuấn</Text>
-                  <Text style={styles.driverVehicle}>Honda Wave Alpha • 29-G1 888.88</Text>
+                  <Text style={styles.driverName}>
+                    {serverOrder?.driver?.fullName || 'Tài xế V-Life'}
+                  </Text>
+                  <Text style={styles.driverVehicle}>
+                    {serverOrder?.driver?.vehicleType || 'Xe máy'} • {serverOrder?.driver?.licensePlate || 'Đang cập nhật'}
+                  </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                     <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.driverRating}>4.9 (1.4k cuốc)</Text>
+                    <Text style={styles.driverRating}>
+                      {serverOrder?.driver?.rating || '5.0'} ({(serverOrder?.driver?.totalTrips || 120)} cuốc)
+                    </Text>
                   </View>
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity style={styles.driverActionBtn} onPress={handleCallDriver}>
+                  <TouchableOpacity 
+                    style={styles.driverActionBtn} 
+                    onPress={() => {
+                      const phone = serverOrder?.driver?.phone || '0922222222';
+                      Linking.openURL(`tel:${phone}`).catch(() => alert(`Gọi cho tài xế: ${phone}`));
+                    }}
+                  >
                     <Ionicons name="call" size={18} color="#10B981" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.driverActionBtn} onPress={() => alert('Nhắn tin cho tài xế: "Em đang xuống sảnh ạ"')}>
+                  <TouchableOpacity 
+                    style={styles.driverActionBtn} 
+                    onPress={() => alert(`Nhắn tin cho tài xế: "Tôi đang ở địa chỉ ${deliveryAddress}"`)}
+                  >
                     <Ionicons name="chatbubble" size={18} color="#3B82F6" />
                   </TouchableOpacity>
                 </View>
@@ -200,20 +297,30 @@ export default function FoodTrackingScreen() {
             {/* Order Items Snapshot */}
             <View style={styles.infoCard}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={styles.sectionTitle}>Món ăn ({activeOrder?.items?.length || 2} món)</Text>
+                <Text style={styles.sectionTitle}>Món ăn ({items.length} món)</Text>
                 <Text style={styles.orderTotalText}>{totalAmount.toLocaleString('vi-VN')}đ</Text>
               </View>
 
-              {(activeOrder?.items || []).map((it) => (
-                <View key={it.cartItemId} style={styles.itemRow}>
-                  <Text style={styles.itemQty}>{it.quantity}x</Text>
-                  <View style={{ flex: 1, marginLeft: 8 }}>
-                    <Text style={styles.itemName}>{it.name}</Text>
-                    {it.size ? <Text style={styles.itemSub}>{it.size.name}</Text> : null}
+              {items.map((it: any, idx: number) => {
+                const itemOptions = typeof it.optionsJson === 'string' ? JSON.parse(it.optionsJson || '{}') : (it.optionsJson || {});
+                const sizeName = it.size?.name || itemOptions.size?.name;
+                const toppings = it.toppings || itemOptions.toppings || [];
+                const itemPrice = it.totalPrice || (it.price * it.quantity) || 0;
+
+                return (
+                  <View key={it.id || it.cartItemId || idx} style={styles.itemRow}>
+                    <Text style={styles.itemQty}>{it.quantity}x</Text>
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.itemName}>{it.name}</Text>
+                      {sizeName ? <Text style={styles.itemSub}>{sizeName}</Text> : null}
+                      {toppings.length > 0 ? (
+                        <Text style={styles.itemSub}>+ {toppings.map((t: any) => t.name).join(', ')}</Text>
+                      ) : null}
+                    </View>
+                    <Text style={styles.itemPrice}>{itemPrice.toLocaleString('vi-VN')}đ</Text>
                   </View>
-                  <Text style={styles.itemPrice}>{it.totalPrice.toLocaleString('vi-VN')}đ</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             {/* Action Return Home */}

@@ -1,12 +1,17 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsEnum, IsOptional } from 'class-validator';
 import { PaymentProvider } from '@prisma/client';
 
 export class CreatePaymentOrderDto {
-  @ApiProperty({ description: 'ID của đơn đặt chỗ (Booking ID)' })
+  @ApiPropertyOptional({ description: 'ID của đơn đặt dịch vụ Travel (Booking ID)' })
   @IsString()
-  @IsNotEmpty({ message: 'bookingId không được để trống' })
-  bookingId: string;
+  @IsOptional()
+  bookingId?: string;
+
+  @ApiPropertyOptional({ description: 'ID của đơn đặt vé xem phim (MovieOrder ID)' })
+  @IsString()
+  @IsOptional()
+  movieOrderId?: string;
 
   @ApiPropertyOptional({
     description: 'Nhà cung cấp thanh toán',

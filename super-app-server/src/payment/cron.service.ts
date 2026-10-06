@@ -1,23 +1,35 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { SeatHoldService } from '../movie/seat-hold.service';
 
 @Injectable()
 export class CronService {
   private readonly logger = new Logger(CronService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly seatHoldService?: SeatHoldService,
+  ) {}
 
   /**
    * TASK TỰ ĐỘNG GIẢI PHÓNG ĐƠN HẾT HẠN GIỮ CHỖ (HOLD TTL EXPIRATION CRON JOB)
-   * Chạy định kỳ mỗi phút 1 lần
+   * Chạy định kỳ mỗi phút 1 lần cho cả Travel Booking và Movie SeatHold/MovieOrder
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredHoldBookings() {
     const now = new Date();
 
-    // 1. Tìm các đơn Booking ở trạng thái PENDING_PAYMENT và đã qua thời hạn expiresAt
+    let movieExpiredInfo = { releasedCount: 0, expiredOrdersCount: 0 };
+    if (this.seatHoldService) {
+      try {
+        movieExpiredInfo = await this.seatHoldService.releaseExpiredHolds();
+      } catch (err) {
+        this.logger.error('[CronService] Error releasing expired movie holds:', err);
+      }
+    }
+
     const expiredBookings = await this.prisma.booking.findMany({
       where: {
         status: BookingStatus.PENDING_PAYMENT,
@@ -30,35 +42,38 @@ export class CronService {
     });
 
     if (expiredBookings.length === 0) {
-      return { expiredCount: 0 };
+      return {
+        expiredCount: 0,
+        movieReleasedHolds: movieExpiredInfo.releasedCount,
+        movieExpiredOrders: movieExpiredInfo.expiredOrdersCount,
+      };
     }
 
-    this.logger.log(`[CronService] Found ${expiredBookings.length} expired hold bookings. Processing expiration...`);
+    this.logger.log(
+      `[CronService] Found ${expiredBookings.length} expired hold bookings. Processing expiration...`,
+    );
 
     let processedCount = 0;
 
     for (const booking of expiredBookings) {
       try {
-        // 2. CONCURRENCY PROTECTION & ATOMIC TRANSACTION BOUNDARY
-        // Chỉ hết hạn nếu đơn vẫn đang PENDING_PAYMENT (tránh tranh chấp với Webhook Ngân hàng)
         await this.prisma.$transaction(async (tx) => {
           const freshBooking = await tx.booking.findUnique({
             where: { id: booking.id },
           });
 
-          // Nếu Webhook đã cập nhật PAYMENT_PAID hoặc CONFIRMED trong lúc Cron chạy -> Bỏ qua ngay!
           if (!freshBooking || freshBooking.status !== BookingStatus.PENDING_PAYMENT) {
-            this.logger.log(`[CronService] Skipping booking ${booking.bookingCode} because status changed to ${freshBooking?.status}`);
+            this.logger.log(
+              `[CronService] Skipping booking ${booking.bookingCode} because status changed to ${freshBooking?.status}`,
+            );
             return;
           }
 
-          // 2.1 Cập nhật Booking = CANCELLED (Hoặc hết hạn)
           await tx.booking.update({
             where: { id: booking.id },
             data: { status: BookingStatus.CANCELLED },
           });
 
-          // 2.2 Cập nhật các Payment đang PENDING sang PAYMENT_EXPIRED
           const pendingPayment = booking.payments.find((p) => p.status === PaymentStatus.PENDING);
           if (pendingPayment) {
             await tx.payment.update({
@@ -66,7 +81,6 @@ export class CronService {
               data: { status: PaymentStatus.PAYMENT_EXPIRED },
             });
 
-            // 2.3 Ghi nhật ký Audit PaymentEvent
             await tx.paymentEvent.create({
               data: {
                 paymentId: pendingPayment.id,
@@ -80,7 +94,6 @@ export class CronService {
             });
           }
 
-          // 2.4 Giải phóng tính sẵn có của Dịch vụ
           if (booking.service && !booking.service.isAvailable) {
             await tx.service.update({
               where: { id: booking.serviceId },
@@ -89,13 +102,19 @@ export class CronService {
           }
 
           processedCount++;
-          this.logger.log(`[CronService] Expired booking ${booking.bookingCode} (TTL lapsed at ${booking.expiresAt.toISOString()}).`);
+          this.logger.log(
+            `[CronService] Expired booking ${booking.bookingCode} (TTL lapsed at ${booking.expiresAt.toISOString()}).`,
+          );
         });
       } catch (error) {
         this.logger.error(`[CronService] Failed to expire booking ${booking.bookingCode}:`, error);
       }
     }
 
-    return { expiredCount: processedCount };
+    return {
+      expiredCount: processedCount,
+      movieReleasedHolds: movieExpiredInfo.releasedCount,
+      movieExpiredOrders: movieExpiredInfo.expiredOrdersCount,
+    };
   }
 }

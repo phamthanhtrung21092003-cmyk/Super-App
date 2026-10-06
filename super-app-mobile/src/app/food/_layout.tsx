@@ -10,7 +10,10 @@ export default function FoodLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="list" />
-      {/* We will add restaurant, item, cart, checkout, tracking later */}
+      <Stack.Screen name="orders" />
+      <Stack.Screen name="orders/[id]" />
+      <Stack.Screen name="cart" />
+      <Stack.Screen name="checkout" />
     </Stack>
   );
 }

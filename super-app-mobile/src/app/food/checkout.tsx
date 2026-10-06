@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, ScrollView, 
   Platform, SafeAreaView, StatusBar, useWindowDimensions, TextInput,
-  ActivityIndicator
+  ActivityIndicator, Modal
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useFood } from '../../context/FoodContext';
+import { useUser, Address } from '../../context/UserContext';
 
 export default function FoodCheckoutScreen() {
   const router = useRouter();
@@ -20,27 +21,81 @@ export default function FoodCheckoutScreen() {
     restaurant, 
     subtotal, 
     shippingFeeInfo, 
+    customerCoords,
+    setCustomerCoords,
     placeOrder 
   } = useFood();
 
-  const [deliveryAddress, setDeliveryAddress] = useState('Số 18, Ngõ 48 Tạ Quang Bửu, Bách Khoa, Hai Bà Trưng, Hà Nội');
+  const { addresses } = useUser();
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
   const [noteForDriver, setNoteForDriver] = useState('');
   const [noteForMerchant, setNoteForMerchant] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'WALLET' | 'VIETQR'>('COD');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Tự động gán địa chỉ mặc định từ Sổ địa chỉ thật của Người dùng
+  useEffect(() => {
+    if (addresses && addresses.length > 0) {
+      const defaultAddr = addresses.find(a => a.isDefault) || addresses[0];
+      setSelectedAddress(defaultAddr);
+      const fullText = [defaultAddr.detailAddress, defaultAddr.ward, defaultAddr.district, defaultAddr.province]
+        .filter(Boolean)
+        .join(', ');
+      setDeliveryAddress(fullText || defaultAddr.detailAddress || 'Địa chỉ nhận hàng');
+      if (defaultAddr.latitude && defaultAddr.longitude) {
+        setCustomerCoords({ lat: defaultAddr.latitude, lng: defaultAddr.longitude });
+      }
+    } else {
+      setDeliveryAddress('Số 18, Ngõ 48 Tạ Quang Bửu, Bách Khoa, Hai Bà Trưng, Hà Nội');
+      setCustomerCoords({ lat: 21.0055, lng: 105.8450 });
+    }
+  }, [addresses]);
+
   const totalAmount = subtotal + shippingFeeInfo.finalShippingFee;
+
+  const handleSelectAddress = (addr: Address) => {
+    setSelectedAddress(addr);
+    const fullText = [addr.detailAddress, addr.ward, addr.district, addr.province].filter(Boolean).join(', ');
+    setDeliveryAddress(fullText || addr.detailAddress);
+    if (addr.latitude && addr.longitude) {
+      setCustomerCoords({ lat: addr.latitude, lng: addr.longitude });
+    }
+    setShowAddressPicker(false);
+  };
 
   const handleConfirmOrder = async () => {
     if (isSubmitting) return;
+
+    if (!deliveryAddress || !deliveryAddress.trim()) {
+      alert('Vui lòng nhập địa chỉ nhận hàng chính xác');
+      return;
+    }
+
+    if (!restaurant) {
+      alert('Không tìm thấy thông tin quán ăn. Vui lòng thử lại!');
+      return;
+    }
+
+    if (cart.length === 0) {
+      alert('Giỏ hàng trống. Hãy chọn món ăn trước khi thanh toán.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const targetCoords = (selectedAddress?.latitude && selectedAddress?.longitude)
+        ? { lat: selectedAddress.latitude, lng: selectedAddress.longitude }
+        : customerCoords;
+
       const createdOrder = await placeOrder(
-        deliveryAddress,
+        deliveryAddress.trim(),
         paymentMethod,
-        noteForMerchant,
-        noteForDriver
+        targetCoords,
+        noteForMerchant.trim() || undefined,
+        noteForDriver.trim() || undefined
       );
 
       // Chuyển hướng sang màn hình Live Tracking đơn hàng
@@ -48,8 +103,9 @@ export default function FoodCheckoutScreen() {
         pathname: '/food/tracking/[id]' as any,
         params: { id: createdOrder.orderCode || createdOrder.id },
       });
-    } catch (e) {
-      alert('Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại!');
+    } catch (e: any) {
+      const msg = e.response?.data?.message || e.message || 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại!';
+      alert(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -79,15 +135,24 @@ export default function FoodCheckoutScreen() {
                   <Ionicons name="location" size={20} color={accentColor} />
                   <Text style={styles.cardTitle}>Địa chỉ giao hàng</Text>
                 </View>
-                <TouchableOpacity onPress={() => {
-                  const newAddr = prompt('Nhập địa chỉ nhận hàng mới:', deliveryAddress);
-                  if (newAddr && newAddr.trim()) setDeliveryAddress(newAddr.trim());
-                }}>
+                <TouchableOpacity onPress={() => setShowAddressPicker(true)}>
                   <Text style={styles.changeBtnText}>Thay đổi</Text>
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.addressText}>{deliveryAddress}</Text>
+              <Text style={styles.addressText}>{deliveryAddress || 'Chưa chọn địa chỉ giao hàng'}</Text>
+              {selectedAddress?.label && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, color: '#F97316', backgroundColor: '#FFF7ED', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, fontWeight: '700' }}>
+                    {selectedAddress.label}
+                  </Text>
+                  {selectedAddress.receiverName ? (
+                    <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 6 }}>
+                      {selectedAddress.receiverName} • {selectedAddress.receiverPhone}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
 
               <View style={styles.distanceBadge}>
                 <Ionicons name="navigate-circle-outline" size={16} color="#64748B" />
@@ -283,6 +348,112 @@ export default function FoodCheckoutScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Modal chọn địa chỉ nhận hàng */}
+        <Modal
+          visible={showAddressPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowAddressPicker(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <TouchableOpacity 
+              style={{ flex: 1 }} 
+              activeOpacity={1} 
+              onPress={() => setShowAddressPicker(false)} 
+            />
+            <View style={{ backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: 500 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 17, fontWeight: '800', color: '#0F172A' }}>Chọn địa chỉ nhận hàng</Text>
+                <TouchableOpacity onPress={() => setShowAddressPicker(false)}>
+                  <Ionicons name="close" size={24} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {addresses && addresses.length > 0 ? (
+                  addresses.map((addr) => {
+                    const isSelected = selectedAddress?.id === addr.id;
+                    const fullAddr = [addr.detailAddress, addr.ward, addr.district, addr.province].filter(Boolean).join(', ');
+                    return (
+                      <TouchableOpacity
+                        key={addr.id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: 14,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: isSelected ? accentColor : '#E2E8F0',
+                          backgroundColor: isSelected ? '#FFF7ED' : '#FFF',
+                          marginBottom: 10,
+                        }}
+                        onPress={() => handleSelectAddress(addr)}
+                      >
+                        <Ionicons 
+                          name={isSelected ? "radio-button-on" : "radio-button-off"} 
+                          size={20} 
+                          color={isSelected ? accentColor : '#94A3B8'} 
+                        />
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>
+                              {addr.label || 'Địa chỉ'}
+                            </Text>
+                            {addr.isDefault && (
+                              <Text style={{ fontSize: 10, color: '#10B981', backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, fontWeight: '700' }}>
+                                Mặc định
+                              </Text>
+                            )}
+                          </View>
+                          <Text style={{ fontSize: 13, color: '#475569', marginTop: 3 }} numberOfLines={2}>
+                            {fullAddr || addr.detailAddress}
+                          </Text>
+                          {addr.receiverName ? (
+                            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                              {addr.receiverName} • {addr.receiverPhone}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                ) : (
+                  <Text style={{ color: '#64748B', textAlign: 'center', marginVertical: 20 }}>
+                    Bạn chưa lưu địa chỉ nào trong hồ sơ.
+                  </Text>
+                )}
+
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 12,
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    borderRadius: 12,
+                    marginTop: 10,
+                    gap: 8,
+                  }}
+                  onPress={() => {
+                    const customAddr = prompt('Nhập địa chỉ nhận hàng chi tiết:', deliveryAddress);
+                    if (customAddr && customAddr.trim()) {
+                      setDeliveryAddress(customAddr.trim());
+                      setSelectedAddress(null);
+                      setShowAddressPicker(false);
+                    }
+                  }}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={accentColor} />
+                  <Text style={{ color: accentColor, fontWeight: '700', fontSize: 14 }}>
+                    Nhập địa chỉ khác
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
       </SafeAreaView>
     </View>

@@ -130,8 +130,8 @@ export class VideoController {
   async uploadVideo(
     @UploadedFiles()
     files: {
-      video?: Express.Multer.File[];
-      thumbnail?: Express.Multer.File[];
+      video?: any[];
+      thumbnail?: any[];
     },
   ) {
     if (!files?.video || files.video.length === 0) {

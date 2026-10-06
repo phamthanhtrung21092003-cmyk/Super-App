@@ -1,56 +1,107 @@
 import React, { createContext, useContext, useState } from 'react';
+import { BackendMovieOrder, BackendMovieTicket } from '../services/movieService';
+
+export interface ShowtimeSlotItem {
+  showtimeId: string;
+  cinemaId: string;
+  cinemaName: string;
+  cinemaBrand: string;
+  auditoriumName: string;
+  time: string;
+  startTimeIso: string;
+  price: number;
+  priceText: string;
+  available: boolean;
+}
 
 export interface MovieItem {
   id: string;
+  slug?: string;
   title: string;
   originalTitle?: string;
+  description?: string;
   poster: string;
-  ageRating: string; // 'T13', 'T16', 'T18', 'P'
-  duration: string; // "1h49'"
+  bannerUrl?: string;
+  trailerUrl?: string;
+  ageRating: string;
+  duration: string;
+  durationMin?: number;
+  language?: string;
+  subtitle?: string;
+  releaseDate?: string;
+  isShowing?: boolean;
   hasTrailer: boolean;
   genres: string;
   showtimes: {
-    format: string; // "2D Lồng Tiếng", "2D Phụ Đề Việt"
-    times: { time: string; price: number; priceText: string; available: boolean }[];
+    format: string;
+    times: ShowtimeSlotItem[];
   }[];
 }
 
 export interface SelectedSeat {
-  id: string; // "E5"
-  row: string; // "E"
-  number: number; // 5
+  id: string; // seatCode e.g. "A3"
+  seatId: string; // DB Seat.id
+  showtimeSeatId?: string; // DB ShowtimeSeat.id
+  row: string;
+  number: number;
   type: 'standard' | 'vip' | 'couple';
   price: number;
 }
 
 export interface ConcessionCombo {
   id: string;
+  code?: string;
+  brand?: string | null;
+  cinemaId?: string | null;
   name: string;
   description: string;
   price: number;
+  originalPrice?: number | null;
   quantity: number;
   savingsText?: string;
 }
 
 export interface BookingState {
   movie: MovieItem | null;
-  selectedDate: string; // "27/07/2026"
-  dateLabel: string; // "Thứ Hai · 27/07"
-  cinemaName: string; // "Beta Xuân Thủy"
-  roomName: string; // "Phòng chiếu P7"
-  format: string; // "2D LỒNG TIẾNG"
-  ageRating: string; // "T13"
-  time: string; // "17:30"
-  basePrice: number; // 50000
+  cinemaId: string;
+  cinemaBrand: string;
+  cinemaName: string;
+  roomName: string;
+  showtimeId: string;
+  startTimeIso?: string;
+  selectedDate: string;
+  dateLabel: string;
+  format: string;
+  ageRating: string;
+  time: string;
+  basePrice: number;
   selectedSeats: SelectedSeat[];
+  holdIds: string[];
+  holdExpiresAt: string | null;
+  availableCombos: ConcessionCombo[];
   selectedCombos: ConcessionCombo[];
+  voucherCode: string;
+  voucherTitle?: string;
+  discountAmount: number;
+  serverOrder: BackendMovieOrder | null;
+  issuedTicket: BackendMovieTicket | null;
+  movieOrderId?: string;
+  ticketId?: string;
   customerInfo: {
     fullName: string;
     phone: string;
     email: string;
   };
-  paymentMethod: string; // "Chuyển khoản / Quét mã QR"
+  paymentMethod: string;
   bookingCode?: string;
+}
+
+interface SelectShowtimeMetadata {
+  showtimeId?: string;
+  cinemaId?: string;
+  cinemaBrand?: string;
+  startTimeIso?: string;
+  selectedDate?: string;
 }
 
 interface CinemaContextType {
@@ -63,35 +114,59 @@ interface CinemaContextType {
     price: number,
     dateLabel?: string,
     cinemaName?: string,
-    roomName?: string
+    roomName?: string,
+    meta?: SelectShowtimeMetadata
   ) => void;
   toggleSeat: (seat: SelectedSeat) => void;
-  updateComboQuantity: (comboId: string, delta: number) => void;
+  setSeatHolds: (holdIds: string[], expiresAt: string, seats?: SelectedSeat[]) => void;
+  clearExpiredHold: () => void;
+  setAvailableCombos: (combos: ConcessionCombo[]) => void;
+  updateComboQuantity: (comboId: string, delta: number, comboSource?: ConcessionCombo) => void;
+  applyValidatedVoucher: (code: string, discountAmount: number, title?: string) => void;
+  clearVoucher: () => void;
+  setServerMovieOrder: (order: BackendMovieOrder | null) => void;
+  setIssuedTicket: (ticket: BackendMovieTicket | null) => void;
   setCustomerDetails: (fullName: string, phone: string, email: string) => void;
   resetBooking: () => void;
   getSeatsTotalPrice: () => number;
   getCombosTotalPrice: () => number;
+  getDiscountAmount: () => number;
   getGrandTotal: () => number;
+  getRemainingHoldSeconds: () => number;
 }
 
 const DEFAULT_BOOKING: BookingState = {
   movie: null,
-  selectedDate: '27/07/2026',
-  dateLabel: 'Thứ Hai · 27/07',
-  cinemaName: 'Beta Xuân Thủy',
-  roomName: 'Phòng chiếu P7',
-  format: '2D LỒNG TIẾNG',
+  cinemaId: '',
+  cinemaBrand: '',
+  cinemaName: '',
+  roomName: '',
+  showtimeId: '',
+  startTimeIso: undefined,
+  selectedDate: '',
+  dateLabel: '',
+  format: '2D',
   ageRating: 'T13',
-  time: '17:30',
-  basePrice: 50000,
+  time: '',
+  basePrice: 0,
   selectedSeats: [],
+  holdIds: [],
+  holdExpiresAt: null,
+  availableCombos: [],
   selectedCombos: [],
+  voucherCode: '',
+  voucherTitle: undefined,
+  discountAmount: 0,
+  serverOrder: null,
+  issuedTicket: null,
+  movieOrderId: undefined,
+  ticketId: undefined,
   customerInfo: {
     fullName: '',
     phone: '',
     email: '',
   },
-  paymentMethod: 'Chuyển khoản / Quét mã QR',
+  paymentMethod: 'Chuyển khoản VietQR (V-Life Payment Core)',
 };
 
 const CinemaContext = createContext<CinemaContextType | undefined>(undefined);
@@ -104,9 +179,10 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     format: string,
     time: string,
     price: number,
-    dateLabel: string = 'Thứ Hai · 27/07',
-    cinemaName: string = 'Beta Xuân Thủy',
-    roomName: string = 'Phòng chiếu P7'
+    dateLabel: string = '',
+    cinemaName: string = '',
+    roomName: string = '',
+    meta?: SelectShowtimeMetadata
   ) => {
     setBooking(prev => ({
       ...prev,
@@ -115,35 +191,82 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       time,
       basePrice: price,
       dateLabel,
+      selectedDate: meta?.selectedDate || dateLabel,
       cinemaName,
       roomName,
+      cinemaId: meta?.cinemaId || '',
+      cinemaBrand: meta?.cinemaBrand || '',
+      showtimeId: meta?.showtimeId || '',
+      startTimeIso: meta?.startTimeIso,
       ageRating: movie.ageRating,
       selectedSeats: [],
+      holdIds: [],
+      holdExpiresAt: null,
       selectedCombos: [],
+      voucherCode: '',
+      voucherTitle: undefined,
+      discountAmount: 0,
+      serverOrder: null,
+      issuedTicket: null,
+      movieOrderId: undefined,
+      ticketId: undefined,
+      bookingCode: undefined,
     }));
   };
 
   const toggleSeat = (seat: SelectedSeat) => {
     setBooking(prev => {
-      const exists = prev.selectedSeats.find(s => s.id === seat.id);
-      let updated: SelectedSeat[];
-      if (exists) {
-        updated = prev.selectedSeats.filter(s => s.id !== seat.id);
-      } else {
-        updated = [...prev.selectedSeats, seat];
-      }
-      return { ...prev, selectedSeats: updated };
+      const exists = prev.selectedSeats.find(s => s.seatId === seat.seatId || s.id === seat.id);
+      const updated = exists
+        ? prev.selectedSeats.filter(s => s.seatId !== seat.seatId && s.id !== seat.id)
+        : [...prev.selectedSeats, seat];
+      return {
+        ...prev,
+        selectedSeats: updated,
+        serverOrder: null,
+      };
     });
   };
 
-  const updateComboQuantity = (comboId: string, delta: number) => {
+  const setSeatHolds = (holdIds: string[], expiresAt: string, seats?: SelectedSeat[]) => {
+    setBooking(prev => ({
+      ...prev,
+      holdIds,
+      holdExpiresAt: expiresAt,
+      ...(seats ? { selectedSeats: seats } : {}),
+    }));
+  };
+
+  const clearExpiredHold = () => {
+    setBooking(prev => ({
+      ...prev,
+      selectedSeats: [],
+      holdIds: [],
+      holdExpiresAt: null,
+      selectedCombos: [],
+      voucherCode: '',
+      voucherTitle: undefined,
+      discountAmount: 0,
+      serverOrder: null,
+      movieOrderId: undefined,
+    }));
+  };
+
+  const setAvailableCombos = (combos: ConcessionCombo[]) => {
+    setBooking(prev => ({
+      ...prev,
+      availableCombos: combos,
+    }));
+  };
+
+  const updateComboQuantity = (comboId: string, delta: number, comboSource?: ConcessionCombo) => {
     setBooking(prev => {
       const existing = prev.selectedCombos.find(c => c.id === comboId);
       let updatedCombos: ConcessionCombo[];
       if (!existing && delta > 0) {
-        const mockCombo = MOCK_COMBOS.find(c => c.id === comboId);
-        if (mockCombo) {
-          updatedCombos = [...prev.selectedCombos, { ...mockCombo, quantity: delta }];
+        const catalogCombo = comboSource || prev.availableCombos.find(c => c.id === comboId);
+        if (catalogCombo) {
+          updatedCombos = [...prev.selectedCombos, { ...catalogCombo, quantity: delta }];
         } else {
           updatedCombos = prev.selectedCombos;
         }
@@ -159,8 +282,52 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       } else {
         updatedCombos = prev.selectedCombos;
       }
-      return { ...prev, selectedCombos: updatedCombos };
+      return {
+        ...prev,
+        selectedCombos: updatedCombos,
+        serverOrder: null,
+      };
     });
+  };
+
+  const applyValidatedVoucher = (code: string, discountAmount: number, title?: string) => {
+    setBooking(prev => ({
+      ...prev,
+      voucherCode: code,
+      discountAmount,
+      voucherTitle: title,
+      serverOrder: null,
+    }));
+  };
+
+  const clearVoucher = () => {
+    setBooking(prev => ({
+      ...prev,
+      voucherCode: '',
+      discountAmount: 0,
+      voucherTitle: undefined,
+      serverOrder: null,
+    }));
+  };
+
+  const setServerMovieOrder = (order: BackendMovieOrder | null) => {
+    setBooking(prev => ({
+      ...prev,
+      serverOrder: order,
+      movieOrderId: order?.id,
+      bookingCode: order?.booking?.bookingCode || order?.orderCode || prev.bookingCode,
+      holdExpiresAt: order?.expiresAt || prev.holdExpiresAt,
+      discountAmount: order ? Number(order.discountAmount) : prev.discountAmount,
+    }));
+  };
+
+  const setIssuedTicket = (ticket: BackendMovieTicket | null) => {
+    setBooking(prev => ({
+      ...prev,
+      issuedTicket: ticket,
+      ticketId: ticket?.id,
+      bookingCode: ticket?.booking?.bookingCode || ticket?.ticketCode || prev.bookingCode,
+    }));
   };
 
   const setCustomerDetails = (fullName: string, phone: string, email: string) => {
@@ -175,18 +342,41 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const getSeatsTotalPrice = () => {
-    return booking.selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
+    if (booking.serverOrder) {
+      return Number(booking.serverOrder.seatsSubtotal);
+    }
+    return booking.selectedSeats.reduce((sum, seat) => sum + Number(seat.price), 0);
   };
 
   const getCombosTotalPrice = () => {
-    return booking.selectedCombos.reduce((sum, combo) => sum + combo.price * combo.quantity, 0);
+    if (booking.serverOrder) {
+      return Number(booking.serverOrder.combosSubtotal);
+    }
+    return booking.selectedCombos.reduce((sum, combo) => sum + Number(combo.price) * combo.quantity, 0);
+  };
+
+  const getDiscountAmount = () => {
+    if (booking.serverOrder) {
+      return Number(booking.serverOrder.discountAmount);
+    }
+    return booking.discountAmount || 0;
   };
 
   const getGrandTotal = () => {
+    if (booking.serverOrder) {
+      return Number(booking.serverOrder.totalAmount);
+    }
     const seatsTotal = getSeatsTotalPrice();
     const combosTotal = getCombosTotalPrice();
-    const serviceFee = seatsTotal > 0 ? 5000 : 0;
-    return seatsTotal + combosTotal + serviceFee;
+    const discount = getDiscountAmount();
+    return Math.max(0, seatsTotal + combosTotal - discount);
+  };
+
+  const getRemainingHoldSeconds = () => {
+    const expiresIso = booking.serverOrder?.expiresAt || booking.holdExpiresAt;
+    if (!expiresIso) return 0;
+    const diffMs = new Date(expiresIso).getTime() - Date.now();
+    return Math.max(0, Math.floor(diffMs / 1000));
   };
 
   return (
@@ -196,12 +386,21 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setBooking,
         selectShowtime,
         toggleSeat,
+        setSeatHolds,
+        clearExpiredHold,
+        setAvailableCombos,
         updateComboQuantity,
+        applyValidatedVoucher,
+        clearVoucher,
+        setServerMovieOrder,
+        setIssuedTicket,
         setCustomerDetails,
         resetBooking,
         getSeatsTotalPrice,
         getCombosTotalPrice,
+        getDiscountAmount,
         getGrandTotal,
+        getRemainingHoldSeconds,
       }}
     >
       {children}
@@ -216,22 +415,3 @@ export const useCinema = () => {
   }
   return context;
 };
-
-export const MOCK_COMBOS: ConcessionCombo[] = [
-  {
-    id: 'beta-combo-69oz',
-    name: 'Beta Combo 69oz',
-    description: 'TIẾT KIỆM 28K!!! Gồm: 1 Bắp (69oz) + 1 Nước có gas (22oz)',
-    price: 68000,
-    quantity: 0,
-    savingsText: 'TIẾT KIỆM 28K!!!',
-  },
-  {
-    id: 'sweet-combo-69oz',
-    name: 'Sweet Combo 69oz',
-    description: 'TIẾT KIỆM 46K!!! Gồm: 1 Bắp (69oz) + 2 Nước có gas (22oz)',
-    price: 88000,
-    quantity: 0,
-    savingsText: 'TIẾT KIỆM 46K!!!',
-  },
-];

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { foodService, CreateFoodOrderPayload } from '../services/foodService';
 
 export interface SelectedOption {
   name: string;
@@ -25,8 +26,8 @@ export interface FoodRestaurant {
   name: string;
   address: string;
   avatar?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
 }
 
 export interface FoodActiveOrder {
@@ -46,7 +47,7 @@ export interface FoodActiveOrder {
   createdAt: string;
 }
 
-interface ShippingFeeCalculation {
+export interface ShippingFeeCalculation {
   distanceKm: number;
   originalShippingFee: number;
   discountAmount: number;
@@ -68,15 +69,27 @@ interface FoodContextType {
   activeOrder: FoodActiveOrder | null;
   subtotal: number;
   shippingFeeInfo: ShippingFeeCalculation;
+  customerCoords: { lat: number; lng: number };
+  setCustomerCoords: (coords: { lat: number; lng: number }) => void;
   addToCart: (item: Omit<FoodCartItem, 'cartItemId' | 'itemUnitPrice' | 'totalPrice'>, rest: FoodRestaurant) => void;
   confirmReplaceRestaurantCart: () => void;
   cancelReplaceRestaurantCart: () => void;
   updateQuantity: (cartItemId: string, delta: number) => void;
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
-  placeOrder: (deliveryAddress: string, paymentMethod: 'COD' | 'WALLET' | 'VIETQR', noteForMerchant?: string, noteForDriver?: string) => Promise<FoodActiveOrder>;
+  replaceCartWithItems: (items: FoodCartItem[], targetRestaurant: FoodRestaurant) => void;
+  calculateFee: (sub: number, distance?: number) => ShippingFeeCalculation;
+  placeOrder: (
+    deliveryAddress: string,
+    paymentMethod: 'COD' | 'WALLET' | 'VIETQR',
+    deliveryCoords?: { lat: number; lng: number },
+    noteForMerchant?: string,
+    noteForDriver?: string,
+  ) => Promise<FoodActiveOrder>;
   setActiveOrder: (order: FoodActiveOrder | null) => void;
   updateOrderStatus: (status: FoodActiveOrder['status']) => void;
+  refreshActiveOrderStatus: () => Promise<void>;
+  cancelActiveOrder: (reason: string) => Promise<any>;
 }
 
 const FoodContext = createContext<FoodContextType | undefined>(undefined);
@@ -100,11 +113,32 @@ export function roundDistanceKm(rawDistance: number): number {
   }
 }
 
+/**
+ * Tính khoảng cách đường chim bay giữa 2 tọa độ GPS (Haversine Formula)
+ */
+export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Bán kính Trái Đất theo km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(1));
+}
+
 export function FoodProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<FoodCartItem[]>([]);
   const [restaurant, setRestaurant] = useState<FoodRestaurant | null>(null);
   const [activeOrder, setActiveOrder] = useState<FoodActiveOrder | null>(null);
   const [conflictModalVisible, setConflictModalVisible] = useState(false);
+  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number }>({
+    lat: 21.0055, // Tọa độ mặc định: Bách Khoa, Hai Bà Trưng, Hà Nội
+    lng: 105.8450,
+  });
   const [pendingItem, setPendingItem] = useState<{
     item: Omit<FoodCartItem, 'cartItemId' | 'itemUnitPrice' | 'totalPrice'>;
     restaurant: FoodRestaurant;
@@ -142,15 +176,7 @@ export function FoodProvider({ children }: { children: ReactNode }) {
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
 
   /**
-   * Tính toán phí ship chuẩn theo quy định của Founder:
-   * - Khoảng cách <= 3km: 15.000đ
-   * - Số chẵn (4km, 5km...): 15k + (N - 3) * 5k (4km: 20k, 5km: 25k)
-   * - Số lẻ (3.5km, 4.5km, 5.5km...): cộng thêm 3k so với số chẵn (3.5km: 18k, 4.5km: 23k, 5.5km: 28k)
-   * - Freeship:
-   *   + Dưới 3km: đơn từ 200k
-   *   + 4km: đơn từ 300k
-   *   + Cứ mỗi 1km cộng thêm 100k (3.5km là 250k, 4.5km là 350k)
-   * - Hạch toán: Tiền freeship trừ vào tiền lãi của App (20% giá gốc niêm yết)
+   * Tính toán phí ship chuẩn theo quy định của Founder
    */
   const calculateFee = (sub: number, distance = 3.5): ShippingFeeCalculation => {
     const d = roundDistanceKm(distance);
@@ -198,8 +224,12 @@ export function FoodProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  const currentDistance = restaurant ? 1.8 : 3.5;
-  const shippingFeeInfo = calculateFee(subtotal, currentDistance);
+  // Tính cự ly thực tế giữa Quán và Khách
+  const actualDistance = restaurant
+    ? calculateDistanceKm(customerCoords.lat, customerCoords.lng, restaurant.latitude, restaurant.longitude)
+    : 3.5;
+
+  const shippingFeeInfo = calculateFee(subtotal, actualDistance);
 
   // Helper tạo ID duy nhất cho món kèm option
   const generateCartItemId = (
@@ -307,30 +337,74 @@ export function FoodProvider({ children }: { children: ReactNode }) {
     setRestaurant(null);
   };
 
+  const replaceCartWithItems = (items: FoodCartItem[], targetRestaurant: FoodRestaurant) => {
+    setRestaurant(targetRestaurant);
+    setCart(items);
+  };
+
+  /**
+   * TẠO ĐƠN HÀNG THẬT LÊN BACKEND NESTJS & DATABASE
+   */
   const placeOrder = async (
     deliveryAddress: string,
     paymentMethod: 'COD' | 'WALLET' | 'VIETQR',
+    deliveryCoords?: { lat: number; lng: number },
     noteForMerchant?: string,
     noteForDriver?: string,
   ): Promise<FoodActiveOrder> => {
-    const orderCode = `#FD-${Math.floor(1000 + Math.random() * 9000)}`;
-    const finalAmount = subtotal + shippingFeeInfo.finalShippingFee;
+    if (!restaurant) {
+      throw new Error('Vui lòng chọn một quán ăn để đặt món');
+    }
+    if (cart.length === 0) {
+      throw new Error('Giỏ hàng của bạn đang trống');
+    }
+
+    const targetCoords = deliveryCoords || customerCoords;
+    const idempotencyKey = 'food_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+    const payload: CreateFoodOrderPayload = {
+      restaurantId: restaurant.id,
+      deliveryAddress,
+      deliveryLat: targetCoords.lat,
+      deliveryLng: targetCoords.lng,
+      idempotencyKey,
+      noteForMerchant,
+      noteForDriver,
+      paymentMethod,
+      items: cart.map((item) => ({
+        menuItemId: item.menuItemId,
+        name: item.name,
+        price: item.itemUnitPrice,
+        quantity: item.quantity,
+        notes: item.notes,
+        optionsJson: {
+          size: item.size,
+          toppings: item.toppings,
+        },
+      })),
+    };
+
+    // GỌI THẬT ĐẾN BACKEND NESTJS
+    const serverOrder = await foodService.createOrder(payload);
 
     const newOrder: FoodActiveOrder = {
-      id: `ord_${Date.now()}`,
-      orderCode,
-      restaurantId: restaurant?.id || 'rest_demo',
-      restaurantName: restaurant?.name || 'Nhà hàng Super App',
-      restaurantAddress: restaurant?.address,
-      deliveryAddress,
-      subtotal,
-      shippingFee: shippingFeeInfo.finalShippingFee,
-      discountAmount: shippingFeeInfo.discountAmount,
-      totalAmount: finalAmount,
-      status: 'PENDING',
-      paymentMethod,
+      id: serverOrder.id,
+      orderCode: serverOrder.orderCode,
+      restaurantId: serverOrder.restaurantId,
+      restaurantName: serverOrder.restaurant?.name || restaurant.name,
+      restaurantAddress: serverOrder.restaurant?.address || restaurant.address,
+      deliveryAddress: serverOrder.deliveryAddress,
+      subtotal: serverOrder.subtotal,
+      shippingFee: serverOrder.shippingFee,
+      discountAmount: serverOrder.discountAmount,
+      totalAmount: serverOrder.totalAmount,
+      status: serverOrder.status,
+      paymentMethod: serverOrder.paymentMethod,
       items: [...cart],
-      createdAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: new Date(serverOrder.createdAt || Date.now()).toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     };
 
     setActiveOrder(newOrder);
@@ -344,6 +418,35 @@ export function FoodProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Hủy đơn hàng đang hoạt động (User chỉ được hủy khi PENDING)
+   */
+  const cancelActiveOrder = async (reason: string) => {
+    if (!activeOrder?.id && !activeOrder?.orderCode) return;
+    const targetId = activeOrder.orderCode || activeOrder.id;
+    const result = await foodService.cancelOrder(targetId, reason);
+    if (result) {
+      setActiveOrder((prev) => (prev ? { ...prev, status: 'CANCELLED' } : null));
+    }
+    return result;
+  };
+
+  /**
+   * Cập nhật trạng thái đơn hàng thật từ Backend
+   */
+  const refreshActiveOrderStatus = async () => {
+    if (!activeOrder?.id && !activeOrder?.orderCode) return;
+    try {
+      const targetId = activeOrder.orderCode || activeOrder.id;
+      const latestOrder = await foodService.getOrderTracking(targetId);
+      if (latestOrder && latestOrder.status !== activeOrder.status) {
+        setActiveOrder((prev) => (prev ? { ...prev, status: latestOrder.status } : null));
+      }
+    } catch (e) {
+      // Bỏ qua lỗi polling mạng
+    }
+  };
+
   return (
     <FoodContext.Provider
       value={{
@@ -354,15 +457,21 @@ export function FoodProvider({ children }: { children: ReactNode }) {
         activeOrder,
         subtotal,
         shippingFeeInfo,
+        customerCoords,
+        setCustomerCoords,
         addToCart,
         confirmReplaceRestaurantCart,
         cancelReplaceRestaurantCart,
         updateQuantity,
         removeFromCart,
         clearCart,
+        replaceCartWithItems,
+        calculateFee,
         placeOrder,
         setActiveOrder,
         updateOrderStatus,
+        refreshActiveOrderStatus,
+        cancelActiveOrder,
       }}
     >
       {children}

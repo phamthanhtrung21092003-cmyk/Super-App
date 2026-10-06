@@ -120,3 +120,117 @@ export class DriverLocationDto {
   @IsNumber()
   speed?: number;
 }
+
+export class UpdateDriverSettingsDto {
+  @ApiPropertyOptional({ example: true, description: 'Tự động nhận cuốc' })
+  @IsOptional()
+  autoAccept?: boolean;
+
+  @ApiPropertyOptional({ example: 5, description: 'Bán kính nhận cuốc (km)' })
+  @IsOptional()
+  @IsNumber()
+  dispatchRadius?: number;
+
+  @ApiPropertyOptional({ example: true, description: 'Nhận cuốc chở khách' })
+  @IsOptional()
+  enableRide?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'Nhận cuốc giao hàng' })
+  @IsOptional()
+  enableDelivery?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'Nhận cuốc giao đồ ăn' })
+  @IsOptional()
+  enableFood?: boolean;
+
+  @ApiPropertyOptional({ example: '123 Cầu Giấy, Hà Nội', description: 'Địa chỉ nhà' })
+  @IsOptional()
+  @IsString()
+  homeAddress?: string;
+
+  @ApiPropertyOptional({ example: 21.0285 })
+  @IsOptional()
+  @IsNumber()
+  homeLat?: number;
+
+  @ApiPropertyOptional({ example: 105.7801 })
+  @IsOptional()
+  @IsNumber()
+  homeLng?: number;
+
+  @ApiPropertyOptional({ example: true, description: 'Chuông báo âm lượng tối đa' })
+  @IsOptional()
+  highVolumeAlert?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'Rung Haptics' })
+  @IsOptional()
+  hapticFeedback?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'Đọc hướng dẫn giọng nói' })
+  @IsOptional()
+  voiceGuidance?: boolean;
+
+  @ApiPropertyOptional({ example: 'GOOGLE_MAPS', description: 'Bản đồ mặc định' })
+  @IsOptional()
+  @IsString()
+  defaultMapApp?: string;
+
+  @ApiPropertyOptional({ example: false, description: 'Tự mở Google Maps khi nhận cuốc' })
+  @IsOptional()
+  autoOpenMap?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Tránh trạm thu phí' })
+  @IsOptional()
+  avoidTolls?: boolean;
+
+  @ApiPropertyOptional({ example: 'ONLINE_ONLY', description: 'Giữ màn hình sáng: ALWAYS | ONLINE_ONLY | SYSTEM_DEFAULT' })
+  @IsOptional()
+  @IsString()
+  keepAwakeMode?: string;
+
+  @ApiPropertyOptional({ example: 'SYSTEM', description: 'Chế độ giao diện: LIGHT | DARK | SYSTEM' })
+  @IsOptional()
+  @IsString()
+  themeMode?: string;
+
+  @ApiPropertyOptional({ example: '113', description: 'Số điện thoại SOS 1' })
+  @IsOptional()
+  @IsString()
+  sosPhone1?: string;
+
+  @ApiPropertyOptional({ example: '0988123456', description: 'Số điện thoại SOS 2' })
+  @IsOptional()
+  @IsString()
+  sosPhone2?: string;
+}
+
+export class DriverTopupDto {
+  @ApiProperty({ example: 200000, description: 'Số tiền nạp (VND)' })
+  @IsNotEmpty({ message: 'Số tiền nạp không được để trống' })
+  @IsNumber({}, { message: 'Số tiền phải là số' })
+  @Min(10000, { message: 'Số tiền nạp tối thiểu là 10,000 VND' })
+  amount: number;
+}
+
+export class DriverWithdrawDto {
+  @ApiProperty({ example: 500000, description: 'Số tiền rút (VND)' })
+  @IsNotEmpty({ message: 'Số tiền rút không được để trống' })
+  @IsNumber({}, { message: 'Số tiền phải là số' })
+  @Min(50000, { message: 'Số tiền rút tối thiểu là 50,000 VND' })
+  amount: number;
+
+  @ApiPropertyOptional({ example: 'MB Bank', description: 'Tên ngân hàng nhận tiền' })
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @ApiPropertyOptional({ example: '0988123456', description: 'Số tài khoản nhận tiền' })
+  @IsOptional()
+  @IsString()
+  accountNo?: string;
+
+  @ApiPropertyOptional({ example: 'NGUYEN VAN HUNG', description: 'Tên chủ tài khoản' })
+  @IsOptional()
+  @IsString()
+  accountHolder?: string;
+}

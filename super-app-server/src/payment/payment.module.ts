@@ -7,12 +7,14 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { VietQrWebhookProvider } from './providers/vietqr-webhook.provider';
 import { PayoutModule } from '../payout/payout.module';
 import { NotificationModule } from '../notification/notification.module';
+import { MovieModule } from '../movie/movie.module';
 
 @Module({
   imports: [
     PrismaModule,
     PayoutModule,
     NotificationModule,
+    MovieModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [PaymentController],

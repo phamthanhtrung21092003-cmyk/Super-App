@@ -9,7 +9,42 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface RegisterPushTokenPayload {
+  deviceId: string;
+  token: string;
+  platform?: 'android' | 'ios' | 'web';
+  appRole?: 'CUSTOMER' | 'MERCHANT' | 'DRIVER';
+}
+
 export const notificationService = {
+  /**
+   * Đăng ký hoặc cập nhật FCM Push Token cho thiết bị
+   */
+  async registerPushToken(payload: RegisterPushTokenPayload): Promise<any> {
+    try {
+      const response = await apiClient.post('/notifications/device-token', payload);
+      return response.data;
+    } catch (error) {
+      console.warn('[notificationService] Lỗi đăng ký Push Token:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Hủy kích hoạt FCM Push Token khi người dùng logout
+   */
+  async unregisterPushToken(deviceId?: string, token?: string, appRole?: string): Promise<any> {
+    try {
+      const response = await apiClient.delete('/notifications/device-token', {
+        data: { deviceId, token, appRole },
+      });
+      return response.data;
+    } catch (error) {
+      console.warn('[notificationService] Lỗi hủy kích hoạt Push Token:', error);
+      return null;
+    }
+  },
+
   /**
    * Lấy danh sách thông báo của người dùng hiện tại
    */

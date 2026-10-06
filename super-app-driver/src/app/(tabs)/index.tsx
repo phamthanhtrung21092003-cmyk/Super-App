@@ -10,6 +10,9 @@ import Animated, { FadeIn, SlideInDown, SlideInUp } from 'react-native-reanimate
 import rideSocketService, { IncomingOrderPayload } from '../../services/rideSocketService';
 import realRideService from '../../services/realRideService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiClient from '../../services/apiClient';
+import SosEmergencyModal from '../../components/SosEmergencyModal';
+import { PLATFORM_FEE_RATE, STORAGE_KEYS, DEFAULT_QUICK_CHATS } from '../../constants/driverConstants';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,6 +34,16 @@ export default function DriverHome() {
   const [homeTripActive, setHomeTripActive] = useState(false);
   const [showSosModal, setShowSosModal] = useState(false);
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false);
+
+  // Thống kê tài xế thật từ PostgreSQL database
+  const [driverStats, setDriverStats] = useState({
+    name: 'Tài xế Sunstar',
+    rating: 5.0,
+    tier: 'Kim Cương',
+    dailyEarnings: 0,
+    creditWallet: 0,
+    totalTripsToday: 0,
+  });
 
   // Bộ lọc dịch vụ nhận cuốc
   const [services, setServices] = useState({
@@ -79,10 +92,29 @@ export default function DriverHome() {
 
   // Chat với khách
   const [showChatModal, setShowChatModal] = useState(false);
+  const [quickChatList, setQuickChatList] = useState<string[]>(DEFAULT_QUICK_CHATS);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: '1', sender: 'user', text: 'Chào bác tài, em đang đứng ở sảnh chính tòa nhà nhé!', time: 'Vừa xong' },
   ]);
   const [chatInput, setChatInput] = useState('');
+
+  // Tải danh mục câu chat nhanh đã lưu từ Cài đặt
+  useEffect(() => {
+    const loadQuickChats = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEYS.QUICK_CHATS);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setQuickChatList(parsed);
+          }
+        }
+      } catch (e) {}
+    };
+    if (showChatModal) {
+      loadQuickChats();
+    }
+  }, [showChatModal]);
 
   // ─────────────────────────────────────────
   // 3. ÂM THANH CHUÔNG BÁO TO (driver-hardware-ux)
@@ -173,6 +205,38 @@ export default function DriverHome() {
     return () => clearInterval(interval);
   }, [tripStep]);
 
+  // Nạp thống kê doanh thu và thông tin tài xế THẬT từ PostgreSQL database
+  useEffect(() => {
+    const fetchDriverStats = async () => {
+      try {
+        const [meRes, walletRes] = await Promise.all([
+          apiClient.get('/ride/driver/me').catch(() => null),
+          apiClient.get('/ride/driver/wallet').catch(() => null),
+        ]);
+        if (meRes?.data) {
+          if (meRes.data.id) driverIdRef.current = meRes.data.id;
+          setDriverStats((prev) => ({
+            ...prev,
+            name: meRes.data.fullName || prev.name,
+            rating: meRes.data.rating || prev.rating,
+            tier: meRes.data.tier || prev.tier,
+          }));
+        }
+        if (walletRes?.data) {
+          setDriverStats((prev) => ({
+            ...prev,
+            dailyEarnings: walletRes.data.dailyEarnings ?? 0,
+            creditWallet: walletRes.data.creditWallet ?? 0,
+            totalTripsToday: walletRes.data.totalTripsToday ?? 0,
+          }));
+        }
+      } catch (e) {
+        console.warn('Lỗi tải dữ liệu buồng lái tài xế:', e);
+      }
+    };
+    fetchDriverStats();
+  }, [isOnline, activeTrip]);
+
   // WebSocket lifecycle
   useEffect(() => {
     if (!isOnline) {
@@ -183,15 +247,17 @@ export default function DriverHome() {
       return;
     }
 
-    rideSocketService.connect();
-    rideSocketService.joinAsDriver(driverIdRef.current, 21.0285, 105.8048);
-    setSocketConnected(rideSocketService.isConnected);
+    rideSocketService.connect().then(() => {
+      rideSocketService.joinAsDriver(driverIdRef.current, 21.0285, 105.8048);
+      setSocketConnected(rideSocketService.isConnected);
+    });
     realRideService.toggleDriverOnline(driverIdRef.current, true).catch(() => {});
 
     // Kiểm tra chuyến đang chạy trên backend
     realRideService.getDriverActiveTrip(driverIdRef.current).then((trip) => {
       if (trip && trip.status && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED') {
         processedTripIdsRef.current.add(trip.id);
+        rideSocketService.joinTripRoom(trip.id);
         setActiveTrip({
           id: trip.id,
           tripId: trip.id,
@@ -276,6 +342,18 @@ export default function DriverHome() {
       }
     });
 
+    const unsubStatus = rideSocketService.onTripStatusUpdated((update) => {
+      if (activeTrip && (activeTrip.tripId === update.tripId || activeTrip.id === update.tripId)) {
+        if (update.status === 'CANCELLED') {
+          setActiveTrip(null);
+          setTripStep(0);
+          Alert.alert('Chuyến đi đã bị hủy', update.cancelReason || 'Chuyến đi đã kết thúc.');
+        } else if (update.status === 'COMPLETED') {
+          setTripStep(4);
+        }
+      }
+    });
+
     const unsubConn = rideSocketService.onConnectionChange((connected) => {
       setSocketConnected(connected);
       if (connected) {
@@ -286,6 +364,7 @@ export default function DriverHome() {
     return () => {
       unsubOrder();
       unsubCancel();
+      unsubStatus();
       unsubConn();
       rideSocketService.disconnect();
       realRideService.toggleDriverOnline(driverIdRef.current, false).catch(() => {});
@@ -344,6 +423,7 @@ export default function DriverHome() {
     if (!matchingOrder || !matchingOrder.tripId) return;
     const order = matchingOrder;
     processedTripIdsRef.current.add(order.tripId);
+    rideSocketService.joinTripRoom(order.tripId);
     setActiveTrip(order);
     setMatchingOrder(null);
     setTripStep(1);
@@ -391,6 +471,7 @@ export default function DriverHome() {
           driverReview: passengerReview,
         });
       } catch (e) {}
+      rideSocketService.leaveTripRoom();
     }
     Alert.alert('Thành công', 'Cuốc xe đã kết thúc hoàn hảo. Doanh thu đã được đối soát vào ví!');
     setActiveTrip(null);
@@ -423,7 +504,7 @@ export default function DriverHome() {
       ];
 
   const totalFare = activeTrip ? (activeTrip.price + activeTrip.deal + activeTrip.tip) : 0;
-  const platformCommission = Math.round((activeTrip?.price || 0) * 0.1);
+  const platformCommission = Math.round((activeTrip?.price || 0) * PLATFORM_FEE_RATE);
   const netEarnings = totalFare - (activeTrip?.paymentMethod === 'CASH' ? platformCommission : 0);
 
   return (
@@ -454,9 +535,9 @@ export default function DriverHome() {
                 <Ionicons name="person" size={16} color="#ffffff" />
               </View>
               <View style={{ marginLeft: 8 }}>
-                <Text style={styles.driverGreeting}>Trần Bình</Text>
+                <Text style={styles.driverGreeting}>{driverStats.name}</Text>
                 <View style={styles.diamondBadge}>
-                  <Text style={styles.diamondText}>⭐ 4.95 • Kim Cương</Text>
+                  <Text style={styles.diamondText}>⭐ {driverStats.rating.toFixed(2)} • {driverStats.tier}</Text>
                 </View>
               </View>
             </View>
@@ -470,7 +551,7 @@ export default function DriverHome() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.earningsValue}>
-                {hideEarnings ? '•••••••• đ' : '485.000 đ'}
+                {hideEarnings ? '•••••••• đ' : `${driverStats.dailyEarnings.toLocaleString('vi-VN')} đ`}
               </Text>
             </View>
           </View>
@@ -478,11 +559,13 @@ export default function DriverHome() {
           {/* Thanh Tiến độ Thưởng ngày (Quest / Target Progress) */}
           <View style={styles.questProgressContainer}>
             <View style={styles.questTextRow}>
-              <Text style={styles.questTitle}>🎯 Thưởng ngày: 8 / 10 cuốc (80%)</Text>
+              <Text style={styles.questTitle}>
+                🎯 Thưởng ngày: {driverStats.totalTripsToday} / 10 cuốc ({Math.min(100, Math.round(driverStats.totalTripsToday / 10 * 100))}%)
+              </Text>
               <Text style={styles.questRewardText}>Thưởng +60.000đ</Text>
             </View>
             <View style={styles.progressBarTrack}>
-              <View style={[styles.progressBarFill, { width: '80%' }]} />
+              <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round(driverStats.totalTripsToday / 10 * 100))}%` }]} />
             </View>
           </View>
 
@@ -490,12 +573,12 @@ export default function DriverHome() {
           <View style={styles.quickStatsRow}>
             <View style={styles.quickStatItem}>
               <Ionicons name="car-outline" size={14} color="#3B82F6" />
-              <Text style={styles.quickStatText}>8 chuyến</Text>
+              <Text style={styles.quickStatText}>{driverStats.totalTripsToday} chuyến</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.quickStatItem}>
               <Ionicons name="wallet-outline" size={14} color="#10B981" />
-              <Text style={styles.quickStatText}>Ví: 250.000đ</Text>
+              <Text style={styles.quickStatText}>Ví: {driverStats.creditWallet.toLocaleString('vi-VN')}đ</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.quickStatItem}>
@@ -763,7 +846,7 @@ export default function DriverHome() {
                 </View>
               )}
               <View style={styles.breakRow}>
-                <Text style={styles.breakLbl}>Phí nền tảng (10%)</Text>
+                <Text style={styles.breakLbl}>Phí nền tảng (15%)</Text>
                 <Text style={[styles.breakVal, { color: '#EF4444' }]}>-{platformCommission.toLocaleString()}đ</Text>
               </View>
               <View style={styles.breakDivider} />
@@ -898,45 +981,14 @@ export default function DriverHome() {
       </View>
 
       {/* ─────────────────────────────────────────
-          MODAL SOS KHẨN CẤP (driver-hardware-ux)
+          MODAL SOS KHẨN CẤP (Gom dùng chung SosEmergencyModal)
           ───────────────────────────────────────── */}
-      <Modal visible={showSosModal} transparent animationType="fade" onRequestClose={() => setShowSosModal(false)}>
-        <View style={styles.sosModalOverlay}>
-          <View style={styles.sosModalContent}>
-            <Ionicons name="warning" size={56} color="#DC2626" />
-            <Text style={styles.sosModalTitle}>TRUNG TÂM AN TOÀN SOS</Text>
-            <Text style={styles.sosModalDesc}>
-              Bạn đang gặp tình huống khẩn cấp hoặc sự cố trên đường? Hệ thống sẽ lập tức gửi tọa độ GPS hiện tại cho người thân và tổng đài Sunstar.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.sosCallPoliceBtn}
-              onPress={() => {
-                Linking.openURL('tel:113');
-                setShowSosModal(false);
-              }}
-            >
-              <Ionicons name="call" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.sosCallText}>GỌI CẢNH SÁT 113</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sosCallSupportBtn}
-              onPress={() => {
-                Linking.openURL('tel:19001234');
-                setShowSosModal(false);
-              }}
-            >
-              <Ionicons name="headset" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.sosCallText}>GỌI TỔNG ĐÀI CỨU HỘ 24/7</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.sosCancelBtn} onPress={() => setShowSosModal(false)}>
-              <Text style={styles.sosCancelText}>Đóng lại</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <SosEmergencyModal
+        visible={showSosModal}
+        onClose={() => setShowSosModal(false)}
+        currentLat={21.0285}
+        currentLng={105.8048}
+      />
 
       {/* ─────────────────────────────────────────
           MODAL CHAT VỚI KHÁCH HÀNG
@@ -963,7 +1015,7 @@ export default function DriverHome() {
           {/* Quick Chat Chips */}
           <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 6 }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {['Tôi đã đến điểm đón', 'Tôi bật đèn xi nhan rồi nhé', 'Bạn ra chưa ạ?'].map(chip => (
+              {quickChatList.map(chip => (
                 <TouchableOpacity
                   key={chip}
                   style={styles.chatChip}
@@ -1005,7 +1057,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   mapContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   topOverlay: {
     position: 'absolute',
@@ -1730,69 +1782,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
-  },
-
-  // SOS MODAL
-  sosModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  sosModalContent: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
-    alignItems: 'center',
-  },
-  sosModalTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#DC2626',
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  sosModalDesc: {
-    fontSize: 13,
-    color: '#475569',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  sosCallPoliceBtn: {
-    width: '100%',
-    flexDirection: 'row',
-    backgroundColor: '#DC2626',
-    paddingVertical: 14,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sosCallSupportBtn: {
-    width: '100%',
-    flexDirection: 'row',
-    backgroundColor: '#2563EB',
-    paddingVertical: 14,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sosCallText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  sosCancelBtn: {
-    paddingVertical: 8,
-  },
-  sosCancelText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: '600',
   },
 
   // CHAT MODAL

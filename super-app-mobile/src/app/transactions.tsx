@@ -88,6 +88,24 @@ export default function TransactionsScreen() {
         icon = 'swap-horizontal-outline';
         color = '#E11D48';
         break;
+      case 'PAYMENT':
+        if (tx.referenceType === 'MovieOrder' || tx.metadata?.serviceType === 'MOVIE') {
+          title = tx.description || 'Thanh toán vé xem phim V-Life';
+          icon = 'film-outline';
+          color = '#E11D48';
+        } else if (tx.description) {
+          title = tx.description;
+        }
+        break;
+      case 'REFUND':
+        if (tx.referenceType === 'MovieOrder' || tx.metadata?.serviceType === 'MOVIE') {
+          title = tx.description || 'Hoàn tiền vé xem phim V-Life';
+          icon = 'refresh-circle-outline';
+          color = '#10B981';
+        } else if (tx.description) {
+          title = tx.description;
+        }
+        break;
       default:
         if (tx.description) {
           title = tx.description;
@@ -138,7 +156,16 @@ export default function TransactionsScreen() {
 
     return (
       <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
-        <BlurView intensity={10} tint="dark" style={styles.itemCard}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          disabled={item.referenceType !== 'MovieOrder' && item.metadata?.serviceType !== 'MOVIE'}
+          onPress={() => {
+            if (item.referenceId) {
+              router.push(('/cinema/ticket-detail?orderId=' + encodeURIComponent(item.referenceId)) as any);
+            }
+          }}
+        >
+          <BlurView intensity={10} tint="dark" style={styles.itemCard}>
           <View style={styles.cardLeft}>
             <View style={[styles.iconWrapper, { backgroundColor: `${info.color}15` }]}>
               <Ionicons name={info.icon as any} size={22} color={info.color} />
@@ -160,7 +187,7 @@ export default function TransactionsScreen() {
             </Text>
             {getStatusBadge(item.status)}
           </View>
-        </BlurView>
+        </BlurView></TouchableOpacity>
       </Animated.View>
     );
   };

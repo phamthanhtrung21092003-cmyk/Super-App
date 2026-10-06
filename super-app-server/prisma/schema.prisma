@@ -131,10 +131,10 @@ enum RefundStatus {
 // MODELS HỆ THỐNG HỆN TẠI (GIỮ NGUYÊN THÊM QUAN HỆ Bổ SUNG)
 // ══════════════════════════════════════════════════════════════════════════════
 model User {
-  id                 String       @id @default(uuid())
-  phone              String       @unique
-  email              String?      @unique
-  username           String?      @unique
+  id                 String             @id @default(uuid())
+  phone              String             @unique
+  email              String?            @unique
+  username           String?            @unique
   password           String
   fullName           String
   avatarUrl          String?
@@ -142,10 +142,10 @@ model User {
   birthYear          Int?
   gender             String?
   hometown           String?
-  role               Role         @default(USER)
+  role               Role               @default(USER)
   hashedRefreshToken String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   addresses          Address[]
   wallet             Wallet?
   bookings           Booking[]
@@ -162,6 +162,11 @@ model User {
   following          Follow[]           @relation("UserFollowing")
   foodOrders         FoodOrder[]
   rideBookings       RideBooking[]
+  movieOrders        MovieOrder[]
+  seatHolds          SeatHold[]
+  voucherUsages      VoucherUsage[]
+  managedRestaurants Restaurant[]       @relation("RestaurantOwner")
+  foodAuditLogs      FoodAuditLog[]
 }
 
 model UserDevice {
@@ -182,11 +187,30 @@ model UserDevice {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, deviceId])
   @@index([userId])
   @@index([status])
+}
+
+model DevicePushToken {
+  id         String    @id @default(uuid())
+  userId     String
+  deviceId   String
+  token      String    @unique
+  platform   String    @default("android") // android | ios | web
+  appRole    String    @default("CUSTOMER") // CUSTOMER | MERCHANT | DRIVER
+  isActive   Boolean   @default(true)
+  lastSeenAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, deviceId, appRole])
+  @@index([userId])
+  @@index([token])
+  @@index([appRole])
+  @@index([isActive])
 }
 
 model Address {
@@ -211,26 +235,81 @@ model Address {
 }
 
 model Driver {
-  id                 String   @id @default(uuid())
-  phone              String   @unique
+  id                 String              @id @default(uuid())
+  phone              String              @unique
   password           String
   fullName           String
   avatarUrl          String?
   licensePlate       String
   vehicleType        String
-  role               Role        @default(DRIVER)
+  role               Role                @default(DRIVER)
   hashedRefreshToken String?
-  isOnline           Boolean     @default(false)
+  isOnline           Boolean             @default(false)
   currentLat         Float?
   currentLng         Float?
   heading            Float?
-  walletBalance      Decimal     @default(0)
-  rating             Float       @default(5.0)
-  totalTrips         Int         @default(0)
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  speed              Float?              @default(0)
+  walletBalance      Decimal             @default(0)
+  creditBalance      Decimal             @default(250000)
+  cashBalance        Decimal             @default(1485000)
+  dailyEarnings      Decimal             @default(0)
+  rating             Float               @default(5.0)
+  totalTrips         Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   foodOrders         FoodOrder[]
   rideBookings       RideBooking[]
+  transactions       DriverTransaction[]
+  settings           DriverSettings?
+}
+
+model DriverTransaction {
+  id            String   @id @default(uuid())
+  driverId      String
+  driver        Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  tripId        String?
+  tripCode      String?
+  title         String
+  amount        Decimal
+  balanceAfter  Decimal
+  type          String
+  walletType    String   @default("CREDIT")
+  note          String?
+  customerName  String?
+  pickup        String?
+  dropoff       String?
+  distanceKm    Float?
+  paymentMethod String?
+  createdAt     DateTime @default(now())
+
+  @@index([driverId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model DriverSettings {
+  id              String   @id @default(uuid())
+  driverId        String   @unique
+  driver          Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  autoAccept      Boolean  @default(false)
+  dispatchRadius  Int      @default(5)
+  enableRide      Boolean  @default(true)
+  enableDelivery  Boolean  @default(true)
+  enableFood      Boolean  @default(true)
+  homeAddress     String?
+  homeLat         Float?
+  homeLng         Float?
+  highVolumeAlert Boolean  @default(true)
+  hapticFeedback  Boolean  @default(true)
+  voiceGuidance   Boolean  @default(true)
+  defaultMapApp   String   @default("GOOGLE_MAPS")
+  autoOpenMap     Boolean  @default(false)
+  avoidTolls      Boolean  @default(false)
+  keepAwakeMode   String   @default("ONLINE_ONLY")
+  themeMode       String   @default("SYSTEM")
+  sosPhone1       String?  @default("113")
+  sosPhone2       String?  @default("0988123456")
+  updatedAt       DateTime @updatedAt
 }
 
 model Wallet {
@@ -252,22 +331,22 @@ model Wallet {
 }
 
 model Transaction {
-  id             String            @id @default(uuid())
+  id             String               @id @default(uuid())
   walletId       String
   amount         Decimal
   balanceBefore  Decimal
   balanceAfter   Decimal
   type           TransactionType
   direction      TransactionDirection
-  status         TransactionStatus @default(PENDING)
-  currency       Currency          @default(VND)
+  status         TransactionStatus    @default(PENDING)
+  currency       Currency             @default(VND)
   description    String?
   referenceId    String?
   referenceType  String?
-  idempotencyKey String?           @unique
+  idempotencyKey String?              @unique
   metadata       Json?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
@@ -297,6 +376,7 @@ model Partner {
   services          Service[]
   bookings          Booking[]
   payouts           Payout[]
+  cinemas           Cinema[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 }
@@ -336,31 +416,31 @@ model Service {
 // MODELS BỔ SUNG: BOOKING, PAYMENT & IDEMPOTENCY ENGINE
 // ══════════════════════════════════════════════════════════════════════════════
 model Booking {
-  id               String        @id @default(uuid())
-  bookingCode      String        @unique
-  userId           String
-  user             User          @relation(fields: [userId], references: [id])
-  partnerId        String
-  partner          Partner       @relation(fields: [partnerId], references: [id])
-  serviceId        String
-  service          Service       @relation(fields: [serviceId], references: [id])
-  status           BookingStatus @default(PENDING_PAYMENT)
-  
+  id          String        @id @default(uuid())
+  bookingCode String        @unique
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  partnerId   String
+  partner     Partner       @relation(fields: [partnerId], references: [id])
+  serviceId   String
+  service     Service       @relation(fields: [serviceId], references: [id])
+  status      BookingStatus @default(PENDING_PAYMENT)
+
   grossAmount      Decimal
-  commissionRate   Decimal       @default(0.25)
+  commissionRate   Decimal @default(0.25)
   commissionAmount Decimal
   partnerAmount    Decimal
 
-  startDate        DateTime
-  endDate          DateTime
-  expiresAt        DateTime
+  startDate DateTime
+  endDate   DateTime
+  expiresAt DateTime
 
-  payments         Payment[]
-  commission       Commission?
-  payout           Payout?
-  refunds          Refund[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  payments   Payment[]
+  commission Commission?
+  payout     Payout?
+  refunds    Refund[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   @@index([userId])
   @@index([partnerId])
@@ -372,8 +452,10 @@ model Booking {
 model Payment {
   id                    String          @id @default(uuid())
   orderId               String          @unique
-  bookingId             String
-  booking               Booking         @relation(fields: [bookingId], references: [id])
+  bookingId             String?
+  booking               Booking?        @relation(fields: [bookingId], references: [id])
+  movieOrderId          String?
+  movieOrder            MovieOrder?     @relation(fields: [movieOrderId], references: [id])
   amount                Decimal
   currency              Currency        @default(VND)
   provider              PaymentProvider @default(VIETQR)
@@ -386,6 +468,7 @@ model Payment {
   updatedAt             DateTime        @updatedAt
 
   @@index([bookingId])
+  @@index([movieOrderId])
   @@index([status])
   @@index([idempotencyKey])
   @@index([orderId])
@@ -437,8 +520,10 @@ model Payout {
 
 model Refund {
   id             String       @id @default(uuid())
-  bookingId      String
-  booking        Booking      @relation(fields: [bookingId], references: [id])
+  bookingId      String?
+  booking        Booking?     @relation(fields: [bookingId], references: [id])
+  movieOrderId   String?
+  movieOrder     MovieOrder?  @relation(fields: [movieOrderId], references: [id])
   paymentId      String
   payment        Payment      @relation(fields: [paymentId], references: [id])
   amount         Decimal
@@ -449,6 +534,7 @@ model Refund {
   updatedAt      DateTime     @updatedAt
 
   @@index([bookingId])
+  @@index([movieOrderId])
   @@index([paymentId])
 }
 
@@ -490,36 +576,36 @@ enum VideoStatus {
 }
 
 model Video {
-  id            String            @id @default(uuid())
-  userId        String
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  caption       String?
-  musicTitle    String?           @default("Âm thanh gốc")
-  location      String?
-  status        VideoStatus       @default(PUBLISHED)
-  
-  serviceId     String?
-  service       Service?          @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  viewsCount    Int               @default(0)
-  likesCount    Int               @default(0)
-  commentsCount Int               @default(0)
-  sharesCount   Int               @default(0)
-  savesCount    Int               @default(0)
+  caption    String?
+  musicTitle String?     @default("Âm thanh gốc")
+  location   String?
+  status     VideoStatus @default(PUBLISHED)
 
-  media         VideoMedia[]
-  processing    VideoProcessing?
-  likes         VideoLike[]
-  comments      VideoComment[]
-  saves         VideoSave[]
-  views         VideoView[]
-  shares        VideoShare[]
-  hashtags      VideoHashtag[]
-  reports       VideoReport[]
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
 
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  viewsCount    Int @default(0)
+  likesCount    Int @default(0)
+  commentsCount Int @default(0)
+  sharesCount   Int @default(0)
+  savesCount    Int @default(0)
+
+  media      VideoMedia[]
+  processing VideoProcessing?
+  likes      VideoLike[]
+  comments   VideoComment[]
+  saves      VideoSave[]
+  views      VideoView[]
+  shares     VideoShare[]
+  hashtags   VideoHashtag[]
+  reports    VideoReport[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status, createdAt])
@@ -527,36 +613,36 @@ model Video {
 }
 
 model VideoMedia {
-  id              String   @id @default(uuid())
-  videoId         String
-  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  
+  id      String @id @default(uuid())
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
   url             String
   thumbnailUrl    String?
   duration        Float?
   width           Int?
   height          Int?
   sizeBytes       BigInt?
-  mimeType        String?  @default("video/mp4")
-  storageProvider String   @default("LOCAL")
-  isOriginal      Boolean  @default(true)
-  
-  createdAt       DateTime @default(now())
+  mimeType        String? @default("video/mp4")
+  storageProvider String  @default("LOCAL")
+  isOriginal      Boolean @default(true)
+
+  createdAt DateTime @default(now())
 
   @@index([videoId])
 }
 
 model VideoProcessing {
-  id           String   @id @default(uuid())
-  videoId      String   @unique
-  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  
-  status       String   @default("COMPLETED")
-  progress     Int      @default(100)
+  id      String @id @default(uuid())
+  videoId String @unique
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  status       String  @default("COMPLETED")
+  progress     Int     @default(100)
   errorMessage String?
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VideoLike {
@@ -572,22 +658,22 @@ model VideoLike {
 }
 
 model VideoComment {
-  id         String             @id @default(uuid())
-  videoId    String
-  video      Video              @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  parentId   String?
-  parent     VideoComment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies    VideoComment[]     @relation("CommentReplies")
-  
+  id      String @id @default(uuid())
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   VideoComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  VideoComment[] @relation("CommentReplies")
+
   content    String
   likesCount Int                @default(0)
   likes      VideoCommentLike[]
-  
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([videoId, createdAt])
   @@index([userId])
@@ -712,26 +798,42 @@ enum FoodPaymentMethod {
 }
 
 model Restaurant {
-  id           String         @id @default(uuid())
-  name         String
-  slug         String         @unique
-  avatar       String?
-  coverImage   String?
-  address      String
-  latitude     Float
-  longitude    Float
-  rating       Float          @default(5.0)
-  totalReviews Int            @default(0)
-  openingHours String         @default("07:00 - 22:00")
-  isActive     Boolean        @default(true)
-  categories   MenuCategory[]
-  items        MenuItem[]
-  orders       FoodOrder[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                String         @id @default(uuid())
+  name              String
+  slug              String         @unique
+  avatar            String?
+  coverImage        String?
+  address           String
+  latitude          Float
+  longitude         Float
+  rating            Float          @default(5.0)
+  totalReviews      Int            @default(0)
+  openingHours      String         @default("07:00 - 22:00")
+  isActive          Boolean        @default(true)
+  isOpen            Boolean        @default(true)
+  autoAcceptOrder   Boolean        @default(false)
+  phoneNumber       String?
+
+  ownerId           String?
+  owner             User?          @relation("RestaurantOwner", fields: [ownerId], references: [id])
+
+  // Tái sử dụng thông tin ngân hàng cho quyết toán tài chính
+  bankName          String?
+  bankCode          String?
+  bankAccountNo     String?
+  bankAccountHolder String?
+
+  categories        MenuCategory[]
+  items             MenuItem[]
+  orders            FoodOrder[]
+  auditLogs         FoodAuditLog[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([latitude, longitude])
   @@index([isActive])
+  @@index([isOpen])
+  @@index([ownerId])
 }
 
 model MenuCategory {
@@ -789,35 +891,58 @@ model ItemOption {
 }
 
 model FoodOrder {
-  id              String            @id @default(uuid())
-  orderCode       String            @unique
-  userId          String
-  user            User              @relation(fields: [userId], references: [id])
-  restaurantId    String
-  restaurant      Restaurant        @relation(fields: [restaurantId], references: [id])
-  driverId        String?
-  driver          Driver?           @relation(fields: [driverId], references: [id])
-  status          FoodOrderStatus   @default(PENDING)
-  paymentMethod   FoodPaymentMethod @default(COD)
-  paymentStatus   String            @default("UNPAID")
-  deliveryAddress String
-  deliveryLat     Float
-  deliveryLng     Float
-  distanceKm      Float             @default(0)
-  subtotal        Float
-  shippingFee     Float
-  discountAmount  Float             @default(0)
-  totalAmount     Float
-  noteForMerchant String?
-  noteForDriver   String?
-  items           FoodOrderItem[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                 String            @id @default(uuid())
+  orderCode          String            @unique
+  idempotencyKey     String?           @unique
+  userId             String
+  user               User              @relation(fields: [userId], references: [id])
+  restaurantId       String
+  restaurant         Restaurant        @relation(fields: [restaurantId], references: [id])
+  driverId           String?
+  driver             Driver?           @relation(fields: [driverId], references: [id])
+  status             FoodOrderStatus   @default(PENDING)
+  paymentMethod      FoodPaymentMethod @default(COD)
+  paymentStatus      String            @default("UNPAID")
+  deliveryAddress    String
+  deliveryLat        Float
+  deliveryLng        Float
+  distanceKm         Float             @default(0)
+  subtotal           Float
+  shippingFee        Float
+  discountAmount     Float             @default(0)
+  totalAmount        Float
+  
+  // Hạch toán tài chính 3 bên V-Life Food (90% - 110% - 20%)
+  baseStorePrice     Float             @default(0)
+  merchantEarning    Float             @default(0)
+  appGrossProfit     Float             @default(0)
+  appNetProfit       Float             @default(0)
+
+  // Thông tin thời gian các mốc trạng thái
+  confirmedAt        DateTime?
+  preparingAt        DateTime?
+  readyAt            DateTime?
+  pickedUpAt         DateTime?
+  completedAt        DateTime?
+
+  // Thông tin hủy đơn / từ chối
+  cancelledBy        String?
+  cancellationReason String?
+  rejectedReason     String?
+  cancelledAt        DateTime?
+
+  noteForMerchant    String?
+  noteForDriver      String?
+  items              FoodOrderItem[]
+  auditLogs          FoodAuditLog[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@index([userId])
   @@index([restaurantId])
   @@index([driverId])
   @@index([status])
+  @@index([idempotencyKey])
 }
 
 model FoodOrderItem {
@@ -827,8 +952,9 @@ model FoodOrderItem {
   menuItemId  String
   menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
   name        String
-  price       Float
+  price       Float     // Giá niêm yết snapshot tại thời điểm tạo đơn
   quantity    Int
+  totalPrice  Float     @default(0) // Thành tiền món = price * quantity (+ options)
   notes       String?
   optionsJson Json?
 
@@ -836,41 +962,572 @@ model FoodOrderItem {
   @@index([menuItemId])
 }
 
+model FoodAuditLog {
+  id           String      @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  orderId      String?
+  order        FoodOrder?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  action       String      // e.g. "CONFIRM_ORDER", "REJECT_ORDER", "MARK_READY", "TOGGLE_STOCK", "TOGGLE_OPEN", "CREATE_ITEM", "UPDATE_ITEM", "AUTO_CONFIRM_ORDER"
+  targetType   String      // e.g. "ORDER", "MENU_ITEM", "RESTAURANT"
+  targetId     String?     // orderId, menuItemId, restaurantId
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+
+  @@index([restaurantId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
 model RideBooking {
-  id              String   @id @default(uuid())
-  bookingCode     String   @unique
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  driverId        String?
-  driver          Driver?  @relation(fields: [driverId], references: [id])
-  serviceType     String   @default("RIDE")
-  vehicleType     String   @default("ev")
-  status          String   @default("SEARCHING")
-  pickupAddress   String
-  pickupLat       Float
-  pickupLng       Float
-  dropoffAddress  String
-  dropoffLat      Float
-  dropoffLng      Float
-  distanceKm      Float
-  durationMin     Int      @default(15)
-  fareAmount      Float
-  tipAmount       Float    @default(0)
-  discountAmount  Float    @default(0)
-  finalAmount     Float
-  paymentMethod   String   @default("CASH")
-  paymentStatus   String   @default("PENDING")
-  customerName    String
-  customerPhone   String
-  driverRating    Int?
-  driverReview    String?
-  cancelReason    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(uuid())
+  bookingCode    String   @unique
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  driverId       String?
+  driver         Driver?  @relation(fields: [driverId], references: [id])
+  serviceType    String   @default("RIDE")
+  vehicleType    String   @default("ev")
+  status         String   @default("SEARCHING")
+  pickupAddress  String
+  pickupLat      Float
+  pickupLng      Float
+  dropoffAddress String
+  dropoffLat     Float
+  dropoffLng     Float
+  distanceKm     Float
+  durationMin    Int      @default(15)
+  fareAmount     Float
+  tipAmount      Float    @default(0)
+  discountAmount Float    @default(0)
+  finalAmount    Float
+  paymentMethod  String   @default("CASH")
+  paymentStatus  String   @default("PENDING")
+  customerName   String
+  customerPhone  String
+  driverRating   Int?
+  driverReview   String?
+  cancelReason   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([userId])
   @@index([driverId])
   @@index([status])
 }
 
+// ============================================================================
+// PHÂN HỆ ĐẶT VÉ XEM PHIM (MOVIE TICKET DOMAIN — PHASE 1 FOUNDATION)
+// ============================================================================
 
+enum CinemaBrand {
+  CGV
+  LOTTE
+  GALAXY
+  BETA
+  BHD
+  CINESTAR
+  OTHER
+}
+
+enum SeatType {
+  STANDARD
+  VIP
+  COUPLE
+}
+
+enum ShowtimeSeatStatus {
+  AVAILABLE
+  HELD
+  BOOKED
+  BLOCKED
+}
+
+enum SeatHoldStatus {
+  HELD
+  RELEASED
+  EXPIRED
+  CONVERTED
+}
+
+enum MovieOrderStatus {
+  PENDING
+  PAYMENT_PENDING
+  PAID
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum MovieOrderItemType {
+  SEAT
+  COMBO
+}
+
+enum MovieBookingStatus {
+  PENDING
+  PAYMENT_PENDING
+  PAYMENT_SUCCESS
+  BOOKING_CONFIRMING
+  BOOKING_CONFIRMED
+  TICKET_ISSUED
+  CANCELLED
+  REFUND_PENDING
+  REFUNDED
+  EXPIRED
+}
+
+enum MovieTicketType {
+  PRINT_AT_COUNTER
+}
+
+enum MovieTicketStatus {
+  ISSUED
+  USED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+enum VoucherDiscountType {
+  FIXED_AMOUNT
+  PERCENTAGE
+}
+
+enum VoucherStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+model CinemaIntegration {
+  id             String      @id @default(uuid())
+  brand          CinemaBrand @unique
+  adapterKey     String      @unique
+  providerName   String
+  baseUrl        String?
+  apiVersion     String      @default("v1")
+  authType       String      @default("API_KEY")
+  timeoutMs      Int         @default(10000)
+  retryLimit     Int         @default(3)
+  holdTtlSeconds Int         @default(600)
+  supportsCancel Boolean     @default(false)
+  isActive       Boolean     @default(true)
+  config         Json?
+  cinemas        Cinema[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([brand])
+  @@index([isActive])
+}
+
+model Cinema {
+  id            String             @id @default(uuid())
+  code          String             @unique
+  name          String
+  brand         CinemaBrand
+  integrationId String?
+  integration   CinemaIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+  partnerId     String?
+  partner       Partner?           @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  city          String
+  area          String?
+  address       String
+  phone         String?
+  openingHours  String?            @default("08:00 - 23:45")
+  latitude      Float?
+  longitude     Float?
+  facilities    Json?
+  isActive      Boolean            @default(true)
+  metadata      Json?
+  auditoriums   Auditorium[]
+  showtimes     Showtime[]
+  combos        Combo[]
+  movieOrders   MovieOrder[]
+  movieBookings MovieBooking[]
+  movieTickets  MovieTicket[]
+  vouchers      Voucher[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([brand])
+  @@index([city])
+  @@index([integrationId])
+  @@index([partnerId])
+  @@index([isActive])
+}
+
+model Auditorium {
+  id         String     @id @default(uuid())
+  cinemaId   String
+  cinema     Cinema     @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  code       String
+  name       String
+  totalRows  Int        @default(6)
+  totalCols  Int        @default(8)
+  capacity   Int        @default(48)
+  screenType String     @default("2D")
+  isActive   Boolean    @default(true)
+  metadata   Json?
+  seats      Seat[]
+  showtimes  Showtime[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([cinemaId, code])
+  @@index([cinemaId])
+  @@index([isActive])
+}
+
+model Seat {
+  id            String           @id @default(uuid())
+  auditoriumId  String
+  auditorium    Auditorium       @relation(fields: [auditoriumId], references: [id], onDelete: Cascade)
+  seatCode      String
+  rowLabel      String
+  seatNumber    Int
+  type          SeatType         @default(STANDARD)
+  seatSpan      Int              @default(1)
+  priceModifier Decimal          @default(0)
+  isActive      Boolean          @default(true)
+  showtimeSeats ShowtimeSeat[]
+  seatHolds     SeatHold[]
+  orderItems    MovieOrderItem[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([auditoriumId, seatCode])
+  @@unique([auditoriumId, rowLabel, seatNumber])
+  @@index([auditoriumId])
+  @@index([type])
+}
+
+model Movie {
+  id            String        @id @default(uuid())
+  slug          String        @unique
+  externalCode  String?       @unique
+  title         String
+  originalTitle String?
+  description   String?
+  posterUrl     String
+  bannerUrl     String?
+  trailerUrl    String?
+  ageRating     String        @default("T13")
+  durationMin   Int           @default(110)
+  genres        String
+  director      String?
+  cast          String?
+  language      String?       @default("Tiếng Việt")
+  releaseDate   DateTime?
+  rating        Float         @default(4.8)
+  isShowing     Boolean       @default(true)
+  isActive      Boolean       @default(true)
+  metadata      Json?
+  showtimes     Showtime[]
+  movieOrders   MovieOrder[]
+  movieTickets  MovieTicket[]
+  vouchers      Voucher[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([isShowing, isActive])
+  @@index([ageRating])
+}
+
+model Showtime {
+  id              String         @id @default(uuid())
+  externalCode    String?        @unique
+  movieId         String
+  movie           Movie          @relation(fields: [movieId], references: [id], onDelete: Restrict)
+  cinemaId        String
+  cinema          Cinema         @relation(fields: [cinemaId], references: [id], onDelete: Restrict)
+  auditoriumId    String
+  auditorium      Auditorium     @relation(fields: [auditoriumId], references: [id], onDelete: Restrict)
+  screeningFormat String         @default("2D Phụ Đề Việt")
+  startTime       DateTime
+  endTime         DateTime
+  basePrice       Decimal
+  vipPrice        Decimal
+  couplePrice     Decimal
+  serviceFee      Decimal        @default(5000)
+  isActive        Boolean        @default(true)
+  metadata        Json?
+  showtimeSeats   ShowtimeSeat[]
+  seatHolds       SeatHold[]
+  movieOrders     MovieOrder[]
+  movieBookings   MovieBooking[]
+  movieTickets    MovieTicket[]
+  vouchers        Voucher[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([auditoriumId, startTime])
+  @@index([movieId])
+  @@index([cinemaId])
+  @@index([auditoriumId])
+  @@index([startTime])
+  @@index([cinemaId, movieId, startTime])
+}
+
+model ShowtimeSeat {
+  id             String             @id @default(uuid())
+  showtimeId     String
+  showtime       Showtime           @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
+  seatId         String
+  seat           Seat               @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  seatCode       String
+  seatType       SeatType
+  price          Decimal
+  status         ShowtimeSeatStatus @default(AVAILABLE)
+  heldByUserId   String?
+  activeHoldId   String?            @unique
+  holdExpiresAt  DateTime?
+  movieBookingId String?
+  version        Int                @default(1)
+  orderItems     MovieOrderItem[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([showtimeId, seatId])
+  @@index([showtimeId, status])
+  @@index([heldByUserId])
+  @@index([holdExpiresAt])
+}
+
+model SeatHold {
+  id           String         @id @default(uuid())
+  holdCode     String         @unique
+  showtimeId   String
+  showtime     Showtime       @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
+  seatId       String
+  seat         Seat           @relation(fields: [seatId], references: [id], onDelete: Restrict)
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieOrderId String?
+  movieOrder   MovieOrder?    @relation(fields: [movieOrderId], references: [id], onDelete: SetNull)
+  status       SeatHoldStatus @default(HELD)
+  expiresAt    DateTime
+  releasedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([showtimeId, seatId, status])
+  @@index([userId, status])
+  @@index([movieOrderId])
+  @@index([status, expiresAt])
+}
+
+model Combo {
+  id            String           @id @default(uuid())
+  code          String           @unique
+  cinemaId      String?
+  cinema        Cinema?          @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  brand         CinemaBrand?
+  name          String
+  description   String?
+  imageUrl      String?
+  price         Decimal
+  originalPrice Decimal?
+  savingsText   String?
+  stockQuantity Int?
+  isActive      Boolean          @default(true)
+  metadata      Json?
+  orderItems    MovieOrderItem[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([cinemaId])
+  @@index([brand])
+  @@index([isActive])
+}
+
+model Voucher {
+  id                String              @id @default(uuid())
+  code              String              @unique
+  title             String
+  description       String?
+  discountType      VoucherDiscountType @default(FIXED_AMOUNT)
+  discountValue     Decimal
+  maxDiscountAmount Decimal?
+  minOrderAmount    Decimal             @default(0)
+  usageLimit        Int                 @default(100)
+  usedCount         Int                 @default(0)
+  perUserLimit      Int                 @default(1)
+  validFrom         DateTime
+  validUntil        DateTime
+  cinemaBrand       CinemaBrand?
+  cinemaId          String?
+  cinema            Cinema?             @relation(fields: [cinemaId], references: [id], onDelete: SetNull)
+  movieId           String?
+  movie             Movie?              @relation(fields: [movieId], references: [id], onDelete: SetNull)
+  showtimeId        String?
+  showtime          Showtime?           @relation(fields: [showtimeId], references: [id], onDelete: SetNull)
+  status            VoucherStatus       @default(ACTIVE)
+  metadata          Json?
+  orders            MovieOrder[]
+  usages            VoucherUsage[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([code, status])
+  @@index([validFrom, validUntil])
+  @@index([cinemaBrand])
+  @@index([cinemaId])
+  @@index([movieId])
+}
+
+model VoucherUsage {
+  id             String     @id @default(uuid())
+  voucherId      String
+  voucher        Voucher    @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieOrderId   String     @unique
+  movieOrder     MovieOrder @relation(fields: [movieOrderId], references: [id], onDelete: Cascade)
+  discountAmount Decimal
+  createdAt      DateTime   @default(now())
+
+  @@index([voucherId, userId])
+  @@index([userId])
+}
+
+model MovieOrder {
+  id               String           @id @default(uuid())
+  orderCode        String           @unique
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  movieId          String
+  movie            Movie            @relation(fields: [movieId], references: [id], onDelete: Restrict)
+  cinemaId         String
+  cinema           Cinema           @relation(fields: [cinemaId], references: [id], onDelete: Restrict)
+  showtimeId       String
+  showtime         Showtime         @relation(fields: [showtimeId], references: [id], onDelete: Restrict)
+  voucherId        String?
+  voucher          Voucher?         @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+  voucherCode      String?
+  customerName     String
+  customerPhone    String
+  customerEmail    String?
+  seatsSubtotal    Decimal
+  combosSubtotal   Decimal          @default(0)
+  serviceFee       Decimal          @default(5000)
+  discountAmount   Decimal          @default(0)
+  totalAmount      Decimal
+  currency         Currency         @default(VND)
+  status           MovieOrderStatus @default(PENDING)
+  paymentReference String?
+  bookingReference String?
+  idempotencyKey   String           @unique
+  expiresAt        DateTime
+  metadata         Json?
+  items            MovieOrderItem[]
+  seatHolds        SeatHold[]
+  booking          MovieBooking?
+  payments         Payment[]
+  refunds          Refund[]
+  voucherUsage     VoucherUsage?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([showtimeId])
+  @@index([cinemaId])
+  @@index([movieId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model MovieOrderItem {
+  id             String             @id @default(uuid())
+  movieOrderId   String
+  movieOrder     MovieOrder         @relation(fields: [movieOrderId], references: [id], onDelete: Cascade)
+  itemType       MovieOrderItemType
+  seatId         String?
+  seat           Seat?              @relation(fields: [seatId], references: [id], onDelete: Restrict)
+  showtimeSeatId String?
+  showtimeSeat   ShowtimeSeat?      @relation(fields: [showtimeSeatId], references: [id], onDelete: Restrict)
+  comboId        String?
+  combo          Combo?             @relation(fields: [comboId], references: [id], onDelete: Restrict)
+  nameSnapshot   String
+  codeSnapshot   String?
+  unitPrice      Decimal
+  quantity       Int                @default(1)
+  totalPrice     Decimal
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+
+  @@index([movieOrderId])
+  @@index([itemType])
+  @@index([seatId])
+  @@index([comboId])
+}
+
+model MovieBooking {
+  id                String             @id @default(uuid())
+  bookingCode       String             @unique
+  movieOrderId      String             @unique
+  movieOrder        MovieOrder         @relation(fields: [movieOrderId], references: [id], onDelete: Restrict)
+  cinemaId          String
+  cinema            Cinema             @relation(fields: [cinemaId], references: [id], onDelete: Restrict)
+  showtimeId        String
+  showtime          Showtime           @relation(fields: [showtimeId], references: [id], onDelete: Restrict)
+  externalBookingId String?            @unique
+  adapterBrand      CinemaBrand
+  status            MovieBookingStatus @default(PENDING)
+  failureReason     String?
+  cancelReason      String?
+  confirmedAt       DateTime?
+  cancelledAt       DateTime?
+  refundedAt        DateTime?
+  expiresAt         DateTime?
+  rawAdapterPayload Json?
+  tickets           MovieTicket[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([cinemaId])
+  @@index([showtimeId])
+  @@index([status])
+  @@index([externalBookingId])
+}
+
+model MovieTicket {
+  id                String            @id @default(uuid())
+  ticketCode        String            @unique
+  barcode           String            @unique
+  bookingId         String
+  booking           MovieBooking      @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  movieId           String
+  movie             Movie             @relation(fields: [movieId], references: [id], onDelete: Restrict)
+  cinemaId          String
+  cinema            Cinema            @relation(fields: [cinemaId], references: [id], onDelete: Restrict)
+  showtimeId        String
+  showtime          Showtime          @relation(fields: [showtimeId], references: [id], onDelete: Restrict)
+  auditoriumName    String
+  seatCodes         String
+  combosSummary     String?
+  ticketType        MovieTicketType   @default(PRINT_AT_COUNTER)
+  status            MovieTicketStatus @default(ISSUED)
+  issuedAt          DateTime          @default(now())
+  expiresAt         DateTime
+  usedAt            DateTime?
+  cancelledAt       DateTime?
+  refundedAt        DateTime?
+  counterPrintCount Int               @default(0)
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([bookingId])
+  @@index([movieId])
+  @@index([cinemaId])
+  @@index([showtimeId])
+  @@index([status])
+  @@index([barcode])
+}

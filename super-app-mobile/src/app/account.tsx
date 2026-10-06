@@ -729,6 +729,28 @@ export default function AccountScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* ══════════ CARD: DÀNH CHO ĐỐI TÁC V-LIFE ══════════ */}
+          <View style={styles.listCard}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={[styles.cardTitle, { fontFamily: theme.fontFamily }]}>Dành cho Đối tác V-Life</Text>
+            </View>
+
+            <TouchableOpacity style={[styles.listItem, { borderBottomWidth: 0 }]} onPress={() => router.push('/food-merchant' as any)}>
+              <View style={[styles.listIconBox, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="storefront" size={18} color="#0066FF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.listItemTitle, { fontFamily: theme.fontFamily, color: '#0066FF', fontWeight: '700' }]}>
+                  Kênh Quán Ăn (Food Merchant)
+                </Text>
+                <Text style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>
+                  Quản lý nhà hàng, thực đơn và xử lý đơn hàng
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#0066FF" />
+            </TouchableOpacity>
+          </View>
+
           {/* ══════════ NÚT ĐĂNG XUẤT (NGOÀI CÙNG) ══════════ */}
           <View style={styles.logoutWrapper}>
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} disabled={isLoggingOut} activeOpacity={0.8}>

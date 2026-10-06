@@ -11,7 +11,8 @@ export interface CreateBookingPayload {
 }
 
 export interface CreatePaymentOrderPayload {
-  bookingId: string;
+  bookingId?: string;
+  movieOrderId?: string;
   provider?: string;
   idempotencyKey?: string;
 }
@@ -22,16 +23,25 @@ export interface PaymentStatusResponse {
   amount: number;
   provider: string;
   paymentStatus: 'PENDING' | 'PAYMENT_PROCESSING' | 'PAID' | 'PAYMENT_FAILED' | 'PAYMENT_EXPIRED' | 'REFUNDED';
-  bookingStatus: 'PENDING_PAYMENT' | 'PAYMENT_PAID' | 'PAYOUT_PROCESSING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  bookingCode: string;
-  serviceTitle: string;
+  // Travel fields
+  bookingStatus?: 'PENDING_PAYMENT' | 'PAYMENT_PAID' | 'PAYOUT_PROCESSING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  bookingCode?: string;
+  serviceTitle?: string;
+  // Movie fields
+  movieOrderId?: string;
+  orderCode?: string;
+  movieOrderStatus?: 'PENDING' | 'PAYMENT_PENDING' | 'PAID' | 'CANCELLED' | 'EXPIRED' | 'REFUNDED';
+  movieBookingStatus?: 'PENDING' | 'BOOKING_CONFIRMING' | 'CONFIRMED' | 'TICKET_ISSUED' | 'FAILED' | 'CANCELLED' | 'REFUND_PENDING' | 'REFUNDED';
+  movieTitle?: string;
+  cinemaName?: string;
+  tickets?: any[];
   expiresAt: string;
   isExpired: boolean;
 }
 
 export const paymentService = {
   /**
-   * Khởi tạo đơn đặt dịch vụ (Booking) - Server tính giá
+   * Khởi tạo đơn đặt dịch vụ Travel (Booking) - Server tính giá
    */
   async createBooking(payload: CreateBookingPayload) {
     const response = await apiClient.post('/travel/bookings', payload);
@@ -39,7 +49,7 @@ export const paymentService = {
   },
 
   /**
-   * Chi tiết đơn đặt dịch vụ
+   * Chi tiết đơn đặt dịch vụ Travel
    */
   async getBookingById(bookingId: string) {
     const response = await apiClient.get(`/travel/bookings/${bookingId}`);
@@ -47,20 +57,19 @@ export const paymentService = {
   },
 
   /**
-   * Lịch sử đơn đặt của người dùng
+   * Lịch sử đơn đặt Travel của người dùng
    */
   async getUserBookingsHistory() {
     try {
       const response = await apiClient.get('/travel/bookings/history');
       return response.data;
     } catch (error) {
-      // Fallback cho môi trường test nếu chưa có route history riêng
       return { bookings: [] };
     }
   },
 
   /**
-   * Khởi tạo đơn thanh toán Payment Order & VietQR
+   * Khởi tạo đơn thanh toán dùng chung V-Life Payment Core (Travel bookingId hoặc Movie movieOrderId)
    */
   async createPaymentOrder(payload: CreatePaymentOrderPayload) {
     const response = await apiClient.post('/payments/create-order', payload);
@@ -68,7 +77,7 @@ export const paymentService = {
   },
 
   /**
-   * Tra cứu trạng thái thanh toán thời gian thực (Polling API)
+   * Tra cứu trạng thái thanh toán thời gian thực (Polling API - dùng chung cho Travel & Movie)
    */
   async getPaymentStatus(orderId: string): Promise<PaymentStatusResponse> {
     const response = await apiClient.get(`/payments/status/${orderId}`);

@@ -3,22 +3,31 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRideDto, UpdateTripStatusDto, DriverLocationDto } from './dto/create-ride.dto';
+import {
+  CreateRideDto,
+  UpdateTripStatusDto,
+  DriverLocationDto,
+  UpdateDriverSettingsDto,
+  DriverTopupDto,
+  DriverWithdrawDto,
+} from './dto/create-ride.dto';
+import * as bcrypt from 'bcryptjs';
 
 export interface ActiveTrip {
   id: string;
   bookingCode: string;
   userId: string;
   driverId?: string;
-  // Driver info (populated after ACCEPTED)
   driverName?: string;
   driverPhone?: string;
   vehicleName?: string;
   licensePlate?: string;
   avatarUrl?: string;
   driverRating?: number;
+  driverReview?: string;
   serviceType: string;
   vehicleType: string;
   status: string;
@@ -45,37 +54,16 @@ export interface ActiveTrip {
 }
 
 @Injectable()
-export class RideService {
-  // In-memory cache for high performance & resilience when DB is unreachable
-  private trips: Map<string, ActiveTrip> = new Map();
-  private driverLocations: Map<
-    string,
-    { lat: number; lng: number; heading: number; speed: number; isOnline: boolean; updatedAt: string }
-  > = new Map();
-  private driverWallets: Map<string, { balance: number; dailyEarnings: number; transactions: any[] }> =
-    new Map();
+export class RideService implements OnModuleInit {
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(private readonly prisma: PrismaService) {
-    // Seed default driver wallet
-    this.driverWallets.set('driver-demo-1', {
-      balance: 1250000,
-      dailyEarnings: 380000,
-      transactions: [
-        { id: 'TX-101', title: 'Chở khách #VR-8820', amount: 52000, type: 'earn', time: '08:30' },
-        { id: 'TX-102', title: 'Giao hàng #DL-901', amount: 35000, type: 'earn', time: '09:45' },
-        { id: 'TX-103', title: 'Nạp ví VietQR 24/7', amount: 500000, type: 'topup', time: 'Hôm qua' },
-      ],
-    });
-
-    // Default driver location (Cầu Giấy, Hà Nội)
-    this.driverLocations.set('driver-demo-1', {
-      lat: 21.0285,
-      lng: 105.7801,
-      heading: 0,
-      speed: 0,
-      isOnline: false,
-      updatedAt: new Date().toISOString(),
-    });
+  /** Khởi tạo dữ liệu seed cho Driver mặc định trong database thật nếu chưa có */
+  async onModuleInit() {
+    try {
+      await this.ensureDemoDriverAndSeedData();
+    } catch (error) {
+      console.warn('Seed database warning:', error.message);
+    }
   }
 
   // ─────────────────────────────────────────
@@ -110,6 +98,45 @@ export class RideService {
     return Math.round(fare / 1000) * 1000;
   }
 
+  private mapDbToActiveTrip(dbTrip: any, driver?: any): ActiveTrip {
+    const d = driver || dbTrip.driver;
+    return {
+      id: dbTrip.id,
+      bookingCode: dbTrip.bookingCode,
+      userId: dbTrip.userId,
+      driverId: dbTrip.driverId || undefined,
+      driverName: d?.fullName,
+      driverPhone: d?.phone,
+      vehicleName: d?.vehicleType,
+      licensePlate: d?.licensePlate,
+      avatarUrl: d?.avatarUrl || 'https://i.pravatar.cc/150?img=60',
+      driverRating: d?.rating || 5.0,
+      serviceType: dbTrip.serviceType,
+      vehicleType: dbTrip.vehicleType,
+      status: dbTrip.status,
+      pickupAddress: dbTrip.pickupAddress,
+      pickupLat: dbTrip.pickupLat,
+      pickupLng: dbTrip.pickupLng,
+      dropoffAddress: dbTrip.dropoffAddress,
+      dropoffLat: dbTrip.dropoffLat,
+      dropoffLng: dbTrip.dropoffLng,
+      distanceKm: dbTrip.distanceKm,
+      durationMin: dbTrip.durationMin,
+      fareAmount: dbTrip.fareAmount,
+      tipAmount: dbTrip.tipAmount || 0,
+      discountAmount: dbTrip.discountAmount || 0,
+      finalAmount: dbTrip.finalAmount,
+      paymentMethod: dbTrip.paymentMethod,
+      paymentStatus: dbTrip.paymentStatus,
+      customerName: dbTrip.customerName,
+      customerPhone: dbTrip.customerPhone,
+      driverReview: dbTrip.driverReview || undefined,
+      cancelReason: dbTrip.cancelReason || undefined,
+      createdAt: dbTrip.createdAt.toISOString(),
+      updatedAt: dbTrip.updatedAt.toISOString(),
+    };
+  }
+
   // ─────────────────────────────────────────
   // CUSTOMER OPERATIONS
   // ─────────────────────────────────────────
@@ -123,7 +150,6 @@ export class RideService {
     const customerName = user?.fullName || 'Khách hàng V-Life';
     const customerPhone = user?.phone || '0988000000';
 
-    // SERVER-AUTHORITATIVE: Tính khoảng cách và giá cước độc quyền từ backend (không tin dữ liệu client gửi)
     const distanceKm = this.calculateDistance(
       dto.pickupLat,
       dto.pickupLng,
@@ -135,121 +161,62 @@ export class RideService {
     const discountAmount = 15000;
     const finalAmount = Math.max(0, fareAmount + tipAmount - discountAmount);
     const bookingCode = `#VR-${Math.floor(1000 + Math.random() * 9000)}`;
-    const id = `TRIP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    const trip: ActiveTrip = {
-      id,
-      bookingCode,
-      userId: userId || 'anonymous-user',
-      serviceType: dto.serviceType || 'RIDE',
-      vehicleType: dto.vehicleType || 'ev',
-      status: 'SEARCHING',
-      pickupAddress: dto.pickupAddress,
-      pickupLat: dto.pickupLat,
-      pickupLng: dto.pickupLng,
-      dropoffAddress: dto.dropoffAddress,
-      dropoffLat: dto.dropoffLat,
-      dropoffLng: dto.dropoffLng,
-      distanceKm,
-      durationMin: Math.round(distanceKm * 3.5 + 4),
-      fareAmount,
-      tipAmount,
-      discountAmount,
-      finalAmount,
-      paymentMethod: dto.paymentMethod || 'CASH',
-      paymentStatus: dto.paymentMethod === 'SUPERPAY' ? 'PAID' : 'UNPAID',
-      customerName,
-      customerPhone,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const dbTrip = await this.prisma.rideBooking.create({
+      data: {
+        bookingCode,
+        userId: userId || 'anonymous-user',
+        serviceType: dto.serviceType || 'RIDE',
+        vehicleType: dto.vehicleType || 'ev',
+        status: 'SEARCHING',
+        pickupAddress: dto.pickupAddress,
+        pickupLat: dto.pickupLat,
+        pickupLng: dto.pickupLng,
+        dropoffAddress: dto.dropoffAddress,
+        dropoffLat: dto.dropoffLat,
+        dropoffLng: dto.dropoffLng,
+        distanceKm,
+        durationMin: Math.round(distanceKm * 3.5 + 4),
+        fareAmount,
+        tipAmount,
+        discountAmount,
+        finalAmount,
+        paymentMethod: dto.paymentMethod || 'CASH',
+        paymentStatus: dto.paymentMethod === 'SUPERPAY' ? 'PAID' : 'UNPAID',
+        customerName,
+        customerPhone,
+      },
+    });
 
-    this.trips.set(id, trip);
-
-    // Persist to DB (non-blocking - don't fail if DB unreachable)
-    this.prisma.rideBooking
-      .create({
-        data: {
-          id: trip.id,
-          bookingCode: trip.bookingCode,
-          userId: trip.userId,
-          serviceType: trip.serviceType,
-          vehicleType: trip.vehicleType,
-          status: trip.status,
-          pickupAddress: trip.pickupAddress,
-          pickupLat: trip.pickupLat,
-          pickupLng: trip.pickupLng,
-          dropoffAddress: trip.dropoffAddress,
-          dropoffLat: trip.dropoffLat,
-          dropoffLng: trip.dropoffLng,
-          distanceKm: trip.distanceKm,
-          durationMin: trip.durationMin,
-          fareAmount: trip.fareAmount,
-          tipAmount: trip.tipAmount,
-          discountAmount: trip.discountAmount,
-          finalAmount: trip.finalAmount,
-          paymentMethod: trip.paymentMethod,
-          paymentStatus: trip.paymentStatus,
-          customerName: trip.customerName,
-          customerPhone: trip.customerPhone,
-        },
-      })
-      .catch(() => {});
-
-    return trip;
+    return this.mapDbToActiveTrip(dbTrip);
   }
 
   async getTripById(tripId: string): Promise<ActiveTrip> {
-    const trip = this.trips.get(tripId);
-    if (!trip) {
-      // Fallback: try DB
-      try {
-        const dbTrip = await this.prisma.rideBooking.findUnique({ where: { id: tripId } });
-        if (dbTrip) {
-          const activeTrip: ActiveTrip = {
-            id: dbTrip.id,
-            bookingCode: dbTrip.bookingCode,
-            userId: dbTrip.userId,
-            driverId: dbTrip.driverId || undefined,
-            serviceType: dbTrip.serviceType,
-            vehicleType: dbTrip.vehicleType,
-            status: dbTrip.status,
-            pickupAddress: dbTrip.pickupAddress,
-            pickupLat: dbTrip.pickupLat,
-            pickupLng: dbTrip.pickupLng,
-            dropoffAddress: dbTrip.dropoffAddress,
-            dropoffLat: dbTrip.dropoffLat,
-            dropoffLng: dbTrip.dropoffLng,
-            distanceKm: dbTrip.distanceKm,
-            durationMin: dbTrip.durationMin,
-            fareAmount: dbTrip.fareAmount,
-            tipAmount: dbTrip.tipAmount || 0,
-            discountAmount: dbTrip.discountAmount || 0,
-            finalAmount: dbTrip.finalAmount,
-            paymentMethod: dbTrip.paymentMethod,
-            paymentStatus: dbTrip.paymentStatus,
-            customerName: dbTrip.customerName,
-            customerPhone: dbTrip.customerPhone,
-            createdAt: dbTrip.createdAt.toISOString(),
-            updatedAt: dbTrip.updatedAt.toISOString(),
-          };
-          this.trips.set(tripId, activeTrip);
-          return activeTrip;
-        }
-      } catch (e) {}
+    const dbTrip = await this.prisma.rideBooking.findUnique({
+      where: { id: tripId },
+      include: { driver: true },
+    });
+
+    if (!dbTrip) {
       throw new NotFoundException(`Không tìm thấy chuyến xe ${tripId}`);
     }
-    return trip;
+
+    return this.mapDbToActiveTrip(dbTrip);
   }
 
   async getCustomerActiveTrip(userId: string): Promise<ActiveTrip | null> {
     const ACTIVE_STATUSES = ['SEARCHING', 'ACCEPTED', 'ARRIVED_PICKUP', 'IN_TRIP'];
-    for (const trip of this.trips.values()) {
-      if (trip.userId === userId && ACTIVE_STATUSES.includes(trip.status)) {
-        return trip;
-      }
-    }
-    return null;
+    const dbTrip = await this.prisma.rideBooking.findFirst({
+      where: {
+        userId,
+        status: { in: ACTIVE_STATUSES },
+      },
+      include: { driver: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!dbTrip) return null;
+    return this.mapDbToActiveTrip(dbTrip);
   }
 
   async cancelTrip(
@@ -260,7 +227,6 @@ export class RideService {
   ): Promise<ActiveTrip> {
     const trip = await this.getTripById(tripId);
 
-    // Kiểm tra quyền hủy chuyến
     if (
       requestingUserId &&
       requestingUserId !== trip.userId &&
@@ -269,22 +235,20 @@ export class RideService {
       throw new ForbiddenException('Bạn không có quyền hủy chuyến đi này.');
     }
 
-    // Only allow cancel if not already completed/cancelled
     if (['COMPLETED', 'CANCELLED'].includes(trip.status)) {
       throw new BadRequestException(`Chuyến ${tripId} đã kết thúc, không thể hủy.`);
     }
 
-    trip.status = 'CANCELLED';
-    trip.cancelReason = reason || 'Người dùng hủy chuyến';
-    trip.cancelledBy = cancelledBy || 'customer';
-    trip.updatedAt = new Date().toISOString();
-    this.trips.set(tripId, trip);
+    const updated = await this.prisma.rideBooking.update({
+      where: { id: tripId },
+      data: {
+        status: 'CANCELLED',
+        cancelReason: reason || 'Người dùng hủy chuyến',
+      },
+      include: { driver: true },
+    });
 
-    this.prisma.rideBooking
-      .update({ where: { id: tripId }, data: { status: 'CANCELLED', cancelReason: reason } })
-      .catch(() => {});
-
-    return trip;
+    return this.mapDbToActiveTrip(updated);
   }
 
   async rateDriver(
@@ -305,59 +269,68 @@ export class RideService {
       throw new BadRequestException('Chuyến đi chưa hoàn thành, chưa thể đánh giá.');
     }
 
-    trip.updatedAt = new Date().toISOString();
-    if (tip && tip > 0) {
-      trip.tipAmount = (trip.tipAmount || 0) + tip;
-      trip.finalAmount = trip.fareAmount + trip.tipAmount - trip.discountAmount;
-    }
-    this.trips.set(tripId, trip);
-
-    this.prisma.rideBooking
-      .update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedTrip = await tx.rideBooking.update({
         where: { id: tripId },
-        data: { driverRating: rating, driverReview: comment },
-      })
-      .catch(() => {});
+        data: {
+          driverRating: rating,
+          driverReview: comment,
+          tipAmount: tip && tip > 0 ? (trip.tipAmount || 0) + tip : trip.tipAmount,
+          finalAmount:
+            tip && tip > 0
+              ? trip.fareAmount + (trip.tipAmount || 0) + tip - trip.discountAmount
+              : trip.finalAmount,
+        },
+        include: { driver: true },
+      });
 
-    return trip;
+      // Cập nhật rating trung bình cho tài xế
+      if (trip.driverId) {
+        const stats = await tx.rideBooking.aggregate({
+          where: { driverId: trip.driverId, driverRating: { not: null } },
+          _avg: { driverRating: true },
+        });
+        if (stats._avg.driverRating) {
+          await tx.driver.update({
+            where: { id: trip.driverId },
+            data: { rating: Number(stats._avg.driverRating.toFixed(2)) },
+          });
+        }
+      }
+
+      return updatedTrip;
+    });
+
+    return this.mapDbToActiveTrip(updated);
   }
 
   // ─────────────────────────────────────────
-  // DRIVER OPERATIONS
+  // DRIVER OPERATIONS (DATABASE THẬT)
   // ─────────────────────────────────────────
 
   async getPendingTrips(
     lat?: number,
     lng?: number,
   ): Promise<Array<ActiveTrip & { profitScore: number; distanceToPickup: number }>> {
-    const pending: Array<ActiveTrip & { profitScore: number; distanceToPickup: number }> = [];
+    const pendingDbTrips = await this.prisma.rideBooking.findMany({
+      where: { status: 'SEARCHING' },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
 
-    for (const trip of this.trips.values()) {
-      if (trip.status === 'SEARCHING') {
-        const distanceToPickup =
-          lat && lng ? this.calculateDistance(lat, lng, trip.pickupLat, trip.pickupLng) : 1.5;
-        const profitScore = Math.min(98, Math.round(60 + trip.finalAmount / 1500));
-        pending.push({ ...trip, profitScore, distanceToPickup });
-      }
-    }
+    const pending = pendingDbTrips.map((dbTrip) => {
+      const trip = this.mapDbToActiveTrip(dbTrip);
+      const distanceToPickup =
+        lat && lng ? this.calculateDistance(lat, lng, trip.pickupLat, trip.pickupLng) : 1.5;
+      const profitScore = Math.min(98, Math.round(60 + trip.finalAmount / 1500));
+      return { ...trip, profitScore, distanceToPickup };
+    });
 
-    // Sort by profitScore desc
     return pending.sort((a, b) => b.profitScore - a.profitScore);
   }
 
-  async acceptRide(
-    tripId: string,
-    driverId: string,
-  ): Promise<ActiveTrip> {
-    const trip = await this.getTripById(tripId);
-
-    if (trip.status !== 'SEARCHING') {
-      throw new BadRequestException(
-        `Chuyến ${tripId} không còn ở trạng thái chờ tài xế (hiện tại: ${trip.status}).`,
-      );
-    }
-
-    // SERVER-AUTHORITATIVE: Lấy thông tin thật từ DB của Driver, chống Client giả mạo thông số
+  async acceptRide(tripId: string, driverId: string): Promise<ActiveTrip> {
+    // Kiểm tra tài xế tồn tại TRƯỚC để tránh nhận trip xong mới phát hiện không có tài xế
     const driver = await this.prisma.driver.findUnique({
       where: { id: driverId },
     });
@@ -366,22 +339,37 @@ export class RideService {
       throw new NotFoundException('Không tìm thấy thông tin tài xế trong hệ thống.');
     }
 
-    trip.status = 'ACCEPTED';
-    trip.driverId = driver.id;
-    trip.driverName = driver.fullName;
-    trip.driverPhone = driver.phone;
-    trip.vehicleName = driver.vehicleType;
-    trip.licensePlate = driver.licensePlate;
-    trip.avatarUrl = driver.avatarUrl || 'https://i.pravatar.cc/150?img=60';
-    trip.driverRating = driver.rating || 5.0;
-    trip.updatedAt = new Date().toISOString();
-    this.trips.set(tripId, trip);
+    // ─── ATOMIC ACCEPT ─────────────────────────────────────────────────────────
+    // Dùng updateMany với điều kiện WHERE id=tripId AND status='SEARCHING'.
+    // Nếu count=0: trip đã được tài xế khác nhận trước (race condition).
+    // Nếu count=1: update thành công, chỉ 1 tài xế được chấp nhận.
+    // ─────────────────────────────────────────────────────────────────────────
+    const result = await this.prisma.rideBooking.updateMany({
+      where: {
+        id: tripId,
+        status: 'SEARCHING', // Điều kiện atomic: chỉ update nếu còn SEARCHING
+      },
+      data: {
+        status: 'ACCEPTED',
+        driverId: driver.id,
+      },
+    });
 
-    this.prisma.rideBooking
-      .update({ where: { id: tripId }, data: { status: 'ACCEPTED', driverId: driver.id } })
-      .catch(() => {});
+    if (result.count === 0) {
+      // Trip đã được tài xế khác nhận trước hoặc không còn tồn tại
+      const existingTrip = await this.getTripById(tripId);
+      throw new BadRequestException(
+        `Chuyến ${tripId} không còn ở trạng thái chờ tài xế (hiện tại: ${existingTrip.status}). Tài xế khác đã nhận trước.`,
+      );
+    }
 
-    return trip;
+    // Lấy lại trip đã update kèm thông tin tài xế
+    const updatedTrip = await this.prisma.rideBooking.findUnique({
+      where: { id: tripId },
+      include: { driver: true },
+    });
+
+    return this.mapDbToActiveTrip(updatedTrip!, driver);
   }
 
   async updateTripStatus(
@@ -391,12 +379,22 @@ export class RideService {
   ): Promise<ActiveTrip> {
     const trip = await this.getTripById(tripId);
 
-    // BẢO MẬT: Chỉ đúng tài xế được nhận chuyến mới được phép cập nhật trạng thái
     if (trip.driverId !== driverId) {
       throw new ForbiddenException('Bạn không phải là tài xế được chỉ định cho chuyến đi này.');
     }
 
-    // STATE MACHINE VALIDATION: Chống nhảy cóc trạng thái hoặc tạo cuốc ảo
+    if (trip.status === 'COMPLETED' && dto.status === 'COMPLETED') {
+      const updated = await this.prisma.rideBooking.update({
+        where: { id: tripId },
+        data: {
+          driverRating: dto.driverRating !== undefined ? dto.driverRating : trip.driverRating,
+          driverReview: dto.driverReview !== undefined ? dto.driverReview : trip.driverReview,
+        },
+        include: { driver: true },
+      });
+      return this.mapDbToActiveTrip(updated);
+    }
+
     const ALLOWED_TRANSITIONS: Record<string, string[]> = {
       ACCEPTED: ['ARRIVED_PICKUP', 'CANCELLED'],
       ARRIVED_PICKUP: ['IN_TRIP', 'CANCELLED'],
@@ -410,165 +408,564 @@ export class RideService {
       );
     }
 
-    trip.status = dto.status;
-    trip.updatedAt = new Date().toISOString();
-
-    // Financial settlement on COMPLETED
-    if (dto.status === 'COMPLETED' && trip.driverId) {
-      const wallet = this.driverWallets.get(trip.driverId) || {
-        balance: 1000000,
-        dailyEarnings: 0,
-        transactions: [],
-      };
-      const commissionFee = Math.round(trip.fareAmount * 0.15); // 15% platform fee
-      const driverNetEarning = trip.fareAmount - commissionFee + (trip.tipAmount || 0);
-
-      if (trip.paymentMethod === 'CASH') {
-        // Tài xế thu tiền mặt → trừ phí sàn từ ví ký quỹ
-        wallet.balance -= commissionFee;
-        wallet.dailyEarnings += driverNetEarning;
-        wallet.transactions.unshift({
-          id: `TX-${Date.now()}`,
-          title: `Trừ phí sàn cuốc ${trip.bookingCode} (Thu tiền mặt)`,
-          amount: -commissionFee,
-          type: 'commission_fee',
-          time: 'Vừa xong',
-          tripId,
+    // XỬ LÝ HẠCH TOÁN ĐỐI SOÁT TÀI CHÍNH KHI HOÀN THÀNH CUỐC XE
+    if (dto.status === 'COMPLETED') {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const driver = await tx.driver.findUnique({
+          where: { id: driverId },
         });
-      } else {
-        // Khách thanh toán online → cộng 85% cước + 100% tip vào ví
-        wallet.balance += driverNetEarning;
-        wallet.dailyEarnings += driverNetEarning;
-        wallet.transactions.unshift({
-          id: `TX-${Date.now()}`,
-          title: `Cộng cước cuốc online ${trip.bookingCode}`,
-          amount: driverNetEarning,
-          type: 'earn',
-          time: 'Vừa xong',
-          tripId,
-        });
-      }
-      this.driverWallets.set(trip.driverId, wallet);
 
-      // Mark payment as settled
-      trip.paymentStatus = 'PAID';
+        if (!driver) {
+          throw new NotFoundException('Không tìm thấy tài xế');
+        }
+
+        const fareAmount = trip.fareAmount;
+        const commissionFee = Math.round(fareAmount * 0.15); // 15% phí sàn
+        const tipAmount = trip.tipAmount || 0;
+        const driverNetEarning = fareAmount - commissionFee + tipAmount;
+
+        let newCredit = Number(driver.creditBalance);
+        let newCash = Number(driver.cashBalance);
+
+        if (trip.paymentMethod === 'CASH') {
+          // Khách trả tiền mặt: trừ phí sàn từ Ví Ký Quỹ
+          newCredit = Math.max(0, newCredit - commissionFee);
+
+          await tx.driver.update({
+            where: { id: driver.id },
+            data: {
+              creditBalance: newCredit,
+              dailyEarnings: { increment: driverNetEarning },
+              totalTrips: { increment: 1 },
+            },
+          });
+
+          // Ghi nhận lịch sử giao dịch sổ cái
+          await tx.driverTransaction.create({
+            data: {
+              driverId: driver.id,
+              tripId: trip.id,
+              tripCode: trip.bookingCode,
+              title: `Khấu trừ phí sàn cuốc ${trip.bookingCode}`,
+              amount: -commissionFee,
+              balanceAfter: newCredit,
+              type: 'FEE',
+              walletType: 'CREDIT',
+              note: `Khách trả ${fareAmount.toLocaleString('vi-VN')}đ tiền mặt`,
+              customerName: trip.customerName,
+              pickup: trip.pickupAddress,
+              dropoff: trip.dropoffAddress,
+              distanceKm: trip.distanceKm,
+              paymentMethod: 'CASH',
+            },
+          });
+        } else {
+          // Khách trả Online: cộng cước thực nhận vào Ví Thu Nhập (Khả dụng)
+          newCash += driverNetEarning;
+
+          await tx.driver.update({
+            where: { id: driver.id },
+            data: {
+              cashBalance: newCash,
+              dailyEarnings: { increment: driverNetEarning },
+              totalTrips: { increment: 1 },
+            },
+          });
+
+          await tx.driverTransaction.create({
+            data: {
+              driverId: driver.id,
+              tripId: trip.id,
+              tripCode: trip.bookingCode,
+              title: `Cộng cước cuốc ${trip.bookingCode}`,
+              amount: driverNetEarning,
+              balanceAfter: newCash,
+              type: 'EARN',
+              walletType: 'CASH',
+              note: `Khách thanh toán trực tuyến (${trip.paymentMethod})`,
+              customerName: trip.customerName,
+              pickup: trip.pickupAddress,
+              dropoff: trip.dropoffAddress,
+              distanceKm: trip.distanceKm,
+              paymentMethod: 'ONLINE',
+            },
+          });
+        }
+
+        const compTrip = await tx.rideBooking.update({
+          where: { id: tripId },
+          data: {
+            status: 'COMPLETED',
+            paymentStatus: 'PAID',
+            driverRating: dto.driverRating,
+            driverReview: dto.driverReview,
+          },
+          include: { driver: true },
+        });
+
+        return compTrip;
+      });
+
+      return this.mapDbToActiveTrip(updated);
     }
 
-    this.trips.set(tripId, trip);
+    // Các trạng thái khác (ARRIVED_PICKUP, IN_TRIP, CANCELLED)
+    const updated = await this.prisma.rideBooking.update({
+      where: { id: tripId },
+      data: {
+        status: dto.status,
+        cancelReason: dto.cancelReason,
+        driverRating: dto.driverRating,
+        driverReview: dto.driverReview,
+      },
+      include: { driver: true },
+    });
 
-    this.prisma.rideBooking
-      .update({
-        where: { id: tripId },
-        data: {
-          status: dto.status,
-          driverRating: dto.driverRating,
-          driverReview: dto.driverReview,
-          cancelReason: dto.cancelReason,
-        },
-      })
-      .catch(() => {});
-
-    return trip;
+    return this.mapDbToActiveTrip(updated);
   }
 
-  async getDriverActiveTrip(driverId: string = 'driver-demo-1'): Promise<ActiveTrip | null> {
+  async getDriverActiveTrip(driverId: string): Promise<ActiveTrip | null> {
     const ACTIVE_STATUSES = ['ACCEPTED', 'ARRIVED_PICKUP', 'IN_TRIP'];
-    for (const trip of this.trips.values()) {
-      if (trip.driverId === driverId && ACTIVE_STATUSES.includes(trip.status)) {
-        return trip;
-      }
-    }
-    return null;
+    const dbTrip = await this.prisma.rideBooking.findFirst({
+      where: {
+        driverId,
+        status: { in: ACTIVE_STATUSES },
+      },
+      include: { driver: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (!dbTrip) return null;
+    return this.mapDbToActiveTrip(dbTrip);
   }
 
-  async getDriverWallet(driverId: string = 'driver-demo-1') {
-    let wallet = this.driverWallets.get(driverId);
-    if (!wallet) {
-      wallet = { balance: 1250000, dailyEarnings: 380000, transactions: [] };
-      this.driverWallets.set(driverId, wallet);
+  async getDriverWallet(driverId: string) {
+    let driver = await this.prisma.driver.findUnique({
+      where: { id: driverId },
+      include: {
+        transactions: {
+          orderBy: { createdAt: 'desc' },
+          take: 30,
+        },
+      },
+    });
+
+    if (!driver) {
+      // Tìm bằng id fallback hoặc demo
+      driver = await this.prisma.driver.findFirst({
+        include: {
+          transactions: {
+            orderBy: { createdAt: 'desc' },
+            take: 30,
+          },
+        },
+      });
     }
+
+    if (!driver) {
+      throw new NotFoundException('Không tìm thấy tài khoản tài xế.');
+    }
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const totalTripsToday = await this.prisma.rideBooking.count({
+      where: {
+        driverId: driver.id,
+        status: 'COMPLETED',
+        updatedAt: { gte: startOfDay },
+      },
+    });
+
     return {
-      balance: wallet.balance,
-      dailyEarnings: wallet.dailyEarnings,
-      cashOnHand: 280000,
-      totalTripsToday: 6,
-      rating: 4.95,
-      transactions: wallet.transactions,
+      driverId: driver.id,
+      creditWallet: Number(driver.creditBalance),
+      cashWallet: Number(driver.cashBalance),
+      balance: Number(driver.cashBalance), // Compatibility
+      dailyEarnings: Number(driver.dailyEarnings),
+      totalTripsToday,
+      totalTrips: driver.totalTrips,
+      rating: driver.rating,
+      transactions: driver.transactions.map((tx) => ({
+        id: tx.id,
+        tripCode: tx.tripCode || '',
+        title: tx.title,
+        amount: Number(tx.amount),
+        balanceAfter: Number(tx.balanceAfter),
+        type: tx.type,
+        walletType: tx.walletType,
+        note: tx.note || '',
+        customerName: tx.customerName || '',
+        pickup: tx.pickup || '',
+        dropoff: tx.dropoff || '',
+        distanceKm: tx.distanceKm || 0,
+        paymentMethod: tx.paymentMethod || 'CASH',
+        time: tx.createdAt.toISOString(),
+      })),
       qrInfo: {
         bankName: 'MB BANK',
+        bankCode: 'MB',
         accountNo: '0988123456',
-        accountHolder: 'NGUYEN VAN HUNG - TAI XE V-LIFE',
+        accountHolder: driver.fullName.toUpperCase(),
+        transferContent: `SUNSTAR NAP ${driver.phone}`,
       },
     };
   }
 
-  async topupDriverWallet(driverId: string = 'driver-demo-1', amount: number) {
-    if (!amount || amount <= 0) {
-      throw new BadRequestException('Số tiền nạp phải lớn hơn 0.');
-    }
-    if (amount > 50000000) {
-      throw new BadRequestException('Số tiền nạp tối đa là 50,000,000 VND một lần.');
+  async topupDriverWallet(driverId: string, amount: number) {
+    if (!amount || amount < 10000) {
+      throw new BadRequestException('Số tiền nạp tối thiểu là 10,000 VND.');
     }
 
-    const wallet = this.driverWallets.get(driverId) || {
-      balance: 0,
-      dailyEarnings: 0,
-      transactions: [],
-    };
-    wallet.balance += amount;
-    wallet.transactions.unshift({
-      id: `TX-${Date.now()}`,
-      title: 'Nạp ví ký quỹ VietQR 24/7',
-      amount,
-      type: 'topup',
-      time: 'Vừa xong',
+    const result = await this.prisma.$transaction(async (tx) => {
+      const driver = await tx.driver.findUnique({ where: { id: driverId } });
+      if (!driver) throw new NotFoundException('Không tìm thấy tài xế.');
+
+      const newCredit = Number(driver.creditBalance) + amount;
+
+      await tx.driver.update({
+        where: { id: driverId },
+        data: { creditBalance: newCredit },
+      });
+
+      const txRecord = await tx.driverTransaction.create({
+        data: {
+          driverId,
+          title: 'Nạp tiền ví ký quỹ qua VietQR NAPAS 24/7',
+          amount,
+          balanceAfter: newCredit,
+          type: 'TOPUP',
+          walletType: 'CREDIT',
+          note: 'Chuyển khoản liên ngân hàng 24/7 thành công',
+        },
+      });
+
+      return { newCredit, transaction: txRecord };
     });
-    this.driverWallets.set(driverId, wallet);
-    return { success: true, newBalance: wallet.balance };
+
+    return { success: true, newCreditBalance: result.newCredit };
   }
 
-  async updateDriverLocation(dto: DriverLocationDto & { speed?: number }) {
-    this.driverLocations.set(dto.driverId, {
-      lat: dto.lat,
-      lng: dto.lng,
-      heading: dto.heading || 0,
-      speed: dto.speed || 0,
-      isOnline: true,
-      updatedAt: new Date().toISOString(),
+  async withdrawDriverWallet(driverId: string, dto: DriverWithdrawDto) {
+    const { amount, bankName, accountNo, accountHolder } = dto;
+    if (!amount || amount < 50000) {
+      throw new BadRequestException('Số tiền rút tối thiểu là 50,000 VND.');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const driver = await tx.driver.findUnique({ where: { id: driverId } });
+      if (!driver) throw new NotFoundException('Không tìm thấy tài xế.');
+
+      const currentCash = Number(driver.cashBalance);
+      if (currentCash < amount) {
+        throw new BadRequestException(
+          `Số dư Ví Thu Nhập không đủ (hiện có ${currentCash.toLocaleString('vi-VN')} VND).`,
+        );
+      }
+
+      const newCash = currentCash - amount;
+
+      await tx.driver.update({
+        where: { id: driverId },
+        data: { cashBalance: newCash },
+      });
+
+      const txRecord = await tx.driverTransaction.create({
+        data: {
+          driverId,
+          title: `Rút tiền về ${bankName || 'Ngân hàng'} (${accountNo || '***'})`,
+          amount: -amount,
+          balanceAfter: newCash,
+          type: 'WITHDRAW',
+          walletType: 'CASH',
+          note: `Chuyển khoản đến ${accountHolder || driver.fullName} (${accountNo || '***'})`,
+        },
+      });
+
+      return { newCash, transaction: txRecord };
     });
+
+    return { success: true, newCashBalance: result.newCash };
+  }
+
+  async updateDriverLocation(dto: DriverLocationDto) {
+    if (!dto.driverId) {
+      throw new BadRequestException('driverId là bắt buộc');
+    }
+
+    await this.prisma.driver.updateMany({
+      where: { id: dto.driverId },
+      data: {
+        currentLat: dto.lat,
+        currentLng: dto.lng,
+        heading: dto.heading || 0,
+        speed: dto.speed || 0,
+        isOnline: true,
+      },
+    });
+
     return { success: true };
   }
 
-  async toggleDriverOnline(driverId: string = 'driver-demo-1', isOnline: boolean) {
-    const current = this.driverLocations.get(driverId) || {
-      lat: 21.0285,
-      lng: 105.7801,
-      heading: 0,
-      speed: 0,
-      isOnline: false,
-      updatedAt: new Date().toISOString(),
-    };
-    current.isOnline = isOnline;
-    current.updatedAt = new Date().toISOString();
-    this.driverLocations.set(driverId, current);
-
-    try {
-      await this.prisma.driver.updateMany({
-        where: { id: driverId },
-        data: { isOnline },
-      });
-    } catch (e) {}
+  async toggleDriverOnline(driverId: string, isOnline: boolean) {
+    await this.prisma.driver.updateMany({
+      where: { id: driverId },
+      data: { isOnline },
+    });
 
     return { driverId, isOnline };
   }
 
-  async getDriverHistory(driverId: string = 'driver-demo-1') {
-    const history: ActiveTrip[] = [];
-    for (const trip of this.trips.values()) {
-      if (trip.driverId === driverId && trip.status === 'COMPLETED') {
-        history.push(trip);
-      }
+  async getDriverHistory(driverId: string): Promise<ActiveTrip[]> {
+    const dbTrips = await this.prisma.rideBooking.findMany({
+      where: {
+        driverId,
+        status: { in: ['COMPLETED', 'CANCELLED'] },
+      },
+      include: { driver: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return dbTrips.map((trip) => this.mapDbToActiveTrip(trip));
+  }
+
+  async getDriverSettings(driverId: string) {
+    let settings = await this.prisma.driverSettings.findUnique({
+      where: { driverId },
+    });
+
+    if (!settings) {
+      settings = await this.prisma.driverSettings.create({
+        data: {
+          driverId,
+          autoAccept: false,
+          dispatchRadius: 5,
+          enableRide: true,
+          enableDelivery: true,
+          enableFood: true,
+          homeAddress: 'Số 68 Cầu Giấy, Hà Nội',
+          homeLat: 21.0335,
+          homeLng: 105.7942,
+          highVolumeAlert: true,
+          hapticFeedback: true,
+          voiceGuidance: true,
+          defaultMapApp: 'GOOGLE_MAPS',
+          autoOpenMap: false,
+          avoidTolls: false,
+          keepAwakeMode: 'ONLINE_ONLY',
+          themeMode: 'SYSTEM',
+          sosPhone1: '113',
+          sosPhone2: '0988123456',
+        },
+      });
     }
-    return history;
+
+    return settings;
+  }
+
+  async updateDriverSettings(driverId: string, dto: UpdateDriverSettingsDto) {
+    const settings = await this.prisma.driverSettings.upsert({
+      where: { driverId },
+      update: {
+        ...dto,
+      },
+      create: {
+        driverId,
+        autoAccept: dto.autoAccept ?? false,
+        dispatchRadius: dto.dispatchRadius ?? 5,
+        enableRide: dto.enableRide ?? true,
+        enableDelivery: dto.enableDelivery ?? true,
+        enableFood: dto.enableFood ?? true,
+        homeAddress: dto.homeAddress,
+        homeLat: dto.homeLat,
+        homeLng: dto.homeLng,
+        highVolumeAlert: dto.highVolumeAlert ?? true,
+        hapticFeedback: dto.hapticFeedback ?? true,
+        voiceGuidance: dto.voiceGuidance ?? true,
+        defaultMapApp: dto.defaultMapApp ?? 'GOOGLE_MAPS',
+        autoOpenMap: dto.autoOpenMap ?? false,
+        avoidTolls: dto.avoidTolls ?? false,
+        keepAwakeMode: dto.keepAwakeMode ?? 'ONLINE_ONLY',
+        themeMode: dto.themeMode ?? 'SYSTEM',
+        sosPhone1: dto.sosPhone1,
+        sosPhone2: dto.sosPhone2,
+      },
+    });
+
+    return settings;
+  }
+
+  // ─────────────────────────────────────────
+  // SEED TÀI KHOẢN MẪU VÀ DỮ LIỆU BAN ĐẦU
+  // ─────────────────────────────────────────
+  private async ensureDemoDriverAndSeedData() {
+    const existingDriver = await this.prisma.driver.findFirst({
+      where: { phone: '0988123456' },
+    });
+
+    let driver = existingDriver;
+    if (!driver) {
+      const hashedPassword = await bcrypt.hash('Driver@123456', 10);
+      driver = await this.prisma.driver.create({
+        data: {
+          phone: '0988123456',
+          password: hashedPassword,
+          fullName: 'Nguyễn Văn Hùng',
+          licensePlate: '29E1-888.99',
+          vehicleType: 'VinFast Feliz S (EV)',
+          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+          creditBalance: 250000,
+          cashBalance: 1485000,
+          dailyEarnings: 450000,
+          rating: 4.95,
+          totalTrips: 128,
+          isOnline: true,
+          currentLat: 21.0285,
+          currentLng: 105.7801,
+        },
+      });
+
+      // Tạo cấu hình cài đặt mẫu
+      await this.prisma.driverSettings.create({
+        data: {
+          driverId: driver.id,
+          autoAccept: false,
+          dispatchRadius: 5,
+          enableRide: true,
+          enableDelivery: true,
+          enableFood: true,
+          homeAddress: 'Số 68 Cầu Giấy, Hà Nội',
+          homeLat: 21.0335,
+          homeLng: 105.7942,
+        },
+      });
+
+      // Tạo 3 giao dịch thật mẫu trong database
+      await this.prisma.driverTransaction.createMany({
+        data: [
+          {
+            driverId: driver.id,
+            tripCode: 'VR-8899',
+            title: 'Khấu trừ phí sàn cuốc #VR-8899',
+            amount: -12000,
+            balanceAfter: 250000,
+            type: 'FEE',
+            walletType: 'CREDIT',
+            note: 'Khách trả 120.000đ tiền mặt',
+            customerName: 'Nguyễn Văn Hùng',
+            pickup: 'Bến xe Mỹ Đình, Từ Liêm',
+            dropoff: '68 Cầu Giấy, Hà Nội',
+            distanceKm: 5.2,
+            paymentMethod: 'CASH',
+          },
+          {
+            driverId: driver.id,
+            tripCode: 'VR-8898',
+            title: 'Cộng cước cuốc #VR-8898 (VNPay)',
+            amount: 108000,
+            balanceAfter: 1485000,
+            type: 'EARN',
+            walletType: 'CASH',
+            note: 'Khách thanh toán trực tuyến qua thẻ',
+            customerName: 'Trần Thu Thảo',
+            pickup: 'Keangnam Landmark 72',
+            dropoff: 'Vincom Trần Duy Hưng',
+            distanceKm: 3.8,
+            paymentMethod: 'ONLINE',
+          },
+          {
+            driverId: driver.id,
+            title: 'Nạp tiền ví ký quỹ qua VietQR NAPAS 24/7',
+            amount: 200000,
+            balanceAfter: 262000,
+            type: 'TOPUP',
+            walletType: 'CREDIT',
+            note: 'Chuyển khoản liên ngân hàng MB Bank 24/7',
+          },
+        ],
+      });
+    }
+
+    // Đảm bảo có ít nhất 1 cuốc xe hoàn thành và 1 cuốc đang SEARCHING để test
+    const user = await this.prisma.user.findFirst();
+    let userId = user?.id;
+    if (!userId) {
+      const defaultUser = await this.prisma.user.create({
+        data: {
+          phone: '0988000111',
+          password: await bcrypt.hash('User@123456', 10),
+          fullName: 'Khách hàng Sunstar',
+        },
+      });
+      userId = defaultUser.id;
+    }
+
+    const completedTrip = await this.prisma.rideBooking.findFirst({
+      where: { driverId: driver.id, status: 'COMPLETED' },
+    });
+
+    if (!completedTrip) {
+      await this.prisma.rideBooking.create({
+        data: {
+          bookingCode: '#VR-8899',
+          userId,
+          driverId: driver.id,
+          serviceType: 'RIDE',
+          vehicleType: 'ev',
+          status: 'COMPLETED',
+          pickupAddress: 'Bến xe Mỹ Đình, Từ Liêm, Hà Nội',
+          pickupLat: 21.0285,
+          pickupLng: 105.7725,
+          dropoffAddress: 'Số 68 Cầu Giấy, Hà Nội',
+          dropoffLat: 21.0335,
+          dropoffLng: 105.7942,
+          distanceKm: 5.2,
+          durationMin: 18,
+          fareAmount: 85000,
+          tipAmount: 10000,
+          discountAmount: 15000,
+          finalAmount: 80000,
+          paymentMethod: 'CASH',
+          paymentStatus: 'PAID',
+          customerName: 'Nguyễn Văn Hùng',
+          customerPhone: '0912345678',
+          driverRating: 5,
+          driverReview: 'Lái xe cẩn thận, xe rất sạch sẽ',
+        },
+      });
+    }
+
+    const searchingTrip = await this.prisma.rideBooking.findFirst({
+      where: { status: 'SEARCHING' },
+    });
+
+    if (!searchingTrip) {
+      await this.prisma.rideBooking.create({
+        data: {
+          bookingCode: '#VR-9921',
+          userId,
+          serviceType: 'RIDE',
+          vehicleType: 'ev',
+          status: 'SEARCHING',
+          pickupAddress: 'Vincom Mega Mall Smart City',
+          pickupLat: 20.9995,
+          pickupLng: 105.7423,
+          dropoffAddress: 'Hồ Gươm Plaza, Hà Đông',
+          dropoffLat: 20.9789,
+          dropoffLng: 105.7821,
+          distanceKm: 4.8,
+          durationMin: 15,
+          fareAmount: 72000,
+          tipAmount: 5000,
+          discountAmount: 10000,
+          finalAmount: 67000,
+          paymentMethod: 'CASH',
+          paymentStatus: 'UNPAID',
+          customerName: 'Lê Hoàng Nam',
+          customerPhone: '0977889900',
+        },
+      });
+    }
   }
 }

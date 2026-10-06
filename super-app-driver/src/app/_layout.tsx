@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0C68EF',
   },
   splashContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#0C68EF',
     zIndex: 99999,
     justifyContent: 'center',

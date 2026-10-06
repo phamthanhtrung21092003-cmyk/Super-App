@@ -2,7 +2,7 @@
  * rideSocketService.ts (super-app-driver)
  * ─────────────────────────────────────────────────────────
  * WebSocket client for Driver App.
- * Kết nối /rides namespace trên server.
+ * Kết nối /rides namespace trên server với JWT Authentication.
  *
  * CHỈ NHẬN CUỐC THẬT ĐƯỢC DISPATCH TỪ SERVER KHI KHÁCH ĐẶT XE.
  * KHÔNG BAO GIỜ TỰ TẠO CUỐC ẢO.
@@ -10,7 +10,8 @@
  */
 
 import { io, Socket } from 'socket.io-client';
-import { getBaseURL } from './apiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getBaseURL, ensureDriverAuth } from './apiClient';
 
 export interface IncomingOrderPayload {
   tripId: string;
@@ -42,27 +43,38 @@ export interface TripStatusUpdatePayload {
   cancelledBy?: string;
   fareAmount?: number;
   finalAmount?: number;
+  paymentMethod?: string;
+  driverRating?: number;
+  driverReview?: string;
 }
 
 class RideSocketService {
   private socket: Socket | null = null;
   private listeners: Map<string, Set<Function>> = new Map();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 20;
+  private maxReconnectAttempts = 30;
+  private lastJoinData: { driverId: string; lat?: number; lng?: number } | null = null;
+  private currentTripId: string | null = null;
 
   private getSocketUrl(): string {
     const apiUrl = getBaseURL();
     return apiUrl.replace(/\/api\/v\d+$/, '').replace(/\/api$/, '');
   }
 
-  connect() {
+  async connect(forcedToken?: string) {
     if (this.socket?.connected) {
       return this.socket;
+    }
+
+    let token: string | null = forcedToken || (await AsyncStorage.getItem('accessToken'));
+    if (!token) {
+      token = await ensureDriverAuth();
     }
 
     const socketUrl = this.getSocketUrl();
 
     this.socket = io(`${socketUrl}/rides`, {
+      auth: { token: token || undefined },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
@@ -72,9 +84,17 @@ class RideSocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log(`[DriverSocket] Connected successfully. ID: ${this.socket?.id}`);
+      console.log(`[DriverSocket] Connected successfully with auth token. Socket ID: ${this.socket?.id}`);
       this.reconnectAttempts = 0;
       this.emit('_connected', { connected: true });
+
+      // Tự động re-join pool nếu trước đó đã join
+      if (this.lastJoinData) {
+        this.socket?.emit('driver:join', this.lastJoinData);
+      }
+      if (this.currentTripId) {
+        this.socket?.emit('trip:join', { tripId: this.currentTripId });
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -92,6 +112,8 @@ class RideSocketService {
   }
 
   disconnect() {
+    this.lastJoinData = null;
+    this.currentTripId = null;
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -102,30 +124,56 @@ class RideSocketService {
     return this.socket?.connected ?? false;
   }
 
-  joinAsDriver(driverId: string, lat?: number, lng?: number) {
+  async joinAsDriver(driverId: string, lat?: number, lng?: number) {
+    this.lastJoinData = { driverId, lat, lng };
     if (!this.socket || !this.socket.connected) {
-      this.connect();
+      await this.connect();
     }
-    this.socket!.emit('driver:join', { driverId, lat, lng });
+    this.socket?.emit('driver:join', { driverId, lat, lng });
   }
 
-  sendDriverLocation(driverId: string, lat: number, lng: number, heading?: number, speed?: number, tripId?: string) {
+  joinTripRoom(tripId: string) {
+    this.currentTripId = tripId;
+    if (this.socket?.connected) {
+      this.socket.emit('trip:join', { tripId });
+    }
+  }
+
+  leaveTripRoom() {
+    this.currentTripId = null;
+  }
+
+  sendDriverLocation(
+    driverId: string,
+    lat: number,
+    lng: number,
+    heading?: number,
+    speed?: number,
+    tripId?: string
+  ) {
     if (!this.socket?.connected) return;
     this.socket.emit('driver:location', { driverId, lat, lng, heading, speed, tripId });
   }
 
   onIncomingOrder(callback: (order: IncomingOrderPayload) => void) {
     if (!this.socket || !this.socket.connected) {
-      this.connect();
+      this.connect().catch(() => {});
     }
     const handler = (data: IncomingOrderPayload) => {
-      // Chỉ nhận khi có tripId thật
       if (data && data.tripId) {
         callback(data);
       }
     };
-    this.socket!.on('ride:incoming_order', handler);
+    this.socket?.on('ride:incoming_order', handler);
     return () => this.socket?.off('ride:incoming_order', handler);
+  }
+
+  onTripStatusUpdated(callback: (data: TripStatusUpdatePayload) => void) {
+    const handler = (data: TripStatusUpdatePayload) => {
+      callback(data);
+    };
+    this.socket?.on('trip:status_updated', handler);
+    return () => this.socket?.off('trip:status_updated', handler);
   }
 
   onTripCancelledByCustomer(callback: (data: { tripId: string; reason: string }) => void) {

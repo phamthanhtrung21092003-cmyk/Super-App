@@ -12,6 +12,7 @@ export interface Transaction {
   referenceId?: string;
   referenceType?: string;
   idempotencyKey?: string;
+  metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 }

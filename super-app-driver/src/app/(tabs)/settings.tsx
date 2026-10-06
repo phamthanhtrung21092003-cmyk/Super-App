@@ -6,91 +6,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiClient from '../../services/apiClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// ─────────────────────────────────────────
-// CẤU TRÚC DỮ LIỆU CÀI ĐẶT TỔNG THỂ
-// (driver-settings-management & driver-hardware-ux)
-// ─────────────────────────────────────────
-interface DriverAppSettings {
-  // 1. Cuốc xe & Điều phối
-  autoAccept: boolean;
-  dispatchRadius: number; // 1, 2, 3, 5, 10 km
-  serviceBike: boolean;
-  serviceCar: boolean;
-  serviceExpress: boolean;
-  serviceFood: boolean;
-  homeDestinationEnabled: boolean;
-  homeAddress: string;
-  backToBack: boolean;
-
-  // 2. Âm thanh & Thông báo
-  maxLoudRingtone: boolean;
-  ringtoneType: 'CLASSIC' | 'TECH' | 'VOICE';
-  hapticsVibration: boolean;
-  voiceReadRoute: boolean;
-
-  // 3. Bản đồ & Dẫn đường
-  defaultMap: 'GOOGLE' | 'SUNSTAR' | 'APPLE';
-  autoOpenGoogleMaps: boolean;
-  avoidTollBOT: boolean;
-  avoidHighways: boolean;
-
-  // 4. Màn hình & Pin
-  keepAwakeMode: 'ALWAYS_ONLINE' | 'IN_TRIP_ONLY' | 'SYSTEM_DEFAULT';
-  darkMode: boolean;
-
-  // 5. An toàn SOS & Khẩn cấp
-  sosPhone1: string;
-  sosPhone2: string;
-  nightSafetyShield: boolean;
-}
-
-const DEFAULT_APP_SETTINGS: DriverAppSettings = {
-  // 1. Cuốc xe & Điều phối
-  autoAccept: false,
-  dispatchRadius: 3,
-  serviceBike: true,
-  serviceCar: true,
-  serviceExpress: true,
-  serviceFood: true,
-  homeDestinationEnabled: false,
-  homeAddress: 'Số 128 Cầu Giấy, Phường Quan Hoa, Cầu Giấy, Hà Nội',
-  backToBack: true,
-
-  // 2. Âm thanh & Thông báo
-  maxLoudRingtone: true,
-  ringtoneType: 'TECH',
-  hapticsVibration: true,
-  voiceReadRoute: true,
-
-  // 3. Bản đồ & Dẫn đường
-  defaultMap: 'GOOGLE',
-  autoOpenGoogleMaps: true,
-  avoidTollBOT: true,
-  avoidHighways: false,
-
-  // 4. Màn hình & Pin
-  keepAwakeMode: 'ALWAYS_ONLINE',
-  darkMode: false,
-
-  // 5. An toàn SOS
-  sosPhone1: '0988111222 (Vợ / Người thân)',
-  sosPhone2: '0912333444 (Bạn thân / Đội xe)',
-  nightSafetyShield: true,
-};
-
-const DEFAULT_QUICK_CHATS = [
-  'Tôi đang đến điểm đón, quý khách vui lòng chờ khoảng 3-5 phút nhé!',
-  'Tôi đã đến nơi, quý khách ra xe nhé ạ!',
-  'Khu vực này khó dừng đỗ, quý khách có thể đứng ở đầu ngõ giúp tôi được không?',
-  'Đường đang bị ùn ứ một chút, tôi sẽ đến ngay ạ.',
-  'Quý khách vui lòng cho tôi xin số nhà cụ thể nhé ạ.',
-];
-
-const STORAGE_KEY_SETTINGS = '@sunstar_driver_app_settings';
-const STORAGE_KEY_QUICK_CHATS = '@sunstar_driver_quick_chats';
+import {
+  DriverAppSettings,
+  DEFAULT_APP_SETTINGS,
+  DEFAULT_QUICK_CHATS,
+  STORAGE_KEYS,
+} from '../../constants/driverConstants';
 
 export default function DriverSettingsScreen() {
   const [settings, setSettings] = useState<DriverAppSettings>(DEFAULT_APP_SETTINGS);
@@ -107,24 +32,60 @@ export default function DriverSettingsScreen() {
   const [showNetworkModal, setShowNetworkModal] = useState(false);
 
   // ─────────────────────────────────────────
-  // 1. TẢI VÀ ĐỒNG BỘ ASYNCSTORAGE (offline-resilient-sync)
+  // 1. TẢI VÀ ĐỒNG BỘ BACKEND THẬT & ASYNCSTORAGE
   // ─────────────────────────────────────────
   useEffect(() => {
-    loadSettingsFromStorage();
+    loadSettings();
   }, []);
 
-  const loadSettingsFromStorage = async () => {
+  const loadSettings = async () => {
+    // 1. Tải cache nhanh từ AsyncStorage
     try {
-      const savedSettings = await AsyncStorage.getItem(STORAGE_KEY_SETTINGS);
+      const savedSettings = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
       if (savedSettings) {
-        setSettings({ ...DEFAULT_APP_SETTINGS, ...JSON.parse(savedSettings) });
+        setSettings((prev) => ({ ...prev, ...JSON.parse(savedSettings) }));
       }
-      const savedChats = await AsyncStorage.getItem(STORAGE_KEY_QUICK_CHATS);
+      const savedChats = await AsyncStorage.getItem(STORAGE_KEYS.QUICK_CHATS);
       if (savedChats) {
         setQuickChats(JSON.parse(savedChats));
       }
-    } catch (e) {
-      console.warn('Lỗi nạp settings:', e);
+    } catch (e) {}
+
+    // 2. Tải cấu hình thật từ PostgreSQL backend
+    try {
+      const res = await apiClient.get('/ride/driver/settings');
+      if (res.data) {
+        const s = res.data;
+        const merged: DriverAppSettings = {
+          ...DEFAULT_APP_SETTINGS,
+          autoAccept: s.autoAccept ?? false,
+          dispatchRadius: s.dispatchRadius ?? 5,
+          serviceBike: s.enableRide ?? true,
+          serviceCar: s.enableRide ?? true,
+          serviceExpress: s.enableDelivery ?? true,
+          serviceFood: s.enableFood ?? true,
+          homeAddress: s.homeAddress || DEFAULT_APP_SETTINGS.homeAddress,
+          homeDestinationEnabled: !!s.homeAddress,
+          backToBack: true,
+          maxLoudRingtone: s.highVolumeAlert ?? true,
+          ringtoneType: 'TECH',
+          hapticsVibration: s.hapticFeedback ?? true,
+          voiceReadRoute: s.voiceGuidance ?? true,
+          defaultMap: s.defaultMapApp === 'APPLE_MAPS' ? 'APPLE' : 'GOOGLE',
+          autoOpenGoogleMaps: s.autoOpenMap ?? false,
+          avoidTollBOT: s.avoidTolls ?? false,
+          avoidHighways: false,
+          keepAwakeMode: s.keepAwakeMode === 'ALWAYS' ? 'ALWAYS_ONLINE' : 'IN_TRIP_ONLY',
+          darkMode: s.themeMode === 'DARK',
+          sosPhone1: s.sosPhone1 || DEFAULT_APP_SETTINGS.sosPhone1,
+          sosPhone2: s.sosPhone2 || DEFAULT_APP_SETTINGS.sosPhone2,
+          nightSafetyShield: true,
+        };
+        setSettings(merged);
+        await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
+      }
+    } catch (err) {
+      console.warn('Lỗi tải cài đặt từ máy chủ:', err);
     }
   };
 
@@ -132,10 +93,33 @@ export default function DriverSettingsScreen() {
     triggerHaptic(15);
     const updated = { ...settings, [key]: value };
     setSettings(updated);
+
     try {
-      await AsyncStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(updated));
-    } catch (e) {
-      console.warn('Lỗi lưu settings:', e);
+      await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+    } catch (e) {}
+
+    // Đồng bộ lên PostgreSQL backend
+    try {
+      await apiClient.put('/ride/driver/settings', {
+        autoAccept: updated.autoAccept,
+        dispatchRadius: updated.dispatchRadius,
+        enableRide: updated.serviceBike || updated.serviceCar,
+        enableDelivery: updated.serviceExpress,
+        enableFood: updated.serviceFood,
+        homeAddress: updated.homeAddress,
+        highVolumeAlert: updated.maxLoudRingtone,
+        hapticFeedback: updated.hapticsVibration,
+        voiceGuidance: updated.voiceReadRoute,
+        defaultMapApp: updated.defaultMap === 'APPLE' ? 'APPLE_MAPS' : 'GOOGLE_MAPS',
+        autoOpenMap: updated.autoOpenGoogleMaps,
+        avoidTolls: updated.avoidTollBOT,
+        keepAwakeMode: updated.keepAwakeMode === 'ALWAYS_ONLINE' ? 'ALWAYS' : 'ONLINE_ONLY',
+        themeMode: updated.darkMode ? 'DARK' : 'LIGHT',
+        sosPhone1: updated.sosPhone1,
+        sosPhone2: updated.sosPhone2,
+      });
+    } catch (err) {
+      console.warn('Lỗi lưu cài đặt lên máy chủ:', err);
     }
   };
 
@@ -204,14 +188,14 @@ export default function DriverSettingsScreen() {
     const updated = [...quickChats, newChatText.trim()];
     setQuickChats(updated);
     setNewChatText('');
-    await AsyncStorage.setItem(STORAGE_KEY_QUICK_CHATS, JSON.stringify(updated));
+    await AsyncStorage.setItem(STORAGE_KEYS.QUICK_CHATS, JSON.stringify(updated));
   };
 
   const handleDeleteQuickChat = async (idx: number) => {
     triggerHaptic(20);
     const updated = quickChats.filter((_, i) => i !== idx);
     setQuickChats(updated);
-    await AsyncStorage.setItem(STORAGE_KEY_QUICK_CHATS, JSON.stringify(updated));
+    await AsyncStorage.setItem(STORAGE_KEYS.QUICK_CHATS, JSON.stringify(updated));
   };
 
   // Xóa cache
@@ -849,7 +833,7 @@ export default function DriverSettingsScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="shield-alert" size={22} color="#EA580C" />
+                <Ionicons name="warning" size={22} color="#EA580C" />
                 <Text style={styles.modalTitle}>Cài Đặt An Toàn SOS Khẩn Cấp</Text>
               </View>
               <TouchableOpacity onPress={() => setShowSosModal(false)}>

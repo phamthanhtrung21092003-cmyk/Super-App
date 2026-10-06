@@ -69,6 +69,18 @@ export async function getDriverHistory(driverId: string = 'driver-demo-1') {
   return response.data;
 }
 
+export async function getPendingTrips(lat?: number, lng?: number) {
+  const response = await apiClient.get('/ride/driver/pending', {
+    params: { lat, lng },
+  });
+  return response.data;
+}
+
+export async function getTripById(tripId: string) {
+  const response = await apiClient.get(`/ride/${tripId}`);
+  return response.data;
+}
+
 const realRideService = {
   acceptRide,
   updateTripStatus,
@@ -77,6 +89,8 @@ const realRideService = {
   cancelTrip,
   getDriverWallet,
   getDriverHistory,
+  getPendingTrips,
+  getTripById,
 };
 
 export default realRideService;

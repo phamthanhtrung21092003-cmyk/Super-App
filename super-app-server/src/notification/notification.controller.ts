@@ -1,14 +1,18 @@
 import {
   Controller,
   Get,
+  Post,
+  Delete,
   Patch,
   Param,
+  Body,
   UseGuards,
   Req,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { RegisterDeviceTokenDto, UnregisterDeviceTokenDto } from './dto/device-token.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   ApiTags,
@@ -23,6 +27,24 @@ import {
 @ApiBearerAuth()
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
+
+  @Post('device-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Đăng ký hoặc cập nhật FCM Push Token cho thiết bị hiện tại' })
+  @ApiResponse({ status: 200, description: 'Đăng ký token thành công' })
+  async registerDeviceToken(@Req() req: any, @Body() dto: RegisterDeviceTokenDto) {
+    const userId = req.user.sub || req.user.id;
+    return this.notificationService.registerDeviceToken(userId, dto);
+  }
+
+  @Delete('device-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Hủy kích hoạt FCM Push Token khi đăng xuất' })
+  @ApiResponse({ status: 200, description: 'Hủy kích hoạt token thành công' })
+  async unregisterDeviceToken(@Req() req: any, @Body() dto: UnregisterDeviceTokenDto) {
+    const userId = req.user.sub || req.user.id;
+    return this.notificationService.unregisterDeviceToken(userId, dto);
+  }
 
   @Get()
   @HttpCode(HttpStatus.OK)

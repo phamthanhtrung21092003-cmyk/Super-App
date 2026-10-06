@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, ScrollView, 
   Platform, SafeAreaView, StatusBar, useWindowDimensions,
@@ -9,6 +9,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useFood } from '../../context/FoodContext';
+import { foodService, FoodRestaurant } from '../../services/foodService';
+import { useUser } from '../../context/UserContext';
+import { notificationService } from '../../services/notificationService';
 
 const CATEGORIES = [
   { id: 'rice', name: 'Cơm', icon: '🍚' },
@@ -76,7 +79,47 @@ export default function FoodHomeScreen() {
   const isDesktop = Platform.OS === 'web' && width > 768;
   const accentColor = '#F97316';
 
-  const { cart, activeOrder } = useFood();
+  const { cart, activeOrder, setCustomerCoords } = useFood();
+  const { addresses } = useUser();
+  const defaultAddress = addresses?.find((a) => a.isDefault) || addresses?.[0];
+  const userLat = defaultAddress?.latitude ?? 21.0055;
+  const userLng = defaultAddress?.longitude ?? 105.8450;
+  const currentAddressText = defaultAddress
+    ? `${defaultAddress.detailAddress}, ${defaultAddress.ward}`
+    : '18 Tạ Quang Bửu, Hai Bà Trưng';
+
+  const [restaurants, setRestaurants] = useState<FoodRestaurant[]>([]);
+  const [isFetchingRestaurants, setIsFetchingRestaurants] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  useEffect(() => {
+    setCustomerCoords({ lat: userLat, lng: userLng });
+    let isMounted = true;
+    (async () => {
+      try {
+        setIsFetchingRestaurants(true);
+        const data = await foodService.getRestaurants(userLat, userLng);
+        if (isMounted && data && data.length > 0) {
+          setRestaurants(data);
+        }
+      } catch (err) {
+        console.log('Lỗi tải danh sách quán từ Backend:', err);
+      } finally {
+        if (isMounted) setIsFetchingRestaurants(false);
+      }
+    })();
+
+    notificationService.getUnreadCount().then((res) => {
+      if (isMounted && res?.unreadCount !== undefined) {
+        setUnreadNotifCount(res.unreadCount);
+      }
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userLat, userLng]);
+
   const totalCartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   // Gemini AI Assistant State
@@ -159,22 +202,53 @@ export default function FoodHomeScreen() {
             <Text style={[styles.headerTitle, { fontFamily: 'Outfit' }]}>GIAO ĐỒ ĂN</Text>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={14} color={accentColor} />
-              <Text style={styles.locationText} numberOfLines={1}>18 Tạ Quang Bửu, Hai Bà Trưng</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{currentAddressText}</Text>
               <Ionicons name="chevron-down" size={14} color="#64748B" />
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.iconBtn} 
-            onPress={() => router.push('/food/cart')}
-          >
-            <Ionicons name="cart-outline" size={24} color="#0F172A" />
-            {totalCartCount > 0 && (
-              <View style={[styles.badge, { backgroundColor: accentColor }]}>
-                <Text style={styles.badgeText}>{totalCartCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity 
+              style={styles.iconBtn} 
+              onPress={() => router.push('/food/orders' as any)}
+              accessibilityLabel="Đơn hàng của tôi"
+            >
+              <Ionicons name="receipt-outline" size={22} color="#0F172A" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.iconBtn} 
+              onPress={() => router.push('/food-merchant' as any)}
+              accessibilityLabel="Kênh Quán Ăn"
+            >
+              <Ionicons name="storefront-outline" size={20} color="#F97316" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.iconBtn} 
+              onPress={() => router.push('/notifications' as any)}
+              accessibilityLabel="Thông báo"
+            >
+              <Ionicons name="notifications-outline" size={22} color="#0F172A" />
+              {unreadNotifCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: '#EF4444' }]}>
+                  <Text style={styles.badgeText}>{unreadNotifCount > 99 ? '99+' : unreadNotifCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.iconBtn} 
+              onPress={() => router.push('/food/cart')}
+            >
+              <Ionicons name="cart-outline" size={24} color="#0F172A" />
+              {totalCartCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: accentColor }]}>
+                  <Text style={styles.badgeText}>{totalCartCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Active Order Banner (Nếu có đơn đang giao) */}
@@ -282,36 +356,45 @@ export default function FoodHomeScreen() {
           </View>
 
           <View style={styles.restList}>
-            {NEARBY_RESTAURANTS.map((rest) => (
-              <TouchableOpacity 
-                key={rest.id}
-                style={styles.restCard}
-                activeOpacity={0.88}
-                onPress={() => router.push(`/food/restaurant/${rest.id}`)}
-              >
-                <Image source={{ uri: rest.img }} style={styles.restImg} />
-                <View style={styles.restInfo}>
-                  <Text style={styles.restName} numberOfLines={1}>{rest.name}</Text>
-                  <Text style={styles.restType}>{rest.type}</Text>
+            {isFetchingRestaurants && restaurants.length === 0 ? (
+              <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+                <ActivityIndicator color={accentColor} size="large" />
+                <Text style={{ marginTop: 8, color: '#64748B', fontSize: 13 }}>Đang tìm quán ngon gần bạn...</Text>
+              </View>
+            ) : (
+              (restaurants.length > 0 ? restaurants : NEARBY_RESTAURANTS).map((rest: any) => (
+                <TouchableOpacity 
+                  key={rest.id}
+                  style={styles.restCard}
+                  activeOpacity={0.88}
+                  onPress={() => router.push(`/food/restaurant/${rest.id}` as any)}
+                >
+                  <Image source={{ uri: rest.avatar || rest.img }} style={styles.restImg} />
+                  <View style={styles.restInfo}>
+                    <Text style={styles.restName} numberOfLines={1}>{rest.name}</Text>
+                    <Text style={styles.restType} numberOfLines={1}>{rest.address || rest.type || 'Món ngon mỗi ngày'}</Text>
 
-                  <View style={styles.restMetaRow}>
-                    <View style={styles.restMetaItem}>
-                      <Ionicons name="star" size={14} color="#F59E0B" />
-                      <Text style={styles.restRating}>{rest.rating} ({rest.reviews})</Text>
+                    <View style={styles.restMetaRow}>
+                      <View style={styles.restMetaItem}>
+                        <Ionicons name="star" size={14} color="#F59E0B" />
+                        <Text style={styles.restRating}>{rest.rating || 5.0} ({rest.totalReviews || rest.reviews || 100}+)</Text>
+                      </View>
+                      <Text style={styles.metaDot}>•</Text>
+                      <Text style={styles.restDist}>{rest.distanceKm ? `${rest.distanceKm} km` : (rest.distance || '1.5 km')}</Text>
+                      <Text style={styles.metaDot}>•</Text>
+                      <Text style={styles.restTime}>{rest.estimatedTime || rest.time || '20-25 phút'}</Text>
                     </View>
-                    <Text style={styles.metaDot}>•</Text>
-                    <Text style={styles.restDist}>{rest.distance}</Text>
-                    <Text style={styles.metaDot}>•</Text>
-                    <Text style={styles.restTime}>{rest.time}</Text>
-                  </View>
 
-                  <View style={styles.restPromoBadge}>
-                    <Ionicons name="pricetag" size={11} color="#10B981" />
-                    <Text style={styles.restPromoText}>{rest.promo}</Text>
+                    <View style={styles.restPromoBadge}>
+                      <Ionicons name="pricetag" size={11} color="#10B981" />
+                      <Text style={styles.restPromoText}>
+                        {rest.shippingFee === 0 ? 'Freeship đơn từ 200k' : `Phí ship từ ${(rest.shippingFee || 15000).toLocaleString('vi-VN')}đ`}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))
+            )}
           </View>
 
           <View style={{ height: 60 }} />

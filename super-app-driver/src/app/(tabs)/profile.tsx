@@ -1,15 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity,
   Image, Alert, StatusBar, Platform, Modal, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import apiClient from '../../services/apiClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function DriverProfileScreen() {
   const router = useRouter();
+
+  // Dữ liệu tài xế thật từ PostgreSQL
+  const [driver, setDriver] = useState({
+    fullName: 'Đang tải...',
+    phone: '',
+    licensePlate: 'Đang tải...',
+    vehicleName: 'Đang tải...',
+    rating: 5.0,
+    totalTrips: 0,
+    tier: 'KIM CƯƠNG',
+    avatarUrl: '',
+    isOnline: false,
+  });
+
+  useEffect(() => {
+    const fetchDriverMe = async () => {
+      try {
+        const res = await apiClient.get('/ride/driver/me');
+        if (res.data) {
+          setDriver({
+            fullName: res.data.fullName || 'Tài xế Sunstar',
+            phone: res.data.phone || '',
+            licensePlate: res.data.licensePlate || '29E1-888.99',
+            vehicleName: res.data.vehicleName || 'VinFast EV',
+            rating: res.data.rating || 5.0,
+            totalTrips: res.data.totalTrips || 0,
+            tier: res.data.tier || 'KIM CƯƠNG',
+            avatarUrl: res.data.avatarUrl || '',
+            isOnline: !!res.data.isOnline,
+          });
+        }
+      } catch (err) {
+        console.warn('Lỗi tải thông tin tài xế:', err);
+      }
+    };
+    fetchDriverMe();
+  }, []);
 
   // Modals
   const [showVehicleModal, setShowVehicleModal] = useState(false);
@@ -39,24 +77,24 @@ export default function DriverProfileScreen() {
         {/* 1. THẺ HỒ SƠ ĐỐI TÁC KIM CƯƠNG */}
         <View style={styles.profileCard}>
           <Image
-            source={require('../../../assets/images/icon.png')}
+            source={driver.avatarUrl ? { uri: driver.avatarUrl } : require('../../../assets/images/icon.png')}
             style={styles.avatar}
           />
           <View style={styles.profileInfo}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.driverName}>Trần Văn Bình</Text>
+              <Text style={styles.driverName}>{driver.fullName}</Text>
               <Ionicons name="checkmark-circle" size={19} color="#10B981" />
             </View>
-            <Text style={styles.driverIdText}>Mã đối tác: #TX-8889 • Đội xe Thủ Đô</Text>
+            <Text style={styles.driverIdText}>SĐT: {driver.phone || '0988123456'} • Đội xe Thủ Đô</Text>
 
             <View style={styles.badgeRow}>
               <View style={styles.badgeGold}>
                 <Ionicons name="star" size={13} color="#D97706" />
-                <Text style={styles.badgeGoldText}>4.96 ⭐ (520 cuốc)</Text>
+                <Text style={styles.badgeGoldText}>{driver.rating.toFixed(2)} ⭐ ({driver.totalTrips} cuốc)</Text>
               </View>
               <View style={styles.badgePurple}>
                 <Ionicons name="diamond" size={13} color="#7E22CE" />
-                <Text style={styles.badgePurpleText}>Tài Xế Kim Cương</Text>
+                <Text style={styles.badgePurpleText}>{driver.tier}</Text>
               </View>
             </View>
           </View>
@@ -107,7 +145,7 @@ export default function DriverProfileScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Phương tiện đăng ký hoạt động</Text>
-              <Text style={styles.menuSub}>Honda Wave RSX 110cc • Biển số: 29D1-888.88</Text>
+              <Text style={styles.menuSub}>{driver.vehicleName} • Biển số: {driver.licensePlate}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>

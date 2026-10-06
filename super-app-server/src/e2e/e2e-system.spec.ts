@@ -62,8 +62,8 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
     commissionRate: 0.25,
     commissionAmount: 1250000,
     partnerAmount: 3750000,
-    startDate: new Date('2026-08-10'),
-    endDate: new Date('2026-08-11'),
+    startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
     expiresAt: new Date(Date.now() + 10 * 60 * 1000), // Valid hold
     partner: mockPartner,
     service: mockService,
@@ -208,8 +208,8 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
 
       const dto = {
         serviceId: mockService.id,
-        startDate: new Date('2026-08-10').toISOString(),
-        endDate: new Date('2026-08-11').toISOString(),
+        startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
         customerName: 'Nguyễn Văn A',
         customerPhone: '0912345678',
       };
@@ -336,7 +336,10 @@ describe('E2E STEP 10 — Full System Integration Tests', () => {
       expect(mockPrismaService.payout.create).not.toHaveBeenCalled();
       // Admin phải nhận cảnh báo
       expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ eventKey: `AMOUNT_MISMATCH_${ORDER_ID}` }),
+        expect.objectContaining({
+          eventKey: expect.stringMatching(/^AMOUNT_MISMATCH_/),
+          data: expect.objectContaining({ orderId: ORDER_ID }),
+        }),
       );
     });
   });

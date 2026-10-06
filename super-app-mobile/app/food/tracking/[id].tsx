@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, ScrollView, 
   Platform, SafeAreaView, StatusBar, useWindowDimensions, Image,
-  Linking
+  Linking, ActivityIndicator
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { useFood, FoodActiveOrder } from '../../../src/context/FoodContext';
+import { useFood, FoodActiveOrder } from '../../../../src/context/FoodContext';
+import { foodService } from '@/services/foodService';
 
-const STAGES: { status: FoodActiveOrder['status']; title: string; desc: string; icon: any }[] = [
+const STAGES: { status: string; title: string; desc: string; icon: any }[] = [
   { status: 'PENDING', title: 'Chờ quán xác nhận', desc: 'Đơn hàng đã được gửi tới quán ăn', icon: 'time-outline' },
   { status: 'PREPARING', title: 'Quán đang làm món', desc: 'Đầu bếp đang chế biến nóng sốt', icon: 'restaurant-outline' },
   { status: 'DRIVER_ACCEPTED', title: 'Tài xế đang đến quán', desc: 'Shipper đang trên đường lấy đồ ăn', icon: 'bicycle-outline' },
@@ -26,30 +27,75 @@ export default function FoodTrackingScreen() {
 
   const { activeOrder, updateOrderStatus } = useFood();
 
-  const [currentStageIdx, setCurrentStageIdx] = useState(1); // Default: Đang làm món
-  const [etaMinutes, setEtaMinutes] = useState(18);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [serverOrder, setServerOrder] = useState<any>(null);
+  const [etaMinutes, setEtaMinutes] = useState(25);
 
-  const orderCode = typeof id === 'string' ? id : (activeOrder?.orderCode || '#FD-8899');
-  const restaurantName = activeOrder?.restaurantName || 'The Pizza Company & Pasta';
-  const deliveryAddress = activeOrder?.deliveryAddress || 'Số 18 Tạ Quang Bửu, Hai Bà Trưng, Hà Nội';
-  const totalAmount = activeOrder?.totalAmount || 225000;
+  const orderTargetId = typeof id === 'string' ? id : (activeOrder?.orderCode || activeOrder?.id || '');
 
-  // Mô phỏng tiến độ đơn hàng tự động để test thực tế
+  // Lấy dữ liệu đơn hàng thật từ Backend & Polling định kỳ 5s
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentStageIdx((prev) => {
-        if (prev < STAGES.length - 1) {
-          const next = prev + 1;
-          updateOrderStatus(STAGES[next].status);
-          setEtaMinutes(m => Math.max(2, m - 5));
-          return next;
-        }
-        return prev;
-      });
-    }, 12000); // 12 giây đổi 1 trạng thái để demo mượt mà
+    let isMounted = true;
 
-    return () => clearInterval(timer);
-  }, []);
+    const fetchOrderStatus = async () => {
+      if (!orderTargetId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await foodService.getOrderTracking(orderTargetId);
+        if (!isMounted) return;
+        setServerOrder(data);
+        setErrorMsg(null);
+
+        // Đồng bộ trạng thái vào context nếu có
+        if (data.status) {
+          updateOrderStatus(data.status);
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        // Nếu lỗi mạng tạm thời mà đã có activeOrder thì giữ nguyên
+        if (!serverOrder && !activeOrder) {
+          setErrorMsg(err.response?.data?.message || 'Không thể tải thông tin đơn hàng');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchOrderStatus();
+
+    // Polling định kỳ 5s để cập nhật trạng thái mới nhất từ Quán / Tài xế
+    const pollInterval = setInterval(() => {
+      fetchOrderStatus();
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
+  }, [orderTargetId]);
+
+  // Xác định vị trí trạng thái hiện tại trên thanh tiến trình
+  const currentStatus = serverOrder?.status || activeOrder?.status || 'PENDING';
+  let currentStageIdx = 0;
+  if (currentStatus === 'CONFIRMED' || currentStatus === 'PREPARING') {
+    currentStageIdx = 1;
+  } else if (currentStatus === 'DRIVER_ACCEPTED' || currentStatus === 'DRIVER_ARRIVING') {
+    currentStageIdx = 2;
+  } else if (currentStatus === 'PICKED_UP' || currentStatus === 'DELIVERING') {
+    currentStageIdx = 3;
+  } else if (currentStatus === 'COMPLETED') {
+    currentStageIdx = 4;
+  }
+
+  const orderCode = serverOrder?.orderCode || activeOrder?.orderCode || (typeof id === 'string' ? id : '#FD-FOOD');
+  const restaurantName = serverOrder?.restaurant?.name || activeOrder?.restaurantName || 'Quán ăn V-Life';
+  const deliveryAddress = serverOrder?.deliveryAddress || activeOrder?.deliveryAddress || 'Địa chỉ giao hàng';
+  const totalAmount = serverOrder?.totalAmount || activeOrder?.totalAmount || 0;
+  const items = serverOrder?.items || activeOrder?.items || [];
 
   const currentStage = STAGES[currentStageIdx];
 
@@ -200,20 +246,30 @@ export default function FoodTrackingScreen() {
             {/* Order Items Snapshot */}
             <View style={styles.infoCard}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={styles.sectionTitle}>Món ăn ({activeOrder?.items?.length || 2} món)</Text>
+                <Text style={styles.sectionTitle}>Món ăn ({items.length} món)</Text>
                 <Text style={styles.orderTotalText}>{totalAmount.toLocaleString('vi-VN')}đ</Text>
               </View>
 
-              {(activeOrder?.items || []).map((it) => (
-                <View key={it.cartItemId} style={styles.itemRow}>
-                  <Text style={styles.itemQty}>{it.quantity}x</Text>
-                  <View style={{ flex: 1, marginLeft: 8 }}>
-                    <Text style={styles.itemName}>{it.name}</Text>
-                    {it.size ? <Text style={styles.itemSub}>{it.size.name}</Text> : null}
+              {items.map((it: any, idx: number) => {
+                const itemOptions = typeof it.optionsJson === 'string' ? JSON.parse(it.optionsJson || '{}') : (it.optionsJson || {});
+                const sizeName = it.size?.name || itemOptions.size?.name;
+                const toppings = it.toppings || itemOptions.toppings || [];
+                const itemPrice = it.totalPrice || (it.price * it.quantity) || 0;
+
+                return (
+                  <View key={it.id || it.cartItemId || idx} style={styles.itemRow}>
+                    <Text style={styles.itemQty}>{it.quantity}x</Text>
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.itemName}>{it.name}</Text>
+                      {sizeName ? <Text style={styles.itemSub}>{sizeName}</Text> : null}
+                      {toppings.length > 0 ? (
+                        <Text style={styles.itemSub}>+ {toppings.map((t: any) => t.name).join(', ')}</Text>
+                      ) : null}
+                    </View>
+                    <Text style={styles.itemPrice}>{itemPrice.toLocaleString('vi-VN')}đ</Text>
                   </View>
-                  <Text style={styles.itemPrice}>{it.totalPrice.toLocaleString('vi-VN')}đ</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             {/* Action Return Home */}

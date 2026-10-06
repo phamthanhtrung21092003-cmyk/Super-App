@@ -97,14 +97,16 @@ class RideSocketService {
   }
 
   /** Khởi tạo và kết nối socket */
-  connect(role: 'driver' | 'customer' = 'customer') {
+  async connect(role: 'driver' | 'customer' = 'customer', forcedToken?: string) {
     if (this.socket?.connected) {
       return this.socket;
     }
 
+    const token = forcedToken || (await AsyncStorage.getItem('accessToken'));
     const socketUrl = this.getSocketUrl();
 
     this.socket = io(`${socketUrl}/rides`, {
+      auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,

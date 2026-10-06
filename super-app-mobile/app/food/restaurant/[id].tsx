@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, ScrollView, 
   Platform, SafeAreaView, StatusBar, useWindowDimensions, Image,
-  Modal, TextInput
+  Modal, TextInput, ActivityIndicator
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp, FadeInDown, Extrapolate, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { useFood, FoodCartItem } from '../../../src/context/FoodContext';
+import { useFood, FoodCartItem, FoodRestaurant, calculateDistanceKm } from '@/context/FoodContext';
+import { foodService } from '@/services/foodService';
 
 interface RawMenuItem {
   id: string;
@@ -22,97 +23,6 @@ interface RawMenuItem {
   sizes: { name: string; price: number }[];
   toppings: { name: string; price: number }[];
 }
-
-const MENU_CATEGORIES = ['Món bán chạy', 'Combo Tiết kiệm', 'Món chính', 'Đồ uống'];
-
-const MOCK_ITEMS: RawMenuItem[] = [
-  { 
-    id: 'i1', 
-    cat: 'Món bán chạy', 
-    name: 'Pizza Hải Sản Viền Phô Mai', 
-    desc: 'Tôm, mực, nghêu, ớt chuông, phô mai dẻo dai', 
-    price: 185000, 
-    oldPrice: 220000, 
-    img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=400&q=80',
-    calories: '450 Kcal',
-    sizes: [
-      { name: 'Size S (6 miếng)', price: 0 },
-      { name: 'Size M (8 miếng)', price: 40000 },
-      { name: 'Size L (10 miếng)', price: 80000 },
-    ],
-    toppings: [
-      { name: 'Gấp đôi Phô mai', price: 25000 },
-      { name: 'Xúc xích Đức', price: 20000 },
-      { name: 'Thịt xông khói', price: 20000 },
-    ]
-  },
-  { 
-    id: 'i2', 
-    cat: 'Món bán chạy', 
-    name: 'Mì Ý Bò Băm Xốt Cà Chua', 
-    desc: 'Thịt bò băm, xốt cà chua tươi, phô mai Parmesan', 
-    price: 95000, 
-    oldPrice: 110000,
-    img: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=400&q=80',
-    calories: '380 Kcal',
-    sizes: [
-      { name: 'Phần tiêu chuẩn', price: 0 },
-      { name: 'Phần lớn (+ mì, + bò)', price: 30000 },
-    ],
-    toppings: [
-      { name: 'Thêm phô mai bột', price: 15000 },
-      { name: 'Xốt cay Tabasco', price: 5000 },
-    ]
-  },
-  { 
-    id: 'i3', 
-    cat: 'Combo Tiết kiệm', 
-    name: 'Combo 2 Người Vui Vẻ', 
-    desc: '1 Pizza M + 1 Mì Ý Bò Bằm + 2 Lon Coca', 
-    price: 250000, 
-    oldPrice: 320000, 
-    img: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=400&q=80',
-    calories: '850 Kcal',
-    sizes: [
-      { name: 'Combo Chuẩn', price: 0 },
-    ],
-    toppings: [
-      { name: 'Nâng cấp Coca lên Trà đào', price: 20000 },
-    ]
-  },
-  { 
-    id: 'i4', 
-    cat: 'Món chính', 
-    name: 'Salad Gà Nướng Healthy', 
-    desc: 'Ức gà nướng mật ong, xà lách, sốt mè rang thanh đạm', 
-    price: 75000, 
-    img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80',
-    calories: '290 Kcal',
-    sizes: [
-      { name: 'Phần tiêu chuẩn', price: 0 },
-    ],
-    toppings: [
-      { name: 'Thêm trứng luộc', price: 10000 },
-      { name: 'Thêm ức gà (50g)', price: 20000 },
-    ]
-  },
-  { 
-    id: 'i5', 
-    cat: 'Đồ uống', 
-    name: 'Trà Đào Cam Sả', 
-    desc: 'Trà đào tươi, sả, cam tươi giải nhiệt mát lạnh', 
-    price: 45000, 
-    img: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=400&q=80',
-    sizes: [
-      { name: 'Ly M (500ml)', price: 0 },
-      { name: 'Ly L (700ml)', price: 10000 },
-    ],
-    toppings: [
-      { name: 'Thêm đào miếng', price: 12000 },
-      { name: 'Trân châu trắng', price: 10000 },
-    ]
-  },
-];
 
 const HEADER_HEIGHT = 220;
 
@@ -128,21 +38,127 @@ export default function RestaurantDetailScreen() {
     restaurant: currentCartRest, 
     addToCart, 
     subtotal,
+    customerCoords,
     conflictModalVisible,
     confirmReplaceRestaurantCart,
     cancelReplaceRestaurantCart
   } = useFood();
 
-  const currentRestaurant = {
-    id: typeof id === 'string' ? id : 'rest_pizza_hub',
-    name: "The Pizza Company & Pasta - Thái Hà",
-    address: "102 Thái Hà, Đống Đa, Hà Nội",
-    avatar: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80",
-    latitude: 21.0118,
-    longitude: 105.8195,
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [restaurantData, setRestaurantData] = useState<any>(null);
+  const [menuCategories, setMenuCategories] = useState<string[]>([]);
+  const [menuItems, setMenuItems] = useState<RawMenuItem[]>([]);
+  const [activeCat, setActiveCat] = useState<string>('Tất cả');
+
+  // Tải thông tin quán và menu từ Backend
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDetail = async () => {
+      try {
+        setLoading(true);
+        setErrorMsg(null);
+        const restId = Array.isArray(id) ? id[0] : (id || '');
+        if (!restId) {
+          setErrorMsg('Không tìm thấy thông tin quán ăn');
+          setLoading(false);
+          return;
+        }
+
+        const data = await foodService.getRestaurantDetail(restId);
+        if (!isMounted) return;
+
+        setRestaurantData(data);
+
+        // Trích xuất Categories và Menu Items từ Database thật
+        const cats: string[] = ['Tất cả'];
+        const items: RawMenuItem[] = [];
+
+        if (data.categories && Array.isArray(data.categories)) {
+          data.categories.forEach((cat: any) => {
+            if (cat.name && !cats.includes(cat.name)) {
+              cats.push(cat.name);
+            }
+
+            if (cat.items && Array.isArray(cat.items)) {
+              cat.items.forEach((item: any) => {
+                // Phân tích Size và Topping từ OptionGroups trong DB
+                const sizes: { name: string; price: number }[] = [];
+                const toppings: { name: string; price: number }[] = [];
+
+                if (item.optionGroups && Array.isArray(item.optionGroups)) {
+                  item.optionGroups.forEach((grp: any) => {
+                    const grpName = (grp.name || '').toLowerCase();
+                    const isSizeGroup = grp.type === 'SINGLE' || grpName.includes('size') || grpName.includes('cỡ');
+                    
+                    if (grp.options && Array.isArray(grp.options)) {
+                      grp.options.forEach((opt: any) => {
+                        const optObj = { name: opt.name, price: Number(opt.price || 0) };
+                        if (isSizeGroup) {
+                          sizes.push(optObj);
+                        } else {
+                          toppings.push(optObj);
+                        }
+                      });
+                    }
+                  });
+                }
+
+                if (sizes.length === 0) {
+                  sizes.push({ name: 'Tiêu chuẩn', price: 0 });
+                }
+
+                items.push({
+                  id: item.id,
+                  cat: cat.name,
+                  name: item.name,
+                  desc: item.description || '',
+                  price: Number(item.price || item.basePrice || 0),
+                  oldPrice: item.originalPrice ? Number(item.originalPrice) : (item.oldPrice ? Number(item.oldPrice) : undefined),
+                  img: item.image || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=400&q=80',
+                  calories: item.calories,
+                  sizes,
+                  toppings,
+                });
+              });
+            }
+          });
+        }
+
+        setMenuCategories(cats);
+        setMenuItems(items);
+        if (cats.length > 1) {
+          setActiveCat(cats[0]); // Mặc định 'Tất cả'
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        const msg = err.response?.data?.message || err.message || 'Không thể tải thông tin quán ăn';
+        setErrorMsg(msg);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchDetail();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  const currentRestaurant: FoodRestaurant = {
+    id: restaurantData?.id || (typeof id === 'string' ? id : 'rest_unknown'),
+    name: restaurantData?.name || 'Quán ăn V-Life',
+    address: restaurantData?.address || '',
+    avatar: restaurantData?.avatar || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80',
+    coverImage: restaurantData?.coverImage,
+    latitude: restaurantData?.latitude || 21.0118,
+    longitude: restaurantData?.longitude || 105.8195,
   };
 
-  const [activeCat, setActiveCat] = useState('Món bán chạy');
+  // Tính khoảng cách GPS thật từ tọa độ khách
+  const realDistanceKm = restaurantData 
+    ? calculateDistanceKm(customerCoords.lat, customerCoords.lng, restaurantData.latitude, restaurantData.longitude)
+    : 1.5;
   const scrollY = useSharedValue(0);
 
   // State cho Interactive Bottom Sheet chọn Option món
@@ -208,7 +224,35 @@ export default function RestaurantDetailScreen() {
     setModalVisible(false);
   };
 
-  const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCartCount = cart.reduce((sum: number, item: FoodCartItem) => sum + item.quantity, 0);
+
+  if (loading) {
+    return (
+      <View style={[styles.webWrapper, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={accentColor} />
+        <Text style={{ marginTop: 16, color: '#64748B', fontSize: 15, fontWeight: '600' }}>
+          Đang tải thực đơn quán ăn...
+        </Text>
+      </View>
+    );
+  }
+
+  if (errorMsg || !restaurantData) {
+    return (
+      <View style={[styles.webWrapper, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Text style={{ marginTop: 16, fontSize: 18, fontWeight: 'bold', color: '#0F172A', textAlign: 'center' }}>
+          {errorMsg || 'Không thể hiển thị quán ăn'}
+        </Text>
+        <TouchableOpacity
+          style={{ marginTop: 20, backgroundColor: accentColor, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/food')}
+        >
+          <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Quay lại trang Đồ Ăn</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.webWrapper}>
@@ -239,7 +283,7 @@ export default function RestaurantDetailScreen() {
           {/* Parallax Header */}
           <View style={{ height: HEADER_HEIGHT }}>
             <Animated.Image 
-              source={{ uri: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80' }} 
+              source={{ uri: restaurantData.coverImage || restaurantData.avatar || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80' }} 
               style={[StyleSheet.absoluteFill, headerStyle]} 
             />
             <LinearGradient colors={['rgba(255,255,255,0.05)', '#F8FAFC']} style={StyleSheet.absoluteFill} />
@@ -249,54 +293,60 @@ export default function RestaurantDetailScreen() {
             {/* Info Card */}
             <Animated.View entering={FadeInUp.duration(400)} style={styles.infoCard}>
               <Text style={styles.resName}>{currentRestaurant.name}</Text>
-              <Text style={styles.resType}>Pizza, Mì Ý, Đồ Âu • Đang mở cửa</Text>
+              <Text style={styles.resType} numberOfLines={2}>
+                {restaurantData.address} • {restaurantData.isActive ? 'Đang mở cửa' : 'Tạm đóng cửa'}
+              </Text>
               
               <View style={styles.metaRow}>
                 <View style={styles.metaItem}>
                   <Ionicons name="star" size={16} color="#F59E0B" />
                   <Text style={[styles.metaText, { color: '#0F172A', fontWeight: 'bold' }]}>
-                    4.8 <Text style={{ color: '#64748B', fontWeight: 'normal' }}>(320+)</Text>
+                    {(restaurantData.rating || 4.8).toFixed(1)} <Text style={{ color: '#64748B', fontWeight: 'normal' }}>({restaurantData.totalReviews || 120}+)</Text>
                   </Text>
                 </View>
                 <View style={styles.metaItem}>
                   <Ionicons name="time-outline" size={16} color="#64748B" />
-                  <Text style={styles.metaText}>20 - 30 phút</Text>
+                  <Text style={styles.metaText}>{restaurantData.estimatedTime || '20 - 30 phút'}</Text>
                 </View>
                 <View style={styles.metaItem}>
                   <Ionicons name="location-outline" size={16} color="#64748B" />
-                  <Text style={styles.metaText}>1.8 km</Text>
+                  <Text style={styles.metaText}>~{realDistanceKm} km</Text>
                 </View>
               </View>
               
               <View style={styles.promoRow}>
                 <View style={[styles.promoTag, { backgroundColor: '#10B98115' }]}>
                   <Ionicons name="flash" size={12} color="#10B981" />
-                  <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '700' }}>Freeship đơn từ 200k (≤5km)</Text>
+                  <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '700' }}>
+                    {realDistanceKm <= 3 ? 'Freeship đơn từ 200k (≤3km)' : `Freeship đơn từ ${(200000 + Math.round((realDistanceKm - 3) * 100000)).toLocaleString('vi-VN')}đ`}
+                  </Text>
                 </View>
               </View>
             </Animated.View>
 
             {/* Sticky Category Tabs */}
-            <View style={styles.stickyMenuCats}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 12 }}>
-                {MENU_CATEGORIES.map(cat => {
-                  const isCatActive = activeCat === cat;
-                  return (
-                    <TouchableOpacity 
-                      key={cat} 
-                      style={[styles.catBtn, isCatActive && { backgroundColor: accentColor, borderColor: accentColor }]}
-                      onPress={() => setActiveCat(cat)}
-                    >
-                      <Text style={[styles.catText, isCatActive && { color: '#FFF', fontWeight: '700' }]}>{cat}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
+            {menuCategories.length > 0 && (
+              <View style={styles.stickyMenuCats}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 12 }}>
+                  {menuCategories.map(cat => {
+                    const isCatActive = activeCat === cat;
+                    return (
+                      <TouchableOpacity 
+                        key={cat} 
+                        style={[styles.catBtn, isCatActive && { backgroundColor: accentColor, borderColor: accentColor }]}
+                        onPress={() => setActiveCat(cat)}
+                      >
+                        <Text style={[styles.catText, isCatActive && { color: '#FFF', fontWeight: '700' }]}>{cat}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Items List */}
             <View style={styles.itemList}>
-              {MOCK_ITEMS.filter(item => activeCat === 'Món bán chạy' || item.cat === activeCat).map((item, idx) => (
+              {menuItems.filter(item => activeCat === 'Tất cả' || item.cat === activeCat).map((item, idx) => (
                 <Animated.View key={item.id} entering={FadeInUp.delay(idx * 40).duration(300)}>
                   <TouchableOpacity 
                     style={styles.itemCard}

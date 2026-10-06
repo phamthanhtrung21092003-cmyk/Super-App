@@ -82,6 +82,25 @@ export default function NotificationsScreen() {
     }
 
     // Điều hướng theo loại thông báo
+    if (notif.data?.deepLink) {
+      router.push(notif.data.deepLink as any);
+      return;
+    }
+
+    if (notif.data?.orderId) {
+      if (notif.data.role === 'MERCHANT') {
+        router.push('/food-merchant' as any);
+      } else if (notif.data.role === 'DRIVER') {
+        router.push('/driver' as any);
+      } else {
+        router.push({
+          pathname: '/food/orders/[id]' as any,
+          params: { id: notif.data.orderId },
+        });
+      }
+      return;
+    }
+
     if (notif.data?.bookingId) {
       router.push(`/travel/checkout?serviceId=${notif.data.serviceId || ''}&price=0`);
     }

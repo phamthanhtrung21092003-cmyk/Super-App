@@ -1,33 +1,71 @@
-import { rideService } from '../services';
-import { IRideRepository } from '../types';
-import { Driver } from '../services/mock/mockData/drivers';
+/**
+ * rideRepository.ts
+ * ──────────────────────────────────────────────────────
+ * Repository layer cho App Khách hàng — Proxy qua realRideService thật.
+ * Đã loại bỏ toàn bộ logic mock (getDrivers, bookRide cũ, cancelRide cũ).
+ * ──────────────────────────────────────────────────────
+ */
 
-export const rideRepository: IRideRepository = {
-  async getDrivers(lat: number, lng: number): Promise<Driver[]> {
+import realRideApiService, {
+  CreateRidePayload,
+  TripData,
+} from '../services/realRideService';
+
+export const rideRepository = {
+  /** Tạo yêu cầu chuyến xe mới */
+  async createRideBooking(payload: CreateRidePayload): Promise<TripData> {
     try {
-      return await rideService.getDrivers(lat, lng);
+      return await realRideApiService.createRideBooking(payload);
     } catch (error) {
-      console.error('[RideRepository] Failed to fetch drivers:', error);
+      console.error('[RideRepository] Failed to create ride booking:', error);
       throw error;
     }
   },
 
-  async bookRide(pickup: string, dropoff: string, vehicleType: 'bike' | 'car'): Promise<{ success: boolean; bookingId: string; driver: Driver; price: number }> {
+  /** Lấy trip đang active của khách hàng */
+  async getCustomerActiveTrip(): Promise<TripData | null> {
     try {
-      return await rideService.bookRide(pickup, dropoff, vehicleType);
-    } catch (error: any) {
-      console.error('[RideRepository] Failed to book ride:', error);
+      return await realRideApiService.getCustomerActiveTrip();
+    } catch (error) {
+      console.error('[RideRepository] Failed to get active trip:', error);
       throw error;
     }
   },
 
-  async cancelRide(bookingId: string): Promise<void> {
+  /** Lấy chi tiết trip theo ID */
+  async getTripById(tripId: string): Promise<TripData> {
     try {
-      await rideService.cancelRide(bookingId);
+      return await realRideApiService.getTripById(tripId);
     } catch (error) {
-      console.error(`[RideRepository] Failed to cancel ride ${bookingId}:`, error);
+      console.error(`[RideRepository] Failed to get trip ${tripId}:`, error);
       throw error;
     }
-  }
+  },
+
+  /** Hủy chuyến xe */
+  async cancelTrip(tripId: string, reason?: string): Promise<TripData> {
+    try {
+      return await realRideApiService.cancelTrip(tripId, reason, 'customer');
+    } catch (error) {
+      console.error(`[RideRepository] Failed to cancel trip ${tripId}:`, error);
+      throw error;
+    }
+  },
+
+  /** Đánh giá tài xế sau chuyến */
+  async rateDriver(
+    tripId: string,
+    rating: number,
+    comment?: string,
+    tags?: string[],
+  ): Promise<TripData> {
+    try {
+      return await realRideApiService.rateDriver(tripId, rating, comment, tags);
+    } catch (error) {
+      console.error(`[RideRepository] Failed to rate driver for trip ${tripId}:`, error);
+      throw error;
+    }
+  },
 };
+
 export default rideRepository;

@@ -10,9 +10,17 @@ import {
   UseGuards,
   NotFoundException,
   ForbiddenException,
+  Put,
 } from '@nestjs/common';
 import { RideService } from './ride.service';
-import { CreateRideDto, UpdateTripStatusDto, DriverLocationDto } from './dto/create-ride.dto';
+import {
+  CreateRideDto,
+  UpdateTripStatusDto,
+  DriverLocationDto,
+  UpdateDriverSettingsDto,
+  DriverTopupDto,
+  DriverWithdrawDto,
+} from './dto/create-ride.dto';
 import { RideGateway } from './ride.gateway';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -263,7 +271,10 @@ export class RideController {
       tier: 'KIM CƯƠNG',
       totalTrips: driver.totalTrips,
       isOnline: driver.isOnline,
-      walletBalance: driver.walletBalance,
+      walletBalance: Number(driver.cashBalance),
+      creditBalance: Number(driver.creditBalance),
+      cashBalance: Number(driver.cashBalance),
+      dailyEarnings: Number(driver.dailyEarnings),
     };
   }
 
@@ -275,12 +286,50 @@ export class RideController {
     return this.rideService.getDriverHistory(user.id);
   }
 
-  /** Xem ví tài xế */
+  /** Xem ví tài xế (Đọc Database thật: Ví Ký Quỹ & Ví Thu Nhập & Lịch sử) */
   @Get('driver/wallet')
   @Roles(Role.DRIVER)
-  @ApiOperation({ summary: 'Xem số dư ví và giao dịch tài xế' })
+  @ApiOperation({ summary: 'Xem số dư 2 ví và lịch sử giao dịch thật của tài xế' })
   async getDriverWallet(@CurrentUser() user: any) {
     return this.rideService.getDriverWallet(user.id);
+  }
+
+  /** Tài xế nạp tiền ví ký quỹ qua VietQR NAPAS 24/7 */
+  @Post('driver/wallet/topup-vietqr')
+  @Roles(Role.DRIVER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Tài xế nạp tiền vào Ví Ký Quỹ qua VietQR 24/7' })
+  async driverTopup(@Body() dto: DriverTopupDto, @CurrentUser() user: any) {
+    return this.rideService.topupDriverWallet(user.id, dto.amount);
+  }
+
+  /** Tài xế gửi yêu cầu rút tiền từ Ví Thu Nhập về ngân hàng */
+  @Post('driver/wallet/withdraw')
+  @Roles(Role.DRIVER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Tài xế rút tiền từ Ví Khả Dụng về tài khoản ngân hàng' })
+  async driverWithdraw(@Body() dto: DriverWithdrawDto, @CurrentUser() user: any) {
+    return this.rideService.withdrawDriverWallet(user.id, dto);
+  }
+
+  /** Lấy thông tin cài đặt buồng lái tài xế */
+  @Get('driver/settings')
+  @Roles(Role.DRIVER)
+  @ApiOperation({ summary: 'Lấy cấu hình cài đặt buồng lái của tài xế' })
+  async getDriverSettings(@CurrentUser() user: any) {
+    return this.rideService.getDriverSettings(user.id);
+  }
+
+  /** Cập nhật cài đặt buồng lái tài xế */
+  @Put('driver/settings')
+  @Roles(Role.DRIVER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cập nhật cấu hình cài đặt buồng lái của tài xế' })
+  async updateDriverSettings(
+    @Body() dto: UpdateDriverSettingsDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.rideService.updateDriverSettings(user.id, dto);
   }
 
   /** Nạp ví tài xế (BẢO MẬT: Chỉ ADMIN mới được cấp quyền nạp số dư trực tiếp) */

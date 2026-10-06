@@ -17,6 +17,7 @@ import { NotificationModule } from './notification/notification.module';
 import { UploadModule } from './upload/upload.module';
 import { AdminModule } from './admin/admin.module';
 import { VideoModule } from './video/video.module';
+import { MovieModule } from './movie/movie.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { VideoModule } from './video/video.module';
     UploadModule,
     AdminModule,
     VideoModule,
+    MovieModule,
   ],
 })
 export class AppModule {}
