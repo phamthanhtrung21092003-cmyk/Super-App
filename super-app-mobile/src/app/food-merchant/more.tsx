@@ -33,6 +33,34 @@ export default function MerchantMore() {
 
         <TouchableOpacity
           style={styles.menuItem}
+          onPress={() => router.push('/food-merchant/reviews' as any)}
+        >
+          <View style={[styles.iconWrap, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="star" size={22} color="#D97706" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.menuTitle}>Đánh Giá & Nhận Xét Khách Hàng</Text>
+            <Text style={styles.menuSub}>Phản hồi chất lượng món ăn, phục vụ và thống kê sao</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/food-merchant/vouchers' as any)}
+        >
+          <View style={[styles.iconWrap, { backgroundColor: '#FFF7ED' }]}>
+            <Ionicons name="ticket" size={22} color="#F97316" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.menuTitle}>Quản Lý Khuyến Mãi & Voucher</Text>
+            <Text style={styles.menuSub}>Tạo mã giảm giá riêng của quán, theo dõi số lượt sử dụng</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
           onPress={() => router.push('/food-merchant/profile' as any)}
         >
           <View style={[styles.iconWrap, { backgroundColor: '#EFF6FF' }]}>

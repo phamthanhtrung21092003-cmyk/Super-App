@@ -50,6 +50,25 @@ export default function RestaurantDetailScreen() {
   const [menuCategories, setMenuCategories] = useState<string[]>([]);
   const [menuItems, setMenuItems] = useState<RawMenuItem[]>([]);
   const [activeCat, setActiveCat] = useState<string>('Tất cả');
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsData, setReviewsData] = useState<any>(null);
+
+  const openReviewsModal = async () => {
+    setReviewModalVisible(true);
+    const restId = Array.isArray(id) ? id[0] : (id || '');
+    if (restId && !reviewsData) {
+      try {
+        setReviewsLoading(true);
+        const res = await foodService.getRestaurantReviews(restId);
+        setReviewsData(res);
+      } catch (err) {
+        console.error('Lỗi tải đánh giá nhà hàng:', err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    }
+  };
 
   // Tải thông tin quán và menu từ Backend
   useEffect(() => {
@@ -298,12 +317,15 @@ export default function RestaurantDetailScreen() {
               </Text>
               
               <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
+                <TouchableOpacity style={styles.metaItem} onPress={openReviewsModal}>
                   <Ionicons name="star" size={16} color="#F59E0B" />
                   <Text style={[styles.metaText, { color: '#0F172A', fontWeight: 'bold' }]}>
-                    {(restaurantData.rating || 4.8).toFixed(1)} <Text style={{ color: '#64748B', fontWeight: 'normal' }}>({restaurantData.totalReviews || 120}+)</Text>
+                    {(restaurantData.rating || 5.0).toFixed(1)}{' '}
+                    <Text style={{ color: '#0066FF', fontWeight: '600', textDecorationLine: 'underline' }}>
+                      ({restaurantData.totalReviews || 0} đánh giá)
+                    </Text>
                   </Text>
-                </View>
+                </TouchableOpacity>
                 <View style={styles.metaItem}>
                   <Ionicons name="time-outline" size={16} color="#64748B" />
                   <Text style={styles.metaText}>{restaurantData.estimatedTime || '20 - 30 phút'}</Text>
@@ -573,6 +595,108 @@ export default function RestaurantDetailScreen() {
                   <Text style={styles.alertConfirmText}>Làm mới giỏ</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ========================================================================= */}
+        {/* MODAL XEM ĐÁNH GIÁ KHÁCH HÀNG THỰC TẾ                                      */}
+        {/* ========================================================================= */}
+        <Modal
+          visible={reviewModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setReviewModalVisible(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+                <View>
+                  <Text style={{ fontSize: 17, fontWeight: '800', color: '#0F172A' }}>Đánh Giá & Nhận Xét</Text>
+                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{restaurantData?.name}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setReviewModalVisible(false)} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={26} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+
+              {reviewsLoading ? (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color="#EA580C" />
+                  <Text style={{ marginTop: 10, fontSize: 13, color: '#64748B' }}>Đang tải đánh giá...</Text>
+                </View>
+              ) : (
+                <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+                  {reviewsData?.ratingSummary && (
+                    <View style={{ backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}>
+                      <View style={{ alignItems: 'center', paddingRight: 16, borderRightWidth: 1, borderRightColor: '#E2E8F0' }}>
+                        <Text style={{ fontSize: 32, fontWeight: '900', color: '#0F172A' }}>
+                          {Number(reviewsData.ratingSummary.averageRating).toFixed(1)}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 2, marginVertical: 2 }}>
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Ionicons
+                              key={s}
+                              name={s <= Math.round(reviewsData.ratingSummary.averageRating) ? 'star' : 'star-outline'}
+                              size={12}
+                              color="#F59E0B"
+                            />
+                          ))}
+                        </View>
+                        <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>
+                          {reviewsData.ratingSummary.totalReviews} lượt đánh giá
+                        </Text>
+                      </View>
+
+                      <View style={{ flex: 1, paddingLeft: 14, gap: 3 }}>
+                        {[5, 4, 3, 2, 1].map((s) => {
+                          const count = reviewsData.ratingSummary.starBreakdown?.[s] || 0;
+                          const total = reviewsData.ratingSummary.totalReviews || 1;
+                          const pct = (count / total) * 100;
+                          return (
+                            <View key={s} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569', width: 18 }}>{s}★</Text>
+                              <View style={{ flex: 1, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                                <View style={{ width: `${pct}%`, height: '100%', backgroundColor: '#F59E0B' }} />
+                              </View>
+                              <Text style={{ fontSize: 10, color: '#94A3B8', width: 16, textAlign: 'right' }}>{count}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {reviewsData?.reviews && reviewsData.reviews.length > 0 ? (
+                    reviewsData.reviews.map((rev: any) => (
+                      <View key={rev.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' }}>
+                              <Ionicons name="person" size={14} color="#0066FF" />
+                            </View>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>{rev.user?.fullName}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, gap: 2 }}>
+                            <Ionicons name="star" size={11} color="#F59E0B" />
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#B45309' }}>{rev.rating}★</Text>
+                          </View>
+                        </View>
+                        {rev.comment ? (
+                          <Text style={{ fontSize: 13, color: '#334155', lineHeight: 18 }}>"{rev.comment}"</Text>
+                        ) : (
+                          <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>Đánh giá {rev.rating} sao</Text>
+                        )}
+                      </View>
+                    ))
+                  ) : (
+                    <View style={{ padding: 30, alignItems: 'center' }}>
+                      <Ionicons name="chatbubbles-outline" size={40} color="#CBD5E1" />
+                      <Text style={{ marginTop: 8, fontSize: 14, fontWeight: '600', color: '#64748B' }}>Chưa có nhận xét nào</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
             </View>
           </View>
         </Modal>

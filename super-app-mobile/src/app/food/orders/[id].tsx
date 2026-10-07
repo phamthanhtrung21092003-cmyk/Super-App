@@ -668,6 +668,36 @@ export default function UserOrderDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Khối Đánh Giá Đơn Hàng (Nếu COMPLETED) */}
+        {isCompleted && (
+          <View style={styles.sectionCard}>
+            <View style={styles.reviewBannerRow}>
+              <View style={styles.reviewBannerIcon}>
+                <Ionicons name="star" size={24} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.reviewBannerTitle}>
+                  {order.restaurantReview ? 'Đơn hàng đã được đánh giá' : 'Đánh giá đơn hàng'}
+                </Text>
+                <Text style={styles.reviewBannerSubtitle}>
+                  {order.restaurantReview
+                    ? `Bạn đã chấm ${order.restaurantReview.rating}⭐ cho nhà hàng này`
+                    : 'Hãy chia sẻ trải nghiệm về món ăn và tài xế nhé'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.reviewBannerBtn}
+                onPress={() => router.push({ pathname: '/food/orders/review' as any, params: { orderId: order.id } })}
+              >
+                <Text style={styles.reviewBannerBtnText}>
+                  {order.restaurantReview ? 'Xem lại' : 'Đánh giá'}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color="#EA580C" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* Thanh Hành Động Cuối Trang */}
@@ -694,22 +724,34 @@ export default function UserOrderDetailScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Nếu HOÀN THÀNH: Đặt lại đơn */}
+        {/* Nếu HOÀN THÀNH: Đánh giá & Đặt lại đơn */}
         {isCompleted && (
-          <TouchableOpacity
-            style={styles.reorderFullButton}
-            disabled={reordering}
-            onPress={handleReorder}
-          >
-            {reordering ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.reorderFullButtonText}>Đặt lại đơn này</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              style={styles.reviewBottomBtn}
+              onPress={() => router.push({ pathname: '/food/orders/review' as any, params: { orderId: order.id } })}
+            >
+              <Ionicons name="star" size={16} color="#D97706" style={{ marginRight: 6 }} />
+              <Text style={styles.reviewBottomBtnText}>
+                {order.restaurantReview ? 'Xem đánh giá' : 'Đánh giá'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.reorderFullButton, { flex: 1 }]}
+              disabled={reordering}
+              onPress={handleReorder}
+            >
+              {reordering ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.reorderFullButtonText}>Đặt lại đơn này</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -1369,5 +1411,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  reviewBannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  reviewBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  reviewBannerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  reviewBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    gap: 4,
+  },
+  reviewBannerBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  reviewBottomBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  reviewBottomBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#B45309',
   },
 });

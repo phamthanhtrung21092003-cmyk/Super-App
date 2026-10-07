@@ -85,6 +85,7 @@ interface FoodContextType {
     deliveryCoords?: { lat: number; lng: number },
     noteForMerchant?: string,
     noteForDriver?: string,
+    voucherCode?: string,
   ) => Promise<FoodActiveOrder>;
   setActiveOrder: (order: FoodActiveOrder | null) => void;
   updateOrderStatus: (status: FoodActiveOrder['status']) => void;
@@ -351,6 +352,7 @@ export function FoodProvider({ children }: { children: ReactNode }) {
     deliveryCoords?: { lat: number; lng: number },
     noteForMerchant?: string,
     noteForDriver?: string,
+    voucherCode?: string,
   ): Promise<FoodActiveOrder> => {
     if (!restaurant) {
       throw new Error('Vui lòng chọn một quán ăn để đặt món');
@@ -371,6 +373,7 @@ export function FoodProvider({ children }: { children: ReactNode }) {
       noteForMerchant,
       noteForDriver,
       paymentMethod,
+      voucherCode,
       items: cart.map((item) => ({
         menuItemId: item.menuItemId,
         name: item.name,

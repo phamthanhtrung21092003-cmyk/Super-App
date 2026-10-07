@@ -11,6 +11,7 @@ import { UserOrderQueryDto, OrderTabFilter } from './dto/order-history-query.dto
 import { FoodOrderStatus } from '@prisma/client';
 import { FoodGateway } from './food.gateway';
 import { NotificationService } from '../notification/notification.service';
+import { FoodVoucherService } from './food-voucher.service';
 
 /**
  * MA TRẬN CHUYỂN TRẠNG THÁI ĐƠN HÀNG HỢP LỆ (STATE MACHINE)
@@ -32,6 +33,7 @@ export class FoodService {
     private readonly prisma: PrismaService,
     private readonly foodGateway: FoodGateway,
     private readonly notificationService: NotificationService,
+    private readonly foodVoucherService: FoodVoucherService,
   ) {}
 
   /**
@@ -240,8 +242,17 @@ export class FoodService {
         include: { items: true, restaurant: true },
       });
       if (existingOrderByKey) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        const isPrivileged = user?.role === 'ADMIN' || user?.role === 'SELLER';
+        const sanitized: any = { ...existingOrderByKey };
+        if (!isPrivileged) {
+          delete sanitized.baseStorePrice;
+          delete sanitized.merchantEarning;
+          delete sanitized.appGrossProfit;
+          delete sanitized.appNetProfit;
+        }
         return {
-          ...existingOrderByKey,
+          ...sanitized,
           isDuplicateRequest: true,
           message: 'Đơn hàng đã được tạo trước đó (Idempotency Handled)',
         };
@@ -399,10 +410,52 @@ export class FoodService {
         });
       }
 
-      // 3.5. Tính toán Cước phí & Freeship từ Server
+      // 3.5. Tính toán Cước phí & Voucher từ Server
       const feeCalc = this.calculateShippingFee(serverSubtotal, distanceKm);
-      const finalTotal = serverSubtotal + feeCalc.finalShippingFee;
-      const orderCode = `#FD-${Math.floor(1000 + Math.random() * 9000)}`;
+      let voucherDiscount = 0;
+      let appliedVoucher: any = null;
+
+      if (dto.voucherCode && dto.voucherCode.trim()) {
+        const cleanVoucherCode = dto.voucherCode.trim().toUpperCase();
+        // Khóa giao dịch PostgreSQL Advisory Lock theo cặp (userId, voucherCode)
+        // đảm bảo chống race condition tuyệt đối khi cùng 1 user spam 2 request đồng thời
+        await tx.$executeRawUnsafe(
+          `SELECT pg_advisory_xact_lock(hashtext('${userId}_${cleanVoucherCode}'))`,
+        );
+
+        const voucherRes = await this.foodVoucherService.validateVoucher(
+          userId,
+          {
+            code: cleanVoucherCode,
+            restaurantId: restaurant.id,
+            subtotal: serverSubtotal,
+            shippingFee: feeCalc.finalShippingFee,
+          },
+          tx,
+        );
+
+        // Atomic update usedCount để đảm bảo concurrency tuyệt đối (chống vượt quá maxUsage)
+        const vUpdate = await tx.foodVoucher.updateMany({
+          where: {
+            id: voucherRes.voucher.id,
+            usedCount: { lt: voucherRes.voucher.maxUsage },
+            isActive: true,
+          },
+          data: {
+            usedCount: { increment: 1 },
+          },
+        });
+
+        if (vUpdate.count === 0) {
+          throw new BadRequestException('Mã khuyến mãi vừa hết lượt sử dụng trên hệ thống');
+        }
+
+        voucherDiscount = voucherRes.discountAmount;
+        appliedVoucher = voucherRes.voucher;
+      }
+
+      const finalTotal = Math.max(0, serverSubtotal + feeCalc.finalShippingFee - voucherDiscount);
+      const orderCode = `#FD-${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
 
       // Xử lý thanh toán ví điện tử V-Life nếu chọn phương thức WALLET
       let paymentStatus = 'UNPAID';
@@ -464,14 +517,20 @@ export class FoodService {
           distanceKm: feeCalc.distanceKm,
           subtotal: serverSubtotal,
           shippingFee: feeCalc.finalShippingFee,
-          discountAmount: feeCalc.discountAmount,
+          discountAmount: feeCalc.discountAmount + voucherDiscount,
           totalAmount: finalTotal,
+
+          voucherId: appliedVoucher ? appliedVoucher.id : null,
+          voucherCode: appliedVoucher ? appliedVoucher.code : null,
+          voucherName: appliedVoucher ? appliedVoucher.name : null,
+          discountType: appliedVoucher ? appliedVoucher.type : null,
+          discountValue: appliedVoucher ? appliedVoucher.value : null,
 
           // Hạch toán tài chính 3 bên V-Life Food
           baseStorePrice: feeCalc.baseStorePrice,
           merchantEarning: feeCalc.merchantEarning,
           appGrossProfit: feeCalc.appGrossProfit,
-          appNetProfit: feeCalc.appNetProfit,
+          appNetProfit: feeCalc.appNetProfit - voucherDiscount,
 
           noteForMerchant: dto.noteForMerchant,
           noteForDriver: dto.noteForDriver,
@@ -493,6 +552,17 @@ export class FoodService {
         },
       });
 
+      if (appliedVoucher) {
+        await tx.foodVoucherUsage.create({
+          data: {
+            voucherId: appliedVoucher.id,
+            userId,
+            orderId: order.id,
+            discountAmount: voucherDiscount,
+          },
+        });
+      }
+
       if (restaurant.autoAcceptOrder) {
         await tx.foodAuditLog.create({
           data: {
@@ -506,13 +576,23 @@ export class FoodService {
         });
       }
 
+      const isPrivileged = user.role === 'ADMIN' || user.role === 'SELLER';
+      if (!isPrivileged) {
+        const sanitized: any = { ...order };
+        delete sanitized.baseStorePrice;
+        delete sanitized.merchantEarning;
+        delete sanitized.appGrossProfit;
+        delete sanitized.appNetProfit;
+        return sanitized;
+      }
+
       return {
         ...order,
         financials: {
           baseStorePrice: feeCalc.baseStorePrice,
           merchantEarning: feeCalc.merchantEarning,
           appGrossProfit: feeCalc.appGrossProfit,
-          appNetProfit: feeCalc.appNetProfit,
+          appNetProfit: feeCalc.appNetProfit - voucherDiscount,
           driverShippingFee: feeCalc.driverShippingFee,
         },
       };
@@ -524,8 +604,17 @@ export class FoodService {
           include: { items: true, restaurant: true },
         });
         if (existingOrderByKey) {
+          const user = await this.prisma.user.findUnique({ where: { id: userId } });
+          const isPrivileged = user?.role === 'ADMIN' || user?.role === 'SELLER';
+          const sanitized: any = { ...existingOrderByKey };
+          if (!isPrivileged) {
+            delete sanitized.baseStorePrice;
+            delete sanitized.merchantEarning;
+            delete sanitized.appGrossProfit;
+            delete sanitized.appNetProfit;
+          }
           return {
-            ...existingOrderByKey,
+            ...sanitized,
             isDuplicateRequest: true,
             message: 'Đơn hàng đã được tạo trước đó (Idempotency Handled)',
           };
@@ -671,6 +760,17 @@ export class FoodService {
         );
       }
 
+      // Nếu đơn có sử dụng voucher, hoàn trả lại lượt dùng cho voucher và xóa usage của user
+      if (order.voucherId) {
+        await tx.foodVoucher.updateMany({
+          where: { id: order.voucherId },
+          data: { usedCount: { decrement: 1 } },
+        });
+        await tx.foodVoucherUsage.deleteMany({
+          where: { orderId: order.id },
+        });
+      }
+
       return tx.foodOrder.findUnique({
         where: { id: order.id },
         include: {
@@ -700,7 +800,15 @@ export class FoodService {
       console.error('[FoodService] Lỗi trigger push notification khi hủy đơn:', pushErr);
     }
 
-    return cancelledOrder;
+    const sanitized: any = { ...cancelledOrder };
+    if (userRole === 'USER') {
+      delete sanitized.baseStorePrice;
+      delete sanitized.merchantEarning;
+      delete sanitized.appGrossProfit;
+      delete sanitized.appNetProfit;
+    }
+
+    return sanitized;
   }
 
   /**
@@ -853,6 +961,15 @@ export class FoodService {
             rating: true,
           },
         },
+        restaurantReview: {
+          select: { id: true, rating: true, comment: true },
+        },
+        driverReview: {
+          select: { id: true, rating: true, comment: true },
+        },
+        voucher: {
+          select: { id: true, code: true, name: true, type: true, value: true, maxDiscount: true },
+        },
       },
     });
 
@@ -964,6 +1081,12 @@ export class FoodService {
               rating: true,
             },
           },
+          restaurantReview: {
+            select: { id: true, rating: true, comment: true },
+          },
+          driverReview: {
+            select: { id: true, rating: true, comment: true },
+          },
         },
       }),
     ]);
@@ -991,6 +1114,9 @@ export class FoodService {
       deliveryAddress: o.deliveryAddress,
       restaurant: o.restaurant,
       driver: o.driver,
+      isReviewed: !!o.restaurantReview || !!o.driverReview,
+      restaurantReview: o.restaurantReview,
+      driverReview: o.driverReview,
       itemCount: o.items.reduce((sum, item) => sum + item.quantity, 0),
       items: o.items.map((it) => ({
         id: it.id,

@@ -49,7 +49,7 @@ export default function DriverHome() {
   const [services, setServices] = useState({
     ride: true,
     delivery: true,
-    food: false,
+    food: true,
   });
 
   const toggleService = (key: keyof typeof services) => {
@@ -253,81 +253,129 @@ export default function DriverHome() {
     });
     realRideService.toggleDriverOnline(driverIdRef.current, true).catch(() => {});
 
-    // Kiểm tra chuyến đang chạy trên backend
-    realRideService.getDriverActiveTrip(driverIdRef.current).then((trip) => {
-      if (trip && trip.status && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED') {
-        processedTripIdsRef.current.add(trip.id);
-        rideSocketService.joinTripRoom(trip.id);
-        setActiveTrip({
-          id: trip.id,
-          tripId: trip.id,
-          bookingCode: trip.bookingCode,
-          type: trip.serviceType?.toLowerCase().includes('delivery') ? 'delivery' : 'passenger',
-          title: trip.serviceType === 'DELIVERY' ? 'Giao hàng Siêu Tốc V-Express' : 'Chở khách V-Ride',
-          pickup: trip.pickupAddress,
-          dropoff: trip.dropoffAddress,
-          pickupLat: trip.pickupLat,
-          pickupLng: trip.pickupLng,
-          dropoffLat: trip.dropoffLat,
-          dropoffLng: trip.dropoffLng,
-          distance: `${trip.distanceKm} km`,
-          eta: `${trip.durationMin} phút`,
-          price: trip.fareAmount,
-          finalAmount: trip.finalAmount,
-          tip: trip.tipAmount || 0,
-          deal: 0,
-          paymentMethod: trip.paymentMethod,
-          customerName: trip.customerName,
-          customerPhone: trip.customerPhone,
-          customerRating: 5.0,
-        });
-        if (trip.status === 'ACCEPTED') setTripStep(1);
-        else if (trip.status === 'ARRIVED_PICKUP') setTripStep(2);
-        else if (trip.status === 'IN_TRIP') setTripStep(3);
+    // Kiểm tra công việc đang chạy trên backend (Hỗ trợ cả Ride, Delivery và Food)
+    realRideService.getDriverActiveJob().then((jobData) => {
+      if (jobData && jobData.hasActiveJob) {
+        processedTripIdsRef.current.add(jobData.jobId);
+        if (jobData.jobType === 'FOOD') {
+          rideSocketService.joinFoodOrderRoom(jobData.jobId);
+          setActiveTrip({
+            id: jobData.jobId,
+            tripId: jobData.jobId,
+            jobType: 'FOOD',
+            bookingCode: jobData.code,
+            type: 'food',
+            title: 'Giao đồ ăn V-Food',
+            pickup: jobData.pickupAddress,
+            pickupName: jobData.pickupName,
+            pickupPhone: jobData.pickupPhone,
+            pickupLat: jobData.pickupLat,
+            pickupLng: jobData.pickupLng,
+            dropoff: jobData.dropoffAddress,
+            dropoffLat: jobData.dropoffLat,
+            dropoffLng: jobData.dropoffLng,
+            distance: `${jobData.distanceKm} km`,
+            eta: `${jobData.durationMin} phút`,
+            price: jobData.earnings,
+            finalAmount: jobData.totalAmount,
+            tip: 0,
+            deal: 0,
+            paymentMethod: jobData.paymentMethod === 'COD' ? 'CASH' : 'ONLINE',
+            customerName: jobData.customerName,
+            customerPhone: jobData.customerPhone,
+            customerRating: 5.0,
+            restaurantName: jobData.restaurantName,
+            itemCount: jobData.itemCount,
+            items: jobData.items,
+          });
+          setTripStep(jobData.step || (jobData.status === 'DRIVER_ACCEPTED' ? 1 : 2));
+        } else {
+          // Ride hoặc General Delivery
+          rideSocketService.joinTripRoom(jobData.jobId);
+          setActiveTrip({
+            id: jobData.jobId,
+            tripId: jobData.jobId,
+            jobType: jobData.jobType,
+            bookingCode: jobData.code,
+            type: jobData.jobType === 'DELIVERY' ? 'delivery' : 'passenger',
+            title: jobData.jobType === 'DELIVERY' ? 'Giao hàng Siêu Tốc V-Express' : 'Chở khách V-Ride',
+            pickup: jobData.pickupAddress,
+            dropoff: jobData.dropoffAddress,
+            pickupLat: jobData.pickupLat,
+            pickupLng: jobData.pickupLng,
+            dropoffLat: jobData.dropoffLat,
+            dropoffLng: jobData.dropoffLng,
+            distance: `${jobData.distanceKm} km`,
+            eta: `${jobData.durationMin} phút`,
+            price: jobData.earnings,
+            finalAmount: jobData.totalAmount,
+            tip: 0,
+            deal: 0,
+            paymentMethod: jobData.paymentMethod,
+            customerName: jobData.customerName,
+            customerPhone: jobData.customerPhone,
+            customerRating: 5.0,
+          });
+          setTripStep(jobData.step || 1);
+        }
       }
     }).catch(() => {});
 
-    // Lắng nghe cuốc xe THẬT từ WebSocket server
-    const unsubOrder = rideSocketService.onIncomingOrder((order: IncomingOrderPayload) => {
-      if (!order || !order.tripId || processedTripIdsRef.current.has(order.tripId)) return;
+    // Lắng nghe công việc THẬT từ WebSocket server (Hợp nhất Ride + Delivery + Food)
+    const unsubJob = rideSocketService.onIncomingJob((job) => {
+      if (!job || !job.id || processedTripIdsRef.current.has(job.id)) return;
       if (!activeTrip && isOnline) {
+        // Tôn trọng bộ lọc dịch vụ của tài xế
+        if (job.jobType === 'RIDE' && !services.ride) return;
+        if (job.jobType === 'DELIVERY' && !services.delivery) return;
+        if (job.jobType === 'FOOD' && !services.food) return;
+
         const incomingData = {
-          id: order.tripId,
-          tripId: order.tripId,
-          bookingCode: order.bookingCode || `#VR-${order.tripId.slice(-4)}`,
-          type: order.serviceType?.toLowerCase().includes('delivery') ? 'delivery' : 'passenger',
-          title: order.serviceType === 'DELIVERY' ? 'Giao hàng Siêu Tốc V-Express' : 'Chở khách V-Ride',
-          pickup: order.pickup,
-          dropoff: order.dropoff,
-          pickupLat: order.pickupLat,
-          pickupLng: order.pickupLng,
-          dropoffLat: order.dropoffLat,
-          dropoffLng: order.dropoffLng,
-          distance: `${order.distanceKm} km`,
-          eta: `${order.durationMin} phút`,
-          price: order.fareAmount,
-          finalAmount: order.finalAmount,
+          id: job.id,
+          tripId: job.id,
+          jobId: job.id,
+          jobType: job.jobType,
+          bookingCode: job.code,
+          type: job.jobType === 'FOOD' ? 'food' : job.jobType === 'DELIVERY' ? 'delivery' : 'passenger',
+          title: job.title,
+          pickup: job.pickup,
+          pickupName: job.pickupName,
+          pickupPhone: job.pickupPhone,
+          pickupLat: job.pickupLat,
+          pickupLng: job.pickupLng,
+          dropoff: job.dropoff,
+          dropoffLat: job.dropoffLat,
+          dropoffLng: job.dropoffLng,
+          distance: `${job.distanceKm} km`,
+          eta: `${job.durationMin} phút`,
+          price: job.earnings,
+          finalAmount: job.finalAmount,
           tip: 0,
           deal: 0,
-          paymentMethod: order.paymentMethod,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
+          paymentMethod: job.paymentMethod === 'COD' || job.paymentMethod === 'CASH' ? 'CASH' : 'ONLINE',
+          customerName: job.customerName,
+          customerPhone: job.customerPhone,
           customerRating: 5.0,
+          restaurantName: job.restaurantName,
+          itemCount: job.itemCount,
         };
 
         if (autoAccept) {
-          // Tự động nhận cuốc nếu tài xế bật tính năng Auto-Accept
-          processedTripIdsRef.current.add(order.tripId);
+          processedTripIdsRef.current.add(job.id);
           setActiveTrip(incomingData);
           setTripStep(1);
-          realRideService.acceptRide(order.tripId, {
-            driverId: driverIdRef.current,
-            driverName: 'Trần Bình',
-            vehicleName: 'VinFast VF 8 Xanh SM',
-            licensePlate: '29A-888.99',
-            avatarUrl: 'https://i.pravatar.cc/150?img=11',
-            rating: 4.95,
-          }).catch(() => {});
+          if (job.jobType === 'FOOD') {
+            realRideService.acceptFoodOrder(job.id).catch(() => {});
+            rideSocketService.joinFoodOrderRoom(job.id);
+          } else {
+            realRideService.acceptRide(job.id, {
+              driverId: driverIdRef.current,
+              driverName: driverStats.name,
+              vehicleName: 'VinFast VF 8 Xanh SM',
+              licensePlate: '29A-888.99',
+            }).catch(() => {});
+            rideSocketService.joinTripRoom(job.id);
+          }
         } else {
           setMatchingOrder(incomingData);
         }
@@ -362,14 +410,14 @@ export default function DriverHome() {
     });
 
     return () => {
-      unsubOrder();
+      unsubJob();
       unsubCancel();
       unsubStatus();
       unsubConn();
       rideSocketService.disconnect();
       realRideService.toggleDriverOnline(driverIdRef.current, false).catch(() => {});
     };
-  }, [isOnline, activeTrip, autoAccept]);
+  }, [isOnline, activeTrip, autoAccept, services]);
 
   // GPS Broadcast định kỳ khi đang có chuyến
   useEffect(() => {
@@ -423,22 +471,41 @@ export default function DriverHome() {
     if (!matchingOrder || !matchingOrder.tripId) return;
     const order = matchingOrder;
     processedTripIdsRef.current.add(order.tripId);
-    rideSocketService.joinTripRoom(order.tripId);
-    setActiveTrip(order);
-    setMatchingOrder(null);
-    setTripStep(1);
 
-    try {
-      await realRideService.acceptRide(order.tripId, {
-        driverId: driverIdRef.current,
-        driverName: 'Trần Bình',
-        vehicleName: 'VinFast VF 8 Xanh SM',
-        licensePlate: '29A-888.99',
-        avatarUrl: 'https://i.pravatar.cc/150?img=11',
-        rating: 4.95,
-      });
-    } catch (e: any) {
-      console.log('[Driver] Accept ride error:', e?.message || e);
+    if (order.jobType === 'FOOD') {
+      try {
+        await realRideService.acceptFoodOrder(order.tripId);
+        rideSocketService.joinFoodOrderRoom(order.tripId);
+        setActiveTrip({
+          ...order,
+          status: 'DRIVER_ACCEPTED',
+        });
+        setMatchingOrder(null);
+        setTripStep(1);
+      } catch (e: any) {
+        Alert.alert('Không thể nhận đơn', e.response?.data?.message || 'Đơn đồ ăn đã có tài xế khác tiếp nhận.');
+        setMatchingOrder(null);
+      }
+    } else {
+      rideSocketService.joinTripRoom(order.tripId);
+      setActiveTrip(order);
+      setMatchingOrder(null);
+      setTripStep(1);
+
+      try {
+        await realRideService.acceptRide(order.tripId, {
+          driverId: driverIdRef.current,
+          driverName: driverStats.name,
+          vehicleName: 'VinFast VF 8 Xanh SM',
+          licensePlate: '29A-888.99',
+          avatarUrl: 'https://i.pravatar.cc/150?img=11',
+          rating: 4.95,
+        });
+      } catch (e: any) {
+        Alert.alert('Không thể nhận cuốc', e.response?.data?.message || 'Cuốc xe đã được tài xế khác tiếp nhận.');
+        setActiveTrip(null);
+        setTripStep(0);
+      }
     }
   };
 
@@ -451,29 +518,55 @@ export default function DriverHome() {
 
   const handleAdvanceTrip = async () => {
     if (!activeTrip || !activeTrip.tripId) return;
-    if (tripStep === 1) {
-      setTripStep(2);
-      realRideService.updateTripStatus(activeTrip.tripId, 'ARRIVED_PICKUP').catch(() => {});
-    } else if (tripStep === 2) {
-      setTripStep(3);
-      realRideService.updateTripStatus(activeTrip.tripId, 'IN_TRIP').catch(() => {});
-    } else if (tripStep === 3) {
-      setTripStep(4);
-      realRideService.updateTripStatus(activeTrip.tripId, 'COMPLETED').catch(() => {});
+
+    if (activeTrip.jobType === 'FOOD') {
+      if (tripStep === 1) {
+        // Bước 1: Đã đến quán và lấy món
+        try {
+          await realRideService.pickupFoodOrder(activeTrip.tripId);
+          setTripStep(2);
+        } catch (e: any) {
+          Alert.alert('Lỗi cập nhật', e.response?.data?.message || 'Không thể xác nhận đã lấy món.');
+        }
+      } else if (tripStep === 2) {
+        // Bước 2: Đã giao tới khách và hoàn tất
+        try {
+          await realRideService.completeFoodOrder(activeTrip.tripId);
+          setTripStep(4);
+        } catch (e: any) {
+          Alert.alert('Lỗi cập nhật', e.response?.data?.message || 'Không thể hoàn tất đơn giao đồ ăn.');
+        }
+      }
+    } else {
+      // Ride / General Delivery
+      if (tripStep === 1) {
+        setTripStep(2);
+        realRideService.updateTripStatus(activeTrip.tripId, 'ARRIVED_PICKUP').catch(() => {});
+      } else if (tripStep === 2) {
+        setTripStep(3);
+        realRideService.updateTripStatus(activeTrip.tripId, 'IN_TRIP').catch(() => {});
+      } else if (tripStep === 3) {
+        setTripStep(4);
+        realRideService.updateTripStatus(activeTrip.tripId, 'COMPLETED').catch(() => {});
+      }
     }
   };
 
   const handleFinishTrip = async () => {
     if (activeTrip?.tripId) {
-      try {
-        await realRideService.updateTripStatus(activeTrip.tripId, 'COMPLETED', {
-          driverRating: passengerRating,
-          driverReview: passengerReview,
-        });
-      } catch (e) {}
-      rideSocketService.leaveTripRoom();
+      if (activeTrip.jobType === 'FOOD') {
+        rideSocketService.leaveFoodOrderRoom(activeTrip.tripId);
+      } else {
+        try {
+          await realRideService.updateTripStatus(activeTrip.tripId, 'COMPLETED', {
+            driverRating: passengerRating,
+            driverReview: passengerReview,
+          });
+        } catch (e) {}
+        rideSocketService.leaveTripRoom();
+      }
     }
-    Alert.alert('Thành công', 'Cuốc xe đã kết thúc hoàn hảo. Doanh thu đã được đối soát vào ví!');
+    Alert.alert('Thành công', 'Công việc đã hoàn thành trọn vẹn. Thu nhập đã được cập nhật vào ví!');
     setActiveTrip(null);
     setTripStep(0);
   };
@@ -663,9 +756,15 @@ export default function DriverHome() {
         {matchingOrder && (
           <Animated.View entering={SlideInDown} style={styles.dispatchCard}>
             <View style={styles.dispHeader}>
-              <View style={styles.dispBadge}>
-                <Ionicons name="car-sport" size={18} color="#0F172A" />
-                <Text style={styles.dispBadgeText}>{matchingOrder.title}</Text>
+              <View style={[styles.dispBadge, matchingOrder.jobType === 'FOOD' && { backgroundColor: '#FEF2F2' }]}>
+                <Ionicons
+                  name={matchingOrder.jobType === 'FOOD' ? 'fast-food' : matchingOrder.jobType === 'DELIVERY' ? 'cube' : 'car-sport'}
+                  size={18}
+                  color={matchingOrder.jobType === 'FOOD' ? '#DC2626' : '#0F172A'}
+                />
+                <Text style={[styles.dispBadgeText, matchingOrder.jobType === 'FOOD' && { color: '#DC2626' }]}>
+                  {matchingOrder.title}
+                </Text>
               </View>
               <View style={styles.countdownBadge}>
                 <Ionicons name="timer-outline" size={15} color="#DC2626" />
@@ -694,8 +793,19 @@ export default function DriverHome() {
             </View>
 
             <View style={styles.routeBox}>
-              <Text style={styles.pointText} numberOfLines={1}>🟢 Đón: {matchingOrder.pickup}</Text>
-              <Text style={styles.pointText} numberOfLines={1}>🔴 Trả: {matchingOrder.dropoff}</Text>
+              <Text style={styles.pointText} numberOfLines={1}>
+                {matchingOrder.jobType === 'FOOD' ? '🏪 Quán: ' : '🟢 Đón: '}
+                {matchingOrder.pickup}
+              </Text>
+              <Text style={styles.pointText} numberOfLines={1}>
+                {matchingOrder.jobType === 'FOOD' ? '🏠 Giao: ' : '🔴 Trả: '}
+                {matchingOrder.dropoff}
+              </Text>
+              {matchingOrder.jobType === 'FOOD' && (
+                <Text style={[styles.pointText, { color: '#DC2626', fontWeight: '600', marginTop: 2 }]} numberOfLines={1}>
+                  🍔 Số lượng: {matchingOrder.itemCount || 1} món ăn
+                </Text>
+              )}
             </View>
 
             <View style={styles.metricsRow}>
@@ -709,7 +819,7 @@ export default function DriverHome() {
               </View>
               <View style={styles.metricItem}>
                 <Text style={[styles.metricVal, { color: '#10B981' }]}>
-                  {(matchingOrder.price + matchingOrder.tip).toLocaleString()}đ
+                  {(matchingOrder.price + (matchingOrder.tip || 0)).toLocaleString()}đ
                 </Text>
                 <Text style={styles.metricLbl}>Thực nhận</Text>
               </View>
@@ -732,19 +842,35 @@ export default function DriverHome() {
             <View style={styles.activeHeader}>
               <View>
                 <Text style={styles.tripStepTitle}>
-                  {tripStep === 1 && '1. Đang đến điểm đón khách'}
-                  {tripStep === 2 && `2. Đã tới điểm đón (Chờ ${formatDuration(waitingPassengerSec)})`}
-                  {tripStep === 3 && '3. Đang trên chuyến đi'}
+                  {activeTrip.jobType === 'FOOD' ? (
+                    tripStep === 1
+                      ? '1. Đang đến nhà hàng lấy món 🏪'
+                      : '2. Đang giao món tới khách 🏠'
+                  ) : (
+                    tripStep === 1
+                      ? '1. Đang đến điểm đón khách'
+                      : tripStep === 2
+                      ? `2. Đã tới điểm đón (Chờ ${formatDuration(waitingPassengerSec)})`
+                      : '3. Đang trên chuyến đi'
+                  )}
                 </Text>
                 <Text style={styles.passengerSubtitle}>
-                  Khách: {activeTrip.customerName} ({activeTrip.customerRating}★)
+                  {activeTrip.jobType === 'FOOD'
+                    ? `Quán: ${activeTrip.restaurantName || activeTrip.pickupName || 'Nhà hàng'} • ${activeTrip.itemCount || 1} món`
+                    : `Khách: ${activeTrip.customerName} (${activeTrip.customerRating || 5.0}★)`}
                 </Text>
               </View>
               <Text style={styles.tripFareText}>{totalFare.toLocaleString()}đ</Text>
             </View>
 
             <Text style={styles.currentDestination}>
-              📍 {tripStep <= 2 ? `Điểm đón: ${activeTrip.pickup}` : `Điểm trả: ${activeTrip.dropoff}`}
+              {activeTrip.jobType === 'FOOD'
+                ? tripStep === 1
+                  ? `🏪 Lấy món: ${activeTrip.pickup}`
+                  : `🏠 Giao khách: ${activeTrip.dropoff}`
+                : tripStep <= 2
+                ? `📍 Điểm đón: ${activeTrip.pickup}`
+                : `🏁 Điểm trả: ${activeTrip.dropoff}`}
             </Text>
 
             {/* Zero-Dispute Payment Warning Banner */}
@@ -778,7 +904,7 @@ export default function DriverHome() {
             <View style={styles.tripToolsRow}>
               <TouchableOpacity
                 style={styles.googleMapsBtn}
-                onPress={() => openGoogleMaps(tripStep <= 2 ? activeTrip.pickup : activeTrip.dropoff)}
+                onPress={() => openGoogleMaps(tripStep <= 1 && activeTrip.jobType === 'FOOD' ? activeTrip.pickup : tripStep <= 2 ? activeTrip.pickup : activeTrip.dropoff)}
               >
                 <Ionicons name="navigate-circle" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.googleMapsText}>Google Maps Dẫn đường</Text>
@@ -786,7 +912,7 @@ export default function DriverHome() {
 
               <TouchableOpacity
                 style={styles.circleToolBtn}
-                onPress={() => callPassenger(activeTrip.customerPhone)}
+                onPress={() => callPassenger(tripStep === 1 && activeTrip.jobType === 'FOOD' ? (activeTrip.pickupPhone || activeTrip.customerPhone) : activeTrip.customerPhone)}
               >
                 <Ionicons name="call" size={20} color="#10B981" />
               </TouchableOpacity>
@@ -802,9 +928,17 @@ export default function DriverHome() {
             {/* Nút chuyển trạng thái hành trình */}
             <TouchableOpacity style={styles.advanceStageBtn} onPress={handleAdvanceTrip}>
               <Text style={styles.advanceStageText}>
-                {tripStep === 1 && 'TÔI ĐÃ ĐẾN NƠI ĐÓN 📍'}
-                {tripStep === 2 && 'KHÁCH ĐÃ LÊN XE (BẮT ĐẦU CHUYẾN) 🚗'}
-                {tripStep === 3 && 'ĐÃ ĐẾN NƠI (KẾT THÚC CHUYẾN ĐI) 🏁'}
+                {activeTrip.jobType === 'FOOD' ? (
+                  tripStep === 1
+                    ? 'ĐÃ ĐẾN QUÁN & LẤY MÓN 🍔'
+                    : 'ĐÃ GIAO HÀNG TỚI KHÁCH (HOÀN TẤT) 🏁'
+                ) : (
+                  tripStep === 1
+                    ? 'TÔI ĐÃ ĐẾN NƠI ĐÓN 📍'
+                    : tripStep === 2
+                    ? 'KHÁCH ĐÃ LÊN XE (BẮT ĐẦU CHUYẾN) 🚗'
+                    : 'ĐÃ ĐẾN NƠI (KẾT THÚC CHUYẾN ĐI) 🏁'
+                )}
               </Text>
             </TouchableOpacity>
           </Animated.View>

@@ -167,6 +167,10 @@ model User {
   voucherUsages      VoucherUsage[]
   managedRestaurants Restaurant[]       @relation("RestaurantOwner")
   foodAuditLogs      FoodAuditLog[]
+  restaurantReviews  RestaurantReview[]
+  itemReviews        ItemReview[]
+  driverReviews      DriverReview[]
+  foodVoucherUsages  FoodVoucherUsage[]
 }
 
 model UserDevice {
@@ -261,6 +265,7 @@ model Driver {
   rideBookings       RideBooking[]
   transactions       DriverTransaction[]
   settings           DriverSettings?
+  reviews            DriverReview[]
 }
 
 model DriverTransaction {
@@ -827,6 +832,8 @@ model Restaurant {
   items             MenuItem[]
   orders            FoodOrder[]
   auditLogs         FoodAuditLog[]
+  reviews           RestaurantReview[]
+  vouchers          FoodVoucher[]
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -834,6 +841,8 @@ model Restaurant {
   @@index([isActive])
   @@index([isOpen])
   @@index([ownerId])
+  @@index([name])
+  @@index([rating])
 }
 
 model MenuCategory {
@@ -860,12 +869,19 @@ model MenuItem {
   image         String?
   calories      String?
   isAvailable   Boolean           @default(true)
+  rating        Float             @default(5.0)
+  totalReviews  Int               @default(0)
   optionGroups  ItemOptionGroup[]
   orderItems    FoodOrderItem[]
+  reviews       ItemReview[]
   createdAt     DateTime          @default(now())
 
   @@index([restaurantId])
   @@index([categoryId])
+  @@index([name])
+  @@index([price])
+  @@index([isAvailable])
+  @@index([rating])
 }
 
 model ItemOptionGroup {
@@ -935,6 +951,16 @@ model FoodOrder {
   noteForDriver      String?
   items              FoodOrderItem[]
   auditLogs          FoodAuditLog[]
+  restaurantReview   RestaurantReview?
+  driverReview       DriverReview?
+  itemReviews        ItemReview[]
+  voucherId          String?
+  voucher            FoodVoucher?      @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+  voucherCode        String?
+  voucherName        String?
+  discountType       String?
+  discountValue      Float?
+  voucherUsage       FoodVoucherUsage?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -943,6 +969,8 @@ model FoodOrder {
   @@index([driverId])
   @@index([status])
   @@index([idempotencyKey])
+  @@index([voucherId])
+  @@index([voucherCode])
 }
 
 model FoodOrderItem {
@@ -980,6 +1008,117 @@ model FoodAuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model RestaurantReview {
+  id           String     @id @default(uuid())
+  orderId      String     @unique
+  order        FoodOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  rating       Int        // 1 to 5
+  comment      String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([restaurantId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model ItemReview {
+  id         String    @id @default(uuid())
+  orderId    String
+  order      FoodOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  menuItemId String
+  menuItem   MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  rating     Int       // 1 to 5
+  comment    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([orderId, menuItemId])
+  @@index([menuItemId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model DriverReview {
+  id        String    @id @default(uuid())
+  orderId   String    @unique
+  order     FoodOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  driverId  String
+  driver    Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  rating    Int       // 1 to 5
+  comment   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([driverId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+enum FoodVoucherType {
+  PERCENT
+  FIXED
+  FREESHIP
+}
+
+model FoodVoucher {
+  id              String            @id @default(uuid())
+  code            String            @unique
+  name            String
+  description     String?
+  type            FoodVoucherType   @default(PERCENT)
+  value           Float
+  maxDiscount     Float?
+  minOrderValue   Float             @default(0)
+  maxUsage        Int               @default(100)
+  usedCount       Int               @default(0)
+  maxUsagePerUser Int               @default(1)
+  startAt         DateTime          @default(now())
+  endAt           DateTime
+  isActive        Boolean           @default(true)
+
+  restaurantId    String?
+  restaurant      Restaurant?       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  usages          FoodVoucherUsage[]
+  orders          FoodOrder[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([code])
+  @@index([restaurantId])
+  @@index([isActive])
+  @@index([startAt, endAt])
+}
+
+model FoodVoucherUsage {
+  id             String      @id @default(uuid())
+  voucherId      String
+  voucher        FoodVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId        String      @unique
+  order          FoodOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  discountAmount Float
+  createdAt      DateTime    @default(now())
+
+  @@index([voucherId, userId])
+  @@index([userId])
+  @@index([orderId])
 }
 
 model RideBooking {

@@ -339,6 +339,38 @@ export class RideService implements OnModuleInit {
       throw new NotFoundException('Không tìm thấy thông tin tài xế trong hệ thống.');
     }
 
+    if (!driver.isOnline) {
+      throw new BadRequestException('Bạn đang ở chế độ NGOẠI TUYẾN. Vui lòng bật TRỰC TUYẾN để nhận cuốc.');
+    }
+
+    // Kiểm tra tài xế có đang bận với chuyến Ride/Delivery khác chưa hoàn tất không
+    const ongoingRide = await this.prisma.rideBooking.findFirst({
+      where: {
+        driverId: driver.id,
+        status: { in: ['ACCEPTED', 'ARRIVED_PICKUP', 'IN_TRIP'] },
+      },
+    });
+
+    if (ongoingRide) {
+      throw new BadRequestException(
+        `Bạn đang có chuyến ${ongoingRide.serviceType === 'DELIVERY' ? 'giao hàng' : 'chở khách'} #${ongoingRide.bookingCode} chưa hoàn tất. Vui lòng hoàn thành chuyến trước khi nhận cuốc mới.`,
+      );
+    }
+
+    // Kiểm tra tài xế có đang bận với đơn Food nào chưa hoàn tất không
+    const ongoingFood = await this.prisma.foodOrder.findFirst({
+      where: {
+        driverId: driver.id,
+        status: { in: ['DRIVER_ACCEPTED', 'PICKED_UP'] },
+      },
+    });
+
+    if (ongoingFood) {
+      throw new BadRequestException(
+        `Bạn đang có đơn giao đồ ăn #${ongoingFood.orderCode} chưa hoàn tất. Vui lòng giao xong trước khi nhận chuyến mới.`,
+      );
+    }
+
     // ─── ATOMIC ACCEPT ─────────────────────────────────────────────────────────
     // Dùng updateMany với điều kiện WHERE id=tripId AND status='SEARCHING'.
     // Nếu count=0: trip đã được tài xế khác nhận trước (race condition).

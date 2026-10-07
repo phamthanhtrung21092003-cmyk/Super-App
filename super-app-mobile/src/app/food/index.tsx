@@ -88,7 +88,8 @@ export default function FoodHomeScreen() {
     ? `${defaultAddress.detailAddress}, ${defaultAddress.ward}`
     : '18 Tạ Quang Bửu, Hai Bà Trưng';
 
-  const [restaurants, setRestaurants] = useState<FoodRestaurant[]>([]);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [popularDishes, setPopularDishes] = useState<any[]>([]);
   const [isFetchingRestaurants, setIsFetchingRestaurants] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
@@ -98,12 +99,28 @@ export default function FoodHomeScreen() {
     (async () => {
       try {
         setIsFetchingRestaurants(true);
-        const data = await foodService.getRestaurants(userLat, userLng);
-        if (isMounted && data && data.length > 0) {
-          setRestaurants(data);
+        // Ưu tiên tải dữ liệu từ Discovery Feed mới nhất
+        const disc = await foodService.getDiscovery({ latitude: userLat, longitude: userLng, limit: 10 });
+        if (isMounted && disc) {
+          if (disc.nearby && disc.nearby.length > 0) {
+            setRestaurants(disc.nearby);
+          } else if (disc.featured && disc.featured.length > 0) {
+            setRestaurants(disc.featured);
+          }
+          if (disc.popularDishes && disc.popularDishes.length > 0) {
+            setPopularDishes(disc.popularDishes);
+          }
         }
       } catch (err) {
-        console.log('Lỗi tải danh sách quán từ Backend:', err);
+        console.log('Lỗi tải Discovery Feed, fallback sang getRestaurants:', err);
+        try {
+          const fallbackData = await foodService.getRestaurants(userLat, userLng);
+          if (isMounted && fallbackData && fallbackData.length > 0) {
+            setRestaurants(fallbackData);
+          }
+        } catch (fbErr) {
+          console.log('Lỗi tải danh sách quán fallback:', fbErr);
+        }
       } finally {
         if (isMounted) setIsFetchingRestaurants(false);
       }
@@ -272,13 +289,15 @@ export default function FoodHomeScreen() {
           
           {/* Search Bar + AI Assistant Button */}
           <Animated.View entering={FadeInDown.duration(400)}>
-            <View style={styles.searchContainer}>
+            <TouchableOpacity 
+              style={styles.searchContainer}
+              activeOpacity={0.85}
+              onPress={() => router.push('/food/search' as any)}
+            >
               <Ionicons name="search" size={20} color="#64748B" />
-              <TextInput 
-                style={styles.searchInput}
-                placeholder="Tìm món ngon, quán ăn..."
-                placeholderTextColor="#94A3B8"
-              />
+              <Text style={[styles.searchInput, { color: '#94A3B8', paddingTop: 2 }]}>
+                Tìm món ngon, quán ăn, trà sữa...
+              </Text>
               <TouchableOpacity 
                 style={styles.aiTriggerBtn} 
                 onPress={() => {
@@ -289,7 +308,7 @@ export default function FoodHomeScreen() {
                 <Ionicons name="sparkles" size={16} color="#FFF" />
                 <Text style={styles.aiTriggerText}>Hỏi AI</Text>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </Animated.View>
 
           {/* AI Suggestion Box */}
@@ -337,7 +356,7 @@ export default function FoodHomeScreen() {
               <TouchableOpacity 
                 key={cat.id} 
                 style={styles.catItem}
-                onPress={() => router.push({ pathname: '/food/list', params: { filter: cat.name } })}
+                onPress={() => router.push({ pathname: '/food/search' as any, params: { q: cat.name } })}
               >
                 <View style={styles.catIconWrap}>
                   <Text style={styles.catEmoji}>{cat.icon}</Text>
@@ -350,7 +369,7 @@ export default function FoodHomeScreen() {
           {/* Nearby Restaurants List */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Quán ngon gần bạn</Text>
-            <TouchableOpacity onPress={() => router.push('/food/list')}>
+            <TouchableOpacity onPress={() => router.push('/food/search' as any)}>
               <Text style={styles.seeAllText}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
@@ -396,6 +415,61 @@ export default function FoodHomeScreen() {
               ))
             )}
           </View>
+
+          {/* Popular Dishes Slider */}
+          {popularDishes.length > 0 && (
+            <View style={{ marginTop: 24 }}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Món ăn bán chạy hôm nay 🔥</Text>
+                <TouchableOpacity onPress={() => router.push('/food/search' as any)}>
+                  <Text style={styles.seeAllText}>Xem thêm</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 8 }}
+              >
+                {popularDishes.map((dish: any) => (
+                  <TouchableOpacity
+                    key={dish.id}
+                    style={styles.popDishCard}
+                    activeOpacity={0.88}
+                    onPress={() => router.push(`/food/restaurant/${dish.restaurantId}` as any)}
+                  >
+                    <Image
+                      source={{
+                        uri:
+                          dish.image ||
+                          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80',
+                      }}
+                      style={styles.popDishImg}
+                    />
+                    <View style={styles.popDishBody}>
+                      <Text style={styles.popDishName} numberOfLines={1}>
+                        {dish.name}
+                      </Text>
+                      <Text style={styles.popDishRest} numberOfLines={1}>
+                        {dish.restaurantName}
+                      </Text>
+                      <View style={styles.popDishPriceRow}>
+                        <Text style={styles.popDishPrice}>
+                          {dish.price?.toLocaleString('vi-VN')}đ
+                        </Text>
+                        <View style={styles.popDishRating}>
+                          <Ionicons name="star" size={11} color="#F59E0B" />
+                          <Text style={styles.popDishRatingText}>
+                            {dish.rating > 0 ? dish.rating.toFixed(1) : '5.0'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           <View style={{ height: 60 }} />
         </ScrollView>
@@ -625,4 +699,57 @@ const styles = StyleSheet.create({
   aiResultReason: { fontSize: 13, color: '#334155', lineHeight: 18, marginBottom: 14 },
   aiOrderNowBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, paddingVertical: 11 },
   aiOrderNowText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+
+  // Popular Dishes Styles
+  popDishCard: {
+    width: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  popDishImg: {
+    width: '100%',
+    height: 95,
+    backgroundColor: '#F1F5F9',
+  },
+  popDishBody: {
+    padding: 8,
+  },
+  popDishName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  popDishRest: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  popDishPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  popDishPrice: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#F97316',
+  },
+  popDishRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  popDishRatingText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
 });

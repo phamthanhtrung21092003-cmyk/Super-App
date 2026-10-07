@@ -534,6 +534,17 @@ export class FoodMerchantService {
         throw new BadRequestException('Đơn hàng đã được xử lý bởi thao tác khác hoặc không còn ở trạng thái PENDING');
       }
 
+      // Nếu đơn có sử dụng voucher, hoàn trả lại lượt dùng cho voucher và xóa usage của user
+      if (order.voucherId) {
+        await tx.foodVoucher.updateMany({
+          where: { id: order.voucherId },
+          data: { usedCount: { decrement: 1 } },
+        });
+        await tx.foodVoucherUsage.deleteMany({
+          where: { orderId: order.id },
+        });
+      }
+
       const updatedOrder = await tx.foodOrder.findUnique({
         where: { id: order.id },
         include: { items: true },

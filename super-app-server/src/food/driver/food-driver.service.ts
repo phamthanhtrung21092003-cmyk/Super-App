@@ -193,6 +193,20 @@ export class FoodDriverService {
       );
     }
 
+    // Kiểm tra tài xế có đang bận với chuyến Ride/Delivery nào chưa hoàn tất không
+    const ongoingRide = await this.prisma.rideBooking.findFirst({
+      where: {
+        driverId: driver.id,
+        status: { in: ['ACCEPTED', 'ARRIVED_PICKUP', 'IN_TRIP'] },
+      },
+    });
+
+    if (ongoingRide) {
+      throw new BadRequestException(
+        `Bạn đang có chuyến ${ongoingRide.serviceType === 'DELIVERY' ? 'giao hàng' : 'chở khách'} #${ongoingRide.bookingCode} chưa hoàn tất. Vui lòng hoàn thành chuyến trước khi nhận đơn đồ ăn.`,
+      );
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const order = await tx.foodOrder.findFirst({
         where: {

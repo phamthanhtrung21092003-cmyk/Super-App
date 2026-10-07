@@ -354,6 +354,25 @@ export default function UserFoodOrdersScreen() {
               </TouchableOpacity>
             )}
 
+            {/* Nút Đánh giá / Đã đánh giá nếu hoàn thành */}
+            {item.status === 'COMPLETED' && (
+              <TouchableOpacity
+                style={item.isReviewed ? styles.reviewedButton : styles.reviewButton}
+                activeOpacity={0.8}
+                onPress={() => router.push({ pathname: '/food/orders/review' as any, params: { orderId: item.id } })}
+              >
+                <Ionicons
+                  name={item.isReviewed ? 'checkmark-circle' : 'star'}
+                  size={13}
+                  color={item.isReviewed ? '#16A34A' : '#D97706'}
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={item.isReviewed ? styles.reviewedButtonText : styles.reviewButtonText}>
+                  {item.isReviewed ? 'Đã đánh giá' : 'Đánh giá'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {/* Nút Đặt lại nếu hoàn thành */}
             {item.status === 'COMPLETED' && (
               <TouchableOpacity
@@ -745,6 +764,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  reviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  reviewButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  reviewedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  reviewedButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#15803D',
   },
   reorderButton: {
     flexDirection: 'row',

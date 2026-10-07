@@ -57,6 +57,10 @@ export class CreateFoodOrderDto {
   @IsString()
   paymentMethod?: 'COD' | 'WALLET' | 'VIETQR';
 
+  @IsOptional()
+  @IsString()
+  voucherCode?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FoodOrderItemDto)
