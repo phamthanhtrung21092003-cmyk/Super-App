@@ -414,6 +414,67 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
+    // ════════════════════════════════════════════════════════════════════════════
+    // DRIVER REFRESH TOKEN HANDLING
+    // ════════════════════════════════════════════════════════════════════════════
+    if (payload.role === 'DRIVER') {
+      const driver = await this.prisma.driver.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!driver) {
+        this.logger.warn(`Refresh failed: Driver not found for ID ${payload.sub}`);
+        throw new UnauthorizedException('Tài khoản tài xế không tồn tại');
+      }
+
+      if (!driver.hashedRefreshToken) {
+        this.logger.warn(`Invalid refresh token: Driver ${driver.phone} (token revoked)`);
+        throw new UnauthorizedException('Phiên đăng nhập tài xế đã bị thu hồi hoặc hết hạn');
+      }
+
+      const sha256Hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const isTokenMatching = await bcrypt.compare(sha256Hash, driver.hashedRefreshToken);
+      if (!isTokenMatching) {
+        this.logger.warn(`Invalid refresh token: Driver ${driver.phone} (hash mismatch)`);
+        throw new UnauthorizedException('Refresh token không hợp lệ');
+      }
+
+      // Generate new rotated tokens for driver
+      const tokens = await this.generateTokens(
+        driver.id,
+        driver.phone,
+        'DRIVER',
+        payload.deviceId,
+      );
+
+      // Save hashed refresh token (Rotation)
+      await this.updateRefreshToken(driver.id, tokens.refreshToken, 'DRIVER');
+
+      this.logger.log(`Refresh token rotated for driver: ${driver.phone}`);
+
+      const accessTokenExpires =
+        this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') || '15m';
+      const expiresIn = this.parseTimeToSeconds(accessTokenExpires);
+
+      return {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn,
+        driver: {
+          id: driver.id,
+          phone: driver.phone,
+          fullName: driver.fullName,
+          licensePlate: driver.licensePlate,
+          vehicleType: driver.vehicleType,
+          avatarUrl: driver.avatarUrl,
+          rating: driver.rating,
+          role: driver.role,
+          isOnline: driver.isOnline,
+          walletBalance: driver.walletBalance,
+        },
+      };
+    }
+
     // Find User
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -516,8 +577,21 @@ export class AuthService {
   }
 
   // Logout maintaining Device History (Sets status to LOGGED_OUT, does NOT delete)
-  async logout(userId: string, deviceId?: string): Promise<{ message: string }> {
+  async logout(userId: string, deviceId?: string, role: string = 'USER'): Promise<{ message: string }> {
     try {
+      if (role === 'DRIVER') {
+        await this.prisma.driver.update({
+          where: { id: userId },
+          data: {
+            hashedRefreshToken: null,
+            isOnline: false,
+          },
+          select: { id: true, phone: true },
+        });
+        this.logger.log(`Driver logout: ${userId}`);
+        return { message: 'Logout successfully' };
+      }
+
       if (deviceId) {
         await this.prisma.userDevice.updateMany({
           where: { userId, deviceId },
@@ -546,7 +620,7 @@ export class AuthService {
 
       this.logger.log(`User logout device [${deviceId || 'all'}]: ${userId}`);
     } catch (error) {
-      this.logger.warn(`User logout warning for ID ${userId}: ${error}`);
+      this.logger.warn(`User/Driver logout warning for ID ${userId}: ${error}`);
     }
     return { message: 'Logout successfully' };
   }

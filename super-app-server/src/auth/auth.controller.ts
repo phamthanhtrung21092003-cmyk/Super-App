@@ -123,6 +123,7 @@ export class AuthController {
   async logout(@Req() req: any) {
     const userId = req.user.id || req.user.sub;
     const deviceId = req.user.deviceId;
-    return this.authService.logout(userId, deviceId);
+    const role = req.user.role || 'USER';
+    return this.authService.logout(userId, deviceId, role);
   }
 }

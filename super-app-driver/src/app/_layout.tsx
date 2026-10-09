@@ -1,115 +1,118 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Stack } from 'expo-router';
-import { StatusBar, View, Image, StyleSheet, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import {
+  StatusBar,
+  View,
+  Image,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SPLASH_IMAGE_BASE64 } from '../constants/splashImageBase64';
-
-import { getBaseURL } from '../services/apiClient';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function RootLayout() {
-  const [showSplash, setShowSplash] = useState(true);
+function RootNavigator() {
+  const router = useRouter();
+  const segments = useSegments();
+  const { isAuthenticated, isLoading, networkError, checkSession } = useAuth();
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Xử lý chuyển trang mượt mà sau khi kiểm tra phiên xong
   useEffect(() => {
-    let isMounted = true;
-    const startTime = Date.now();
+    if (isLoading) return;
 
-    // Hàm kiểm tra mạng / kết nối thực tế
-    const pingNetwork = async (): Promise<boolean> => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const inAuthGroup = segments[0] === 'login';
 
-        const serverUrl = getBaseURL();
-        // Kiểm tra kết nối song song tới backend hoặc internet endpoint an toàn
-        const response = await Promise.any([
-          fetch(`${serverUrl}/health`, {
-            method: 'HEAD',
-            signal: controller.signal,
-          }).catch(() => null),
-          fetch('https://www.google.com/generate_204', {
-            method: 'HEAD',
-            signal: controller.signal,
-          }),
-          fetch('https://cloudflare.com/cdn-cgi/trace', {
-            method: 'HEAD',
-            signal: controller.signal,
-          }),
-        ]);
+    if (!isAuthenticated && !inAuthGroup) {
+      // Chưa đăng nhập -> Vào màn hình đăng nhập
+      router.replace('/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      // Đã đăng nhập -> Vào thẳng buồng lái
+      router.replace('/(tabs)');
+    }
 
-        clearTimeout(timeoutId);
-        return !!response;
-      } catch (e) {
-        return false;
-      }
-    };
+    // Hiệu ứng mờ dần Splash Screen sau khi xác định xong trạng thái
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, [isAuthenticated, isLoading, segments, router, fadeAnim]);
 
-    const runConnectionCheck = async () => {
-      // Vòng lặp: Nếu không có mạng thì cứ ở lại màn hình chờ cho đến khi có mạng!
-      while (isMounted) {
-        const connected = await pingNetwork();
-        if (connected) {
-          // Mạng mạnh phản hồi nhanh: Chờ tối thiểu 1800ms để splash hiển thị trọn vẹn, rõ nét
-          // Mạng yếu / chậm: Đã tốn thời gian ở bước ping, sẽ vào ngay khi ping xong
-          const elapsed = Date.now() - startTime;
-          const remainingDelay = Math.max(0, 1800 - elapsed);
-
-          setTimeout(() => {
-            if (isMounted) {
-              Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 400,
-                useNativeDriver: true,
-              }).start(() => {
-                if (isMounted) setShowSplash(false);
-              });
-            }
-          }, remainingDelay);
-          break; // Đã kết nối thành công, thoát vòng lặp
-        }
-
-        // Nếu KHÔNG CÓ MẠNG: Tiếp tục ở màn hình chờ và thử lại sau 1.5 giây
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-      }
-    };
-
-    runConnectionCheck();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [fadeAnim]);
+  // Nếu gặp lỗi kết nối máy chủ backend -> Hiển thị màn hình lỗi mạng kèm nút Thử lại
+  if (networkError && !isLoading) {
+    return (
+      <View style={styles.errorContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.errorCard}>
+          <View style={styles.errorIconWrap}>
+            <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
+          </View>
+          <Text style={styles.errorTitle}>Mất kết nối máy chủ</Text>
+          <Text style={styles.errorDesc}>{networkError}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => checkSession()}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh" size={18} color="#FFFFFF" />
+            <Text style={styles.retryButtonText}>Thử lại kết nối</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.rootContainer}>
       <StatusBar
-        barStyle={showSplash ? "light-content" : "dark-content"}
-        backgroundColor={showSplash ? "#0C68EF" : "#ffffff"}
-        translucent={showSplash}
+        barStyle={isLoading ? 'light-content' : 'dark-content'}
+        backgroundColor={isLoading ? '#0C68EF' : '#FFFFFF'}
+        translucent={isLoading}
       />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="booking-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false }} />
       </Stack>
 
-      {showSplash && (
+      {/* Màn hình Splash trong khi đang kiểm tra phiên đăng nhập */}
+      {isLoading && (
         <Animated.View style={[styles.splashContainer, { opacity: fadeAnim }]} pointerEvents="none">
           <Image
             source={{ uri: SPLASH_IMAGE_BASE64 }}
             style={styles.splashImage}
             resizeMode="cover"
           />
+          <View style={styles.splashLoadingWrap}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text style={styles.splashLoadingText}>Đang khởi động buồng lái...</Text>
+          </View>
         </Animated.View>
       )}
     </View>
   );
 }
 
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: '#0C68EF',
+    backgroundColor: '#FFFFFF',
   },
   splashContainer: {
     ...StyleSheet.absoluteFill,
@@ -122,5 +125,79 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
   },
+  splashLoadingWrap: {
+    position: 'absolute',
+    bottom: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  splashLoadingText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  errorCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  errorIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  errorDesc: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0C68EF',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    gap: 8,
+    width: '100%',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
 });
-

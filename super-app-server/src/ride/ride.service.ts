@@ -3,7 +3,9 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  UnauthorizedException,
   OnModuleInit,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -55,6 +57,8 @@ export interface ActiveTrip {
 
 @Injectable()
 export class RideService implements OnModuleInit {
+  private readonly logger = new Logger(RideService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** Khởi tạo dữ liệu seed cho Driver mặc định trong database thật nếu chưa có */
@@ -142,30 +146,66 @@ export class RideService implements OnModuleInit {
   // ─────────────────────────────────────────
 
   async createRide(userId: string, dto: CreateRideDto): Promise<ActiveTrip> {
+    if (!userId) {
+      throw new UnauthorizedException('Bạn chưa đăng nhập hoặc phiên làm việc không hợp lệ.');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { fullName: true, phone: true },
+      select: { id: true, fullName: true, phone: true },
     });
 
-    const customerName = user?.fullName || 'Khách hàng V-Life';
-    const customerPhone = user?.phone || '0988000000';
+    if (!user) {
+      this.logger.warn(`createRide rejected: User ${userId} not found in database`);
+      throw new UnauthorizedException('Tài khoản khách hàng không tồn tại trên hệ thống.');
+    }
 
-    const distanceKm = this.calculateDistance(
+    // 1. Kiểm tra chống cuốc trùng hoặc cuốc đang chạy
+    const activeTrip = await this.getCustomerActiveTrip(userId);
+    if (activeTrip) {
+      const tripCreatedAt = new Date(activeTrip.createdAt).getTime();
+      // Nếu vừa mới bấm đặt trong vòng 15 giây và đang SEARCHING -> Trả về cuốc này (Idempotent chống click đúp)
+      const codeDisplay = activeTrip.bookingCode.startsWith('#')
+        ? activeTrip.bookingCode
+        : '#' + activeTrip.bookingCode;
+      if (Date.now() - tripCreatedAt < 15000 && activeTrip.status === 'SEARCHING') {
+        this.logger.log(`Idempotent hit: returning existing active trip ${codeDisplay} for user ${userId}`);
+        return activeTrip;
+      }
+      throw new BadRequestException(
+        `Bạn đang có chuyến xe ${codeDisplay} đang diễn ra. Vui lòng hoàn thành hoặc hủy chuyến trước khi đặt chuyến mới.`,
+      );
+    }
+
+    // 2. Tính toán khoảng cách và giá cước
+    const calculatedDistance = this.calculateDistance(
       dto.pickupLat,
       dto.pickupLng,
       dto.dropoffLat,
       dto.dropoffLng,
     );
-    const fareAmount = this.calculateFare(distanceKm, dto.vehicleType || 'ev');
+    const distanceKm = dto.distanceKm && dto.distanceKm > 0 ? dto.distanceKm : calculatedDistance;
+    const serverFare = this.calculateFare(distanceKm, dto.vehicleType || 'ev');
+    const fareAmount = dto.fareAmount && dto.fareAmount > 0 ? dto.fareAmount : serverFare;
     const tipAmount = dto.tipAmount && dto.tipAmount > 0 ? dto.tipAmount : 0;
     const discountAmount = 15000;
     const finalAmount = Math.max(0, fareAmount + tipAmount - discountAmount);
-    const bookingCode = `#VR-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    // 3. Sinh mã cuốc xe đảm bảo duy nhất tuyệt đối (tránh xung đột unique constraint)
+    const timeSuffix = Date.now().toString().slice(-4);
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const bookingCode = `#VR-${timeSuffix}${randomSuffix}`;
+
+    const customerName = dto.customerName || user.fullName || 'Khách hàng V-Life';
+    const customerPhone = dto.customerPhone || user.phone || '0988000000';
+    const paymentMethod = dto.paymentMethod || 'CASH';
+    const paymentStatus = ['SUPERPAY', 'PAID'].includes(paymentMethod) ? 'PAID' : 'UNPAID';
+
+    // 4. Lưu dữ liệu cuốc xe vào PostgreSQL
     const dbTrip = await this.prisma.rideBooking.create({
       data: {
         bookingCode,
-        userId: userId || 'anonymous-user',
+        userId: user.id,
         serviceType: dto.serviceType || 'RIDE',
         vehicleType: dto.vehicleType || 'ev',
         status: 'SEARCHING',
@@ -181,12 +221,16 @@ export class RideService implements OnModuleInit {
         tipAmount,
         discountAmount,
         finalAmount,
-        paymentMethod: dto.paymentMethod || 'CASH',
-        paymentStatus: dto.paymentMethod === 'SUPERPAY' ? 'PAID' : 'UNPAID',
+        paymentMethod,
+        paymentStatus,
         customerName,
         customerPhone,
       },
     });
+
+    this.logger.log(
+      `Đã tạo cuốc xe thành công: ${bookingCode} (User: ${user.id}, Khách: ${customerName} - ${customerPhone}, Giá: ${finalAmount}đ, PT: ${paymentMethod})`,
+    );
 
     return this.mapDbToActiveTrip(dbTrip);
   }

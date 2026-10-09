@@ -18,6 +18,8 @@
     },
     "android": {
       "package": "com.trung219203.superappdriver",
+      "versionCode": 2,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

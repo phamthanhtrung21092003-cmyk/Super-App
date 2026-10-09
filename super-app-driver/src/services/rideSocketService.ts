@@ -13,7 +13,8 @@
 
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getBaseURL, ensureDriverAuth } from './apiClient';
+import { getBaseURL } from './apiClient';
+import authStorage from './authStorage';
 
 export interface IncomingOrderPayload {
   tripId: string;
@@ -112,9 +113,10 @@ class RideSocketService {
   }
 
   async connect(forcedToken?: string) {
-    let token: string | null = forcedToken || (await AsyncStorage.getItem('accessToken'));
+    let token: string | null = forcedToken || (await authStorage.getAccessToken());
     if (!token) {
-      token = await ensureDriverAuth();
+      console.warn('[DriverSocket] Chưa có token xác thực tài xế. Không kết nối Socket.');
+      return;
     }
 
     const socketUrl = this.getSocketUrl();

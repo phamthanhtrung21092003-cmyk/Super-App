@@ -16,8 +16,12 @@ import {
   DEFAULT_QUICK_CHATS,
   STORAGE_KEYS,
 } from '../../constants/driverConstants';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
 
 export default function DriverSettingsScreen() {
+  const router = useRouter();
+  const { logout } = useAuth();
   const [settings, setSettings] = useState<DriverAppSettings>(DEFAULT_APP_SETTINGS);
   const [quickChats, setQuickChats] = useState<string[]>(DEFAULT_QUICK_CHATS);
 
@@ -725,6 +729,42 @@ export default function DriverSettingsScreen() {
               <Text style={styles.upToDateText}>Mới nhất</Text>
             </View>
           </View>
+        </View>
+
+        {/* ─────────────────────────────────────────
+            7. 🚪 ĐĂNG XUẤT TÀI KHOẢN AN TOÀN
+           ───────────────────────────────────────── */}
+        <View style={[styles.groupCard, { borderColor: '#FEE2E2', backgroundColor: '#FFFDFD' }]}>
+          <TouchableOpacity
+            style={styles.itemRow}
+            activeOpacity={0.8}
+            onPress={() => {
+              Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng Sunstar Driver?', [
+                { text: 'Hủy', style: 'cancel' },
+                {
+                  text: 'Đăng xuất',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const result = await logout();
+                    if (!result.success) {
+                      Alert.alert('Không thể đăng xuất', result.message || 'Lỗi khi đăng xuất.');
+                    } else {
+                      router.replace('/login');
+                    }
+                  },
+                },
+              ]);
+            }}
+          >
+            <View style={[styles.iconWrap, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.itemTitle, { color: '#EF4444', fontWeight: '700' }]}>Đăng xuất khỏi thiết bị</Text>
+              <Text style={styles.itemDesc}>Ngắt kết nối trực tuyến, xóa token phiên trên thiết bị này</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#EF4444" />
+          </TouchableOpacity>
         </View>
 
         <View style={{ height: 50 }} />

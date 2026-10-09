@@ -50,18 +50,38 @@ export class CreateRideDto {
   @IsString()
   serviceType?: string;
 
+  @ApiPropertyOptional({ example: 45000, description: 'Giá cước ước tính từ client' })
+  @IsOptional()
+  @IsNumber({}, { message: 'Giá cước phải là số' })
+  fareAmount?: number;
+
+  @ApiPropertyOptional({ example: 4.8, description: 'Khoảng cách ước tính (km)' })
+  @IsOptional()
+  @IsNumber({}, { message: 'Khoảng cách phải là số' })
+  distanceKm?: number;
+
   @ApiPropertyOptional({ example: 10000, description: 'Tiền tip thêm cho tài xế (VND)' })
   @IsOptional()
   @IsNumber({}, { message: 'Tiền tip phải là số' })
   @Min(0, { message: 'Tiền tip không thể âm' })
   tipAmount?: number;
 
-  @ApiPropertyOptional({ example: 'CASH', description: 'Phương thức thanh toán: CASH | SUPERPAY' })
+  @ApiPropertyOptional({ example: 'CASH', description: 'Phương thức thanh toán: CASH | SUPERPAY | CARD | VIETQR' })
   @IsOptional()
-  @IsIn(['CASH', 'SUPERPAY', 'VIETQR', 'MOMO', 'ZALOPAY'], {
+  @IsIn(['CASH', 'SUPERPAY', 'CARD', 'VIETQR', 'QR', 'MOMO', 'ZALOPAY'], {
     message: 'Phương thức thanh toán không hợp lệ',
   })
   paymentMethod?: string;
+
+  @ApiPropertyOptional({ example: 'Nguyễn Văn A', description: 'Tên người đặt xe' })
+  @IsOptional()
+  @IsString({ message: 'Tên khách hàng phải là chuỗi ký tự' })
+  customerName?: string;
+
+  @ApiPropertyOptional({ example: '0988000000', description: 'Số điện thoại người đặt xe' })
+  @IsOptional()
+  @IsString({ message: 'Số điện thoại khách hàng phải là chuỗi ký tự' })
+  customerPhone?: string;
 }
 
 export class UpdateTripStatusDto {

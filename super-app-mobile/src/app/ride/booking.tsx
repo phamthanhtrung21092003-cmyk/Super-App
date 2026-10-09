@@ -131,11 +131,32 @@ export default function RideBooking() {
   const [isBooking, setIsBooking] = useState(false);
 
   const handleBookNow = async () => {
+    if (isBooking) return;
+
+    // 1. Kiểm tra trạng thái đăng nhập
+    const token = await AsyncStorage.getItem('accessToken');
+    if (!token) {
+      Alert.alert(
+        'Yêu cầu đăng nhập',
+        'Vui lòng đăng nhập tài khoản để đặt chuyến xe.',
+        [
+          { text: 'Để sau', style: 'cancel' },
+          { text: 'Đăng nhập ngay', onPress: () => router.push('/') },
+        ]
+      );
+      return;
+    }
+
     setIsBooking(true);
     try {
       // Lấy thông tin người dùng từ storage
       const userStr = await AsyncStorage.getItem('currentUser').catch(() => null);
       const user = userStr ? JSON.parse(userStr) : null;
+
+      const paymentMethod =
+        selectedPayment.id === 'superpay' ? 'SUPERPAY' :
+        selectedPayment.id === 'cash' ? 'CASH' :
+        selectedPayment.id === 'qr' ? 'VIETQR' : 'CARD';
 
       // Gọi API đặt chuyến
       const trip = await createRideBooking({
@@ -149,8 +170,7 @@ export default function RideBooking() {
         serviceType: 'RIDE',
         fareAmount: currentVehicleData.price,
         distanceKm: distance,
-        paymentMethod: selectedPayment.id === 'superpay' ? 'SUPERPAY' :
-                       selectedPayment.id === 'cash' ? 'CASH' : 'CARD',
+        paymentMethod,
         customerName: user?.fullName || 'Khách hàng V-Life',
         customerPhone: user?.phone || '0988000000',
       }, user?.id);
@@ -179,14 +199,27 @@ export default function RideBooking() {
         },
       });
     } catch (error: any) {
+      console.error('[RideBooking] Lỗi tạo cuốc xe:', error);
       const isNetworkError = !error.response && error.request;
       if (isNetworkError) {
         Alert.alert(
           'Không thể kết nối máy chủ',
-          'Máy chủ đang ngoại tuyến hoặc không có phản hồi. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.'
+          'Máy chủ đang ngoại tuyến hoặc không có phản hồi. Vui lòng kiểm tra kết nối mạng (LAN/Wi-Fi) và thử lại sau.'
+        );
+      } else if (error.response?.status === 401) {
+        Alert.alert(
+          'Phiên đăng nhập hết hạn',
+          'Phiên làm việc của bạn đã hết hạn. Vui lòng đăng nhập lại.',
+          [{ text: 'Đăng nhập lại', onPress: () => router.push('/') }]
         );
       } else {
-        Alert.alert('Đặt chuyến thất bại', error.response?.data?.message || 'Có lỗi xảy ra khi tạo chuyến xe trên hệ thống.');
+        const rawMessage = error.response?.data?.message;
+        const displayMsg = Array.isArray(rawMessage)
+          ? rawMessage.join('\n')
+          : (typeof rawMessage === 'string' && rawMessage.length > 0)
+          ? rawMessage
+          : 'Có lỗi xảy ra khi tạo chuyến xe trên hệ thống.';
+        Alert.alert('Đặt chuyến thất bại', displayMsg);
       }
     } finally {
       setIsBooking(false);

@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../../services/apiClient';
 import SosEmergencyModal from '../../components/SosEmergencyModal';
 import { PLATFORM_FEE_RATE, STORAGE_KEYS, DEFAULT_QUICK_CHATS } from '../../constants/driverConstants';
+import { useAuth } from '../../context/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,6 +25,8 @@ interface ChatMessage {
 }
 
 export default function DriverHome() {
+  const { driver: authDriver } = useAuth();
+
   // ─────────────────────────────────────────
   // 1. TRẠNG THÁI TRỰC TUYẾN & ĐIỀU PHỐI (driver-home-cockpit)
   // ─────────────────────────────────────────
@@ -37,12 +40,12 @@ export default function DriverHome() {
 
   // Thống kê tài xế thật từ PostgreSQL database
   const [driverStats, setDriverStats] = useState({
-    name: 'Tài xế Sunstar',
-    rating: 5.0,
-    tier: 'Kim Cương',
+    name: authDriver?.fullName || 'Tài xế Sunstar',
+    rating: authDriver?.rating || 5.0,
+    tier: authDriver?.tier || 'Kim Cương',
     dailyEarnings: 0,
-    creditWallet: 0,
-    totalTripsToday: 0,
+    creditWallet: authDriver?.creditBalance || 0,
+    totalTripsToday: authDriver?.totalTrips || 0,
   });
 
   // Bộ lọc dịch vụ nhận cuốc
@@ -160,8 +163,20 @@ export default function DriverHome() {
   // 4. KẾT NỐI REAL-TIME VỚI SERVER BACKEND
   // ─────────────────────────────────────────
   const [socketConnected, setSocketConnected] = useState(false);
-  const driverIdRef = useRef('driver-demo-1');
+  const driverIdRef = useRef(authDriver?.id || 'driver-demo-1');
   const processedTripIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (authDriver?.id) {
+      driverIdRef.current = authDriver.id;
+      setDriverStats((prev) => ({
+        ...prev,
+        name: authDriver.fullName || prev.name,
+        rating: authDriver.rating || prev.rating,
+        tier: authDriver.tier || prev.tier,
+      }));
+    }
+  }, [authDriver]);
 
   // Lưu và khôi phục cuốc xe đang chạy vào AsyncStorage (offline-resilient-sync)
   useEffect(() => {

@@ -6,11 +6,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import apiClient from '../../services/apiClient';
+import { useAuth } from '../../context/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function DriverProfileScreen() {
   const router = useRouter();
+  const { logout } = useAuth();
 
   // Dữ liệu tài xế thật từ PostgreSQL
   const [driver, setDriver] = useState({
@@ -237,7 +239,18 @@ export default function DriverProfileScreen() {
             onPress={() => {
               Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng Sunstar Driver?', [
                 { text: 'Hủy', style: 'cancel' },
-                { text: 'Đăng xuất', style: 'destructive', onPress: () => router.push('/(tabs)') },
+                {
+                  text: 'Đăng xuất',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const result = await logout();
+                    if (!result.success) {
+                      Alert.alert('Không thể đăng xuất', result.message || 'Lỗi khi đăng xuất.');
+                    } else {
+                      router.replace('/login');
+                    }
+                  },
+                },
               ]);
             }}
           >
